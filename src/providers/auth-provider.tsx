@@ -3,7 +3,13 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 
 import type { AuthUser } from '@/lib/auth/auth-api';
 import { onUnauthorized } from '@/lib/auth/auth-events';
-import { type AuthTokens, clearTokens, loadTokens, saveTokens } from '@/lib/auth/token-storage';
+import {
+  type AuthTokens,
+  clearTokens,
+  isStoredTokenUsable,
+  loadTokens,
+  saveTokens,
+} from '@/lib/auth/token-storage';
 
 export type AuthStatus = 'loading' | 'signedIn' | 'signedOut';
 
@@ -26,8 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    loadTokens().then((tokens) => {
-      if (active) setStatus(tokens ? 'signedIn' : 'signedOut');
+    loadTokens().then(async (tokens) => {
+      if (!isStoredTokenUsable(tokens)) {
+        if (tokens) await clearTokens();
+        if (active) setStatus('signedOut');
+        return;
+      }
+      if (active) setStatus('signedIn');
     });
     // The axios interceptor emits this when a 401 can't be fixed by refreshing.
     const unsubscribe = onUnauthorized(() => {

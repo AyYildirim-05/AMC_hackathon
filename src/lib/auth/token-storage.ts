@@ -6,8 +6,8 @@ export type AuthTokens = {
   refreshToken?: string | null;
 };
 
-const ACCESS_KEY = 'auth.accessToken';
-const REFRESH_KEY = 'auth.refreshToken';
+const ACCESS_KEY = process.env.EXPO_PUBLIC_AUTH_ACCESS_KEY ?? 'auth.accessToken';
+const REFRESH_KEY = process.env.EXPO_PUBLIC_AUTH_REFRESH_KEY ?? 'auth.refreshToken';
 
 /**
  * SecureStore is native-only (Keychain / Keystore). On web we fall back to localStorage,
@@ -47,8 +47,42 @@ let cache: AuthTokens | null | undefined;
 export async function loadTokens(): Promise<AuthTokens | null> {
   if (cache !== undefined) return cache;
   const [accessToken, refreshToken] = await Promise.all([read(ACCESS_KEY), read(REFRESH_KEY)]);
-  cache ??= accessToken ? { accessToken, refreshToken } : null;
+  const trimmed = accessToken?.trim();
+  cache ??= trimmed ? { accessToken: trimmed, refreshToken: refreshToken?.trim() || null } : null;
   return cache;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    if (typeof globalThis.atob !== 'function') return null;
+    const parsed: unknown = JSON.parse(globalThis.atob(padded));
+    return typeof parsed === 'object' && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpired(token: string): boolean {
+  if (token.startsWith('mock.')) return true;
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== 'number') return false;
+  return payload.exp <= Math.floor(Date.now() / 1000);
+}
+
+/**
+ * Returns true if the stored tokens are usable to start an authenticated session:
+ * access token is non-empty and either unexpired or paired with an unexpired refresh token.
+ */
+export function isStoredTokenUsable(tokens: AuthTokens | null): boolean {
+  if (!tokens?.accessToken?.trim()) return false;
+  if (!isTokenExpired(tokens.accessToken)) return true;
+  return Boolean(tokens.refreshToken?.trim() && !isTokenExpired(tokens.refreshToken));
 }
 
 export async function saveTokens(tokens: AuthTokens): Promise<void> {

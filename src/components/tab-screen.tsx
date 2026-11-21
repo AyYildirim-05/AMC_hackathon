@@ -1,10 +1,13 @@
 import { type ReactNode } from 'react';
-import { StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ThemedButton } from '@/components/themed-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/providers/auth-provider';
 
 export type TabScreenProps = {
   title: string;
@@ -15,12 +18,20 @@ export type TabScreenProps = {
 
 /** Shared frame for the top-level tabs: safe area, title, and room for the tab bar. */
 export function TabScreen({ title, children, placeholder }: TabScreenProps) {
+  const { t } = useTranslation();
+  const { signOut } = useAuth();
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <ThemedText type="subtitle" style={styles.title}>
-          {title}
-        </ThemedText>
+        <View style={styles.header}>
+          <ThemedText type="subtitle" style={styles.title}>
+            {title}
+          </ThemedText>
+          <ThemedButton type="text" tone="danger" size="small" onPress={() => void signOut()}>
+            {t('auth.signOutButton')}
+          </ThemedButton>
+        </View>
         {children ?? (
           <ThemedView style={styles.placeholder} align="center" justify="center">
             <ThemedText themeColor="textSecondary">{placeholder}</ThemedText>
@@ -42,10 +53,17 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     paddingBottom: BottomTabInset,
   },
-  title: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     paddingBottom: Spacing.two,
+    gap: Spacing.two,
+  },
+  title: {
+    flexShrink: 1,
   },
   placeholder: {
     flex: 1,

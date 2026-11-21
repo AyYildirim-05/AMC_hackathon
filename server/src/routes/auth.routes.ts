@@ -45,6 +45,14 @@ type RegisterBody = z.infer<typeof registerSchema>;
 type LoginBody = z.infer<typeof loginSchema>;
 type RefreshBody = z.infer<typeof refreshSchema>;
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function caseInsensitiveExact(value: string): RegExp {
+  return new RegExp(`^${escapeRegex(value)}$`, 'i');
+}
+
 export const authRouter = Router();
 
 authRouter.post('/register', validateBody(registerSchema), async (req, res, next) => {
@@ -52,7 +60,7 @@ authRouter.post('/register', validateBody(registerSchema), async (req, res, next
     const body = req.body as RegisterBody;
 
     const existing = await PersonModel.findOne({
-      $or: [{ email: body.email }, { username: body.username }],
+      $or: [{ email: body.email }, { username: caseInsensitiveExact(body.username) }],
     }).lean();
 
     if (existing) {
@@ -103,7 +111,12 @@ authRouter.post('/login', validateBody(loginSchema), async (req, res, next) => {
     const { email: identifier, password } = req.body as LoginBody;
     const query = identifier.includes('@')
       ? { email: identifier.toLowerCase() }
-      : { $or: [{ username: identifier }, { email: identifier.toLowerCase() }] };
+      : {
+          $or: [
+            { username: caseInsensitiveExact(identifier) },
+            { email: identifier.toLowerCase() },
+          ],
+        };
 
     const person = await PersonModel.findOne(query).select('+passwordHash');
     if (!person || !person.passwordHash || !(await verifyPassword(password, person.passwordHash))) {

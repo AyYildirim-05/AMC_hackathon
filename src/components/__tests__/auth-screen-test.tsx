@@ -75,7 +75,7 @@ describe('AuthScreen', () => {
     expect(loginSpy).not.toHaveBeenCalled();
   });
 
-  it('signs in with email and password', async () => {
+  it('toggles password visibility and signs in with email and password', async () => {
     const loginSpy = jest.spyOn(authApi, 'loginWithEmail').mockResolvedValueOnce({
       accessToken: 'jwt-access',
       refreshToken: 'jwt-refresh',
@@ -94,11 +94,17 @@ describe('AuthScreen', () => {
 
     await renderAuth();
 
+    const passwordInput = screen.getByPlaceholderText('At least 8 characters');
+    expect(passwordInput.props.secureTextEntry).toBe(true);
+    await fireEvent.press(screen.getByText('Show'));
+    expect(passwordInput.props.secureTextEntry).toBe(false);
+    expect(screen.getByText('Hide')).toBeOnTheScreen();
+
     await fireEvent.changeText(
       screen.getByPlaceholderText('you@gmail.com or username'),
       'camille@gmail.com',
     );
-    await fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'password123');
+    await fireEvent.changeText(passwordInput, 'password123');
     await fireEvent.press(screen.getByText('Sign in'));
 
     await waitFor(() => {
@@ -110,7 +116,7 @@ describe('AuthScreen', () => {
     });
   });
 
-  it('switches to register mode and validates postal code', async () => {
+  it('switches to register mode and validates password confirmation and postal code', async () => {
     const registerSpy = jest.spyOn(authApi, 'registerWithEmail');
     await renderAuth();
 
@@ -121,6 +127,19 @@ describe('AuthScreen', () => {
     await fireEvent.changeText(screen.getByPlaceholderText('e.g. camille_mtl'), 'camille_mtl');
     await fireEvent.changeText(screen.getByPlaceholderText('you@gmail.com'), 'camille@gmail.com');
     await fireEvent.changeText(screen.getByPlaceholderText('At least 8 characters'), 'password123');
+    await fireEvent.changeText(
+      screen.getByPlaceholderText('Re-enter your password'),
+      'different123',
+    );
+    await fireEvent.changeText(screen.getByPlaceholderText('H2J 1S4'), 'H2J 1S4');
+    await fireEvent.press(screen.getByText('Create account'));
+
+    expect(screen.getByText('Passwords do not match.')).toBeOnTheScreen();
+
+    await fireEvent.changeText(
+      screen.getByPlaceholderText('Re-enter your password'),
+      'password123',
+    );
     await fireEvent.changeText(screen.getByPlaceholderText('H2J 1S4'), '12345');
     await fireEvent.press(screen.getByText('Create account'));
 
