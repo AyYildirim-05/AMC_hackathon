@@ -24,7 +24,7 @@ Express 5 + MongoDB (Mongoose) API server written in TypeScript (ESM).
 | `PATCH`  | `/api/districts/:id`               | Details: its manager, or an admin while it has none. `managerId` (assign, reassign, `null` to remove): admin only. A manager manages at most one district |
 | `DELETE` | `/api/districts/:id`               | Delete: its manager, or an admin while it has none; `409` while issues or residents reference it                                                          |
 
-District writes take an `actorId` in the body: the person acting (no auth yet).
+Write routes on `/api/issues` and `/api/districts` require `Authorization: Bearer <accessToken>` and take the acting person's ID from the verified JWT.
 
 Request bodies and rules live in `src/services/issue.service.ts` and `src/services/district.service.ts`.
 

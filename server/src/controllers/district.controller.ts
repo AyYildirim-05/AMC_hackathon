@@ -1,12 +1,12 @@
 import { Router } from 'express';
 
+import { requireAuth } from '../middleware/auth.js';
 import { parseParams, validateBody } from '../middleware/validate.js';
 import {
   allDistricts,
   createDistrict,
   createDistrictInput,
   deleteDistrict,
-  deleteDistrictInput,
   districtById,
   districtByName,
   districtIdParams,
@@ -21,8 +21,8 @@ districtRouter.get('/', async (_req, res) => {
   res.json(await allDistricts());
 });
 
-districtRouter.post('/', validateBody(createDistrictInput), async (req, res) => {
-  res.status(201).json(await createDistrict(req.body));
+districtRouter.post('/', requireAuth, validateBody(createDistrictInput), async (req, res) => {
+  res.status(201).json(await createDistrict(req.body, req.auth!.userId));
 });
 
 districtRouter.get('/name/:name', async (req, res) => {
@@ -35,13 +35,13 @@ districtRouter.get('/:id', async (req, res) => {
   res.json(await districtById(id));
 });
 
-districtRouter.patch('/:id', validateBody(updateDistrictInput), async (req, res) => {
+districtRouter.patch('/:id', requireAuth, validateBody(updateDistrictInput), async (req, res) => {
   const { id } = parseParams(districtIdParams, req.params);
-  res.json(await updateDistrict(id, req.body));
+  res.json(await updateDistrict(id, req.body, req.auth!.userId));
 });
 
-districtRouter.delete('/:id', validateBody(deleteDistrictInput), async (req, res) => {
+districtRouter.delete('/:id', requireAuth, async (req, res) => {
   const { id } = parseParams(districtIdParams, req.params);
-  await deleteDistrict(id, req.body);
+  await deleteDistrict(id, req.auth!.userId);
   res.status(204).end();
 });

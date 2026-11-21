@@ -1,5 +1,6 @@
 import { Router } from 'express';
 
+import { requireAuth } from '../middleware/auth.js';
 import { parseParams, validateBody } from '../middleware/validate.js';
 import {
   allIssues,
@@ -17,8 +18,8 @@ import {
 
 export const issueRouter = Router();
 
-issueRouter.post('/', validateBody(reportIssueInput), async (req, res) => {
-  res.status(201).json(await reportIssue(req.body));
+issueRouter.post('/', requireAuth, validateBody(reportIssueInput), async (req, res) => {
+  res.status(201).json(await reportIssue(req.body, req.auth!.userId));
 });
 
 issueRouter.get('/', async (_req, res) => {
@@ -35,12 +36,12 @@ issueRouter.get('/:id', async (req, res) => {
   res.json(await issueById(id));
 });
 
-issueRouter.patch('/:id', validateBody(updateIssueInput), async (req, res) => {
+issueRouter.patch('/:id', requireAuth, validateBody(updateIssueInput), async (req, res) => {
   const { id } = parseParams(issueIdParams, req.params);
-  res.json(await updateIssue(id, req.body));
+  res.json(await updateIssue(id, req.body, req.auth!.userId));
 });
 
-issueRouter.patch('/:id/status', validateBody(updateStatusInput), async (req, res) => {
+issueRouter.patch('/:id/status', requireAuth, validateBody(updateStatusInput), async (req, res) => {
   const { id } = parseParams(issueIdParams, req.params);
-  res.json(await updateStatus(id, req.body));
+  res.json(await updateStatus(id, req.body, req.auth!.userId));
 });

@@ -5,6 +5,7 @@ import type { Types } from 'mongoose';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
+import { signToken } from '../src/lib/jwt.js';
 import { DistrictModel, IssueModel, type PersonRole, PersonModel } from '../src/models/index.js';
 import { updateIssueById } from '../src/repositories/issue.repository.js';
 
@@ -13,7 +14,11 @@ import { connectTestDb, dropTestDb, testMongoUri } from './test-db.js';
 const app = createApp();
 const missing = '000000000000000000000000';
 type Doc = { _id: Types.ObjectId };
+type PersonDoc = Doc & { role: PersonRole };
 const id = (doc: Doc) => String(doc._id);
+const bearer = (personId: string, role: PersonRole = 'resident') =>
+  `Bearer ${signToken({ sub: personId, role, type: 'access' }, 3600)}`;
+const auth = (person: PersonDoc) => bearer(id(person), person.role);
 
 const NOT_ALLOWED_EDIT = 'Only the district manager or the issue creator can edit this issue';
 const CREATOR_LOCKED = 'The creator can only edit an issue while its status is not_started';
@@ -27,15 +32,16 @@ describe(
     let plateau: Doc;
     let villeMarie: Doc;
     let unmanaged: Doc;
-    let reporter: Doc;
-    let plateauMgr: Doc;
-    let vmMgr: Doc;
-    let stranger: Doc;
-    let admin: Doc;
+    let reporter: PersonDoc;
+    let plateauMgr: PersonDoc;
+    let vmMgr: PersonDoc;
+    let stranger: PersonDoc;
+    let admin: PersonDoc;
 
     const report = async (districtId: Types.ObjectId, overrides: object = {}) => {
       const res = await request(app)
         .post('/api/issues')
+        .set('Authorization', auth(reporter))
         .send({
           title: 'Pothole',
           description: 'Deep pothole.',
@@ -44,21 +50,19 @@ describe(
           latitude: 45.5,
           longitude: -73.5,
           districtId: String(districtId),
-          createdById: id(reporter),
           ...overrides,
         });
       assert.equal(res.status, 201, JSON.stringify(res.body));
       const issue: { id: string; createdAt: string; updatedAt: string } = res.body;
       return issue;
     };
-    const edit = (issueId: string, by: Doc, changes: object) =>
-      request(app)
-        .patch(`/api/issues/${issueId}`)
-        .send({ ...changes, updatedById: id(by) });
-    const setStatus = (issueId: string, by: Doc, status: string) =>
+    const edit = (issueId: string, by: PersonDoc, changes: object) =>
+      request(app).patch(`/api/issues/${issueId}`).set('Authorization', auth(by)).send(changes);
+    const setStatus = (issueId: string, by: PersonDoc, status: string) =>
       request(app)
         .patch(`/api/issues/${issueId}/status`)
-        .send({ status, updatedById: id(by) });
+        .set('Authorization', auth(by))
+        .send({ status });
 
     before(async () => {
       await connectTestDb('issue_api');
@@ -109,9 +113,10 @@ describe(
     after(dropTestDb);
 
     describe('reportIssue', () => {
-      it('creates an issue with defaults, ignoring client-set status and counters', async () => {
+      it('creates an issue with defaults, ignoring client-set status, counters, and createdById', async () => {
         const res = await request(app)
           .post('/api/issues')
+          .set('Authorization', auth(reporter))
           .send({
             title: '  Pothole  ',
             description: 'Deep pothole.',
@@ -120,12 +125,13 @@ describe(
             latitude: 45.5,
             longitude: -73.5,
             districtId: id(plateau),
-            createdById: id(reporter),
+            createdById: id(stranger),
             status: 'completed',
             upvoteCount: 999,
           });
         assert.equal(res.status, 201);
         assert.equal(res.body.title, 'Pothole');
+        assert.equal(res.body.createdById, id(reporter));
         assert.equal(res.body.status, 'not_started');
         assert.equal(res.body.upvoteCount, 0);
         assert.deepEqual(res.body.images, []);
@@ -144,15 +150,20 @@ describe(
         };
         const noDistrict = await request(app)
           .post('/api/issues')
-          .send({ ...base, districtId: missing, createdById: id(reporter) });
+          .set('Authorization', auth(reporter))
+          .send({ ...base, districtId: missing });
         assert.deepEqual(
           [noDistrict.status, noDistrict.body],
           [400, { error: 'Unknown districtId' }],
         );
         const noPerson = await request(app)
           .post('/api/issues')
-          .send({ ...base, districtId: id(plateau), createdById: missing });
-        assert.deepEqual([noPerson.status, noPerson.body], [400, { error: 'Unknown createdById' }]);
+          .set('Authorization', bearer(missing))
+          .send({ ...base, districtId: id(plateau) });
+        assert.deepEqual(
+          [noPerson.status, noPerson.body],
+          [401, { error: 'Authenticated user not found' }],
+        );
         assert.equal(await IssueModel.countDocuments(), 0);
       });
     });
@@ -214,7 +225,8 @@ describe(
         const issue = await report(plateau._id);
         const res = await request(app)
           .patch(`/api/issues/${issue.id}`)
-          .send({ title: 'Upper', updatedById: id(reporter).toUpperCase() });
+          .set('Authorization', bearer(id(reporter).toUpperCase(), reporter.role))
+          .send({ title: 'Upper' });
         assert.equal(res.status, 200);
       });
 

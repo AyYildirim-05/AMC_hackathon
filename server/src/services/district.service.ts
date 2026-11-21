@@ -27,14 +27,10 @@ const districtFields = {
 /** A district_manager's id, or null for no manager. Only an admin may set it. */
 const managerId = objectId.nullable();
 
-// No auth yet: the client says who is acting.
-const actor = { actorId: objectId };
-
 /** isClaimed is never accepted: it is derived from managerId so the two cannot disagree. */
 export const createDistrictInput = z.object({
   ...districtFields,
   managerId: managerId.default(null),
-  ...actor,
 });
 export type CreateDistrictInput = z.infer<typeof createDistrictInput>;
 
@@ -43,14 +39,10 @@ export type CreateDistrictInput = z.infer<typeof createDistrictInput>;
 export const updateDistrictInput = z
   .object({ ...districtFields, managerId })
   .partial()
-  .extend(actor)
-  .refine(({ actorId: _, ...changes }) => Object.keys(changes).length > 0, {
+  .refine((changes) => Object.keys(changes).length > 0, {
     message: 'Provide at least one field to update',
   });
 export type UpdateDistrictInput = z.infer<typeof updateDistrictInput>;
-
-export const deleteDistrictInput = z.object(actor);
-export type DeleteDistrictInput = z.infer<typeof deleteDistrictInput>;
 
 const orNotFound = <T>(district: T | null): T => {
   if (!district) throw new HttpError(404, 'District not found');
@@ -87,8 +79,8 @@ export const districtById = async (id: string) => orNotFound(await findDistrictB
 
 export const districtByName = async (name: string) => orNotFound(await findDistrictByName(name));
 
-export const createDistrict = async ({ actorId, ...fields }: CreateDistrictInput) => {
-  await assertIsAdmin(actorId, 'create a district');
+export const createDistrict = async (fields: CreateDistrictInput, actorId: string) => {
+  await assertIsAdmin(actorId.toLowerCase(), 'create a district');
   if (fields.managerId) await assertAssignableManager(fields.managerId);
   return insertDistrict({ ...fields, isClaimed: fields.managerId !== null });
 };
@@ -97,16 +89,20 @@ export const createDistrict = async ({ actorId, ...fields }: CreateDistrictInput
  * Assigning, changing or removing the manager is for an admin. Editing the other fields is for the
  * district's own manager, or an admin while it has no manager.
  */
-export const updateDistrict = async (id: string, { actorId, ...changes }: UpdateDistrictInput) => {
+export const updateDistrict = async (id: string, changes: UpdateDistrictInput, actorId: string) => {
+  const normalizedActorId = actorId.toLowerCase();
   const district = orNotFound(await findDistrictById(id));
   const currentManagerId = district.managerId === null ? null : String(district.managerId);
   const { managerId: newManagerId, ...details } = changes;
 
   if (newManagerId !== undefined) {
-    await assertIsAdmin(actorId, 'assign a district manager');
+    await assertIsAdmin(normalizedActorId, 'assign a district manager');
     if (newManagerId !== null) await assertAssignableManager(newManagerId, id);
   }
-  if (Object.keys(details).length > 0 && !(await isDistrictOwner(currentManagerId, actorId))) {
+  if (
+    Object.keys(details).length > 0 &&
+    !(await isDistrictOwner(currentManagerId, normalizedActorId))
+  ) {
     throw new HttpError(403, 'Only the district manager can edit this district');
   }
 
@@ -124,10 +120,11 @@ export const updateDistrict = async (id: string, { actorId, ...changes }: Update
  * The reference check is not atomic: a reference created between the check and the delete is not
  * caught. Closing that gap needs a transaction (requires a replica set).
  */
-export const deleteDistrict = async (id: string, { actorId }: DeleteDistrictInput) => {
+export const deleteDistrict = async (id: string, actorId: string) => {
+  const normalizedActorId = actorId.toLowerCase();
   const district = orNotFound(await findDistrictById(id));
   const currentManagerId = district.managerId === null ? null : String(district.managerId);
-  if (!(await isDistrictOwner(currentManagerId, actorId))) {
+  if (!(await isDistrictOwner(currentManagerId, normalizedActorId))) {
     throw new HttpError(403, 'Only the district manager can delete this district');
   }
   const [hasIssues, hasResidents] = await Promise.all([

@@ -30,14 +30,12 @@ const issueFields = {
 };
 
 /**
- * Fields a reporter may set. Unknown keys (status, upvoteCount, updatedById, ...) are stripped,
- * so those keep their model defaults.
+ * Fields a reporter may set. Unknown keys (status, upvoteCount, createdById, updatedById, ...)
+ * are stripped, so those keep their model defaults or come from the auth token.
  */
 export const reportIssueInput = z.object({
   ...issueFields,
   images: issueFields.images.default([]),
-  // No auth yet: the client says who reported the issue.
-  createdById: objectId,
 });
 export type ReportIssueInput = z.infer<typeof reportIssueInput>;
 
@@ -45,16 +43,13 @@ export type ReportIssueInput = z.infer<typeof reportIssueInput>;
 export const updateIssueInput = z
   .object(issueFields)
   .partial()
-  // No auth yet: the client says who made the change.
-  .extend({ updatedById: objectId })
-  .refine(({ updatedById: _, ...changes }) => Object.keys(changes).length > 0, {
+  .refine((changes) => Object.keys(changes).length > 0, {
     message: 'Provide at least one field to update',
   });
 export type UpdateIssueInput = z.infer<typeof updateIssueInput>;
 
 export const updateStatusInput = z.object({
   status: z.enum(ISSUE_STATUSES),
-  updatedById: objectId,
 });
 export type UpdateStatusInput = z.infer<typeof updateStatusInput>;
 
@@ -66,7 +61,7 @@ const assertDistrictExists = async (id: string) => {
 };
 
 const assertPersonExists = async (id: string) => {
-  if (!(await personExists(id))) throw new HttpError(400, 'Unknown createdById');
+  if (!(await personExists(id))) throw new HttpError(401, 'Authenticated user not found');
 };
 
 const orNotFound = <T>(issue: T | null): T => {
@@ -89,12 +84,10 @@ const applyUpdate = async (id: string, changes: IssueChanges, expectedStatus?: I
   return updated;
 };
 
-export const reportIssue = async (input: ReportIssueInput) => {
-  await Promise.all([
-    assertDistrictExists(input.districtId),
-    assertPersonExists(input.createdById),
-  ]);
-  return createIssue(input);
+export const reportIssue = async (input: ReportIssueInput, createdById: string) => {
+  const actorId = createdById.toLowerCase();
+  await Promise.all([assertDistrictExists(input.districtId), assertPersonExists(actorId)]);
+  return createIssue({ ...input, createdById: actorId });
 };
 
 export const allIssues = () => findAllIssues();
@@ -106,10 +99,11 @@ export const issueByDistrict = async (districtId: string) => {
   return findIssuesByDistrict(districtId);
 };
 
-export const updateIssue = async (id: string, input: UpdateIssueInput) => {
+export const updateIssue = async (id: string, input: UpdateIssueInput, updatedById: string) => {
+  const actorId = updatedById.toLowerCase();
   const issue = orNotFound(await findIssueById(id));
-  const isManager = await isDistrictManager(String(issue.districtId), input.updatedById);
-  const isCreator = String(issue.createdById) === input.updatedById;
+  const isManager = await isDistrictManager(String(issue.districtId), actorId);
+  const isCreator = String(issue.createdById) === actorId;
   if (!isManager && !isCreator) {
     throw new HttpError(403, 'Only the district manager or the issue creator can edit this issue');
   }
@@ -118,16 +112,17 @@ export const updateIssue = async (id: string, input: UpdateIssueInput) => {
     throw new HttpError(403, 'The creator can only edit an issue while its status is not_started');
   }
   if (input.districtId) await assertDistrictExists(input.districtId);
-  return applyUpdate(id, input, isManager ? undefined : 'not_started');
+  return applyUpdate(id, { ...input, updatedById: actorId }, isManager ? undefined : 'not_started');
 };
 
-export const updateStatus = async (id: string, input: UpdateStatusInput) => {
+export const updateStatus = async (id: string, input: UpdateStatusInput, updatedById: string) => {
+  const actorId = updatedById.toLowerCase();
   const issue = orNotFound(await findIssueById(id));
-  if (!(await isDistrictManager(String(issue.districtId), input.updatedById))) {
+  if (!(await isDistrictManager(String(issue.districtId), actorId))) {
     throw new HttpError(403, 'Only the district manager can change the status');
   }
   if (FINAL_STATUSES.includes(issue.status) && input.status !== issue.status) {
     throw new HttpError(409, `A ${issue.status} issue's status cannot be changed`);
   }
-  return applyUpdate(id, input, issue.status);
+  return applyUpdate(id, { ...input, updatedById: actorId }, issue.status);
 };

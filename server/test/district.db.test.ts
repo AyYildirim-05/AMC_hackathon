@@ -5,6 +5,7 @@ import type { Types } from 'mongoose';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
+import { signToken } from '../src/lib/jwt.js';
 import { DistrictModel, IssueModel, type PersonRole, PersonModel } from '../src/models/index.js';
 import { deleteDistrictById, updateDistrictById } from '../src/repositories/district.repository.js';
 
@@ -13,7 +14,11 @@ import { connectTestDb, dropTestDb, testMongoUri } from './test-db.js';
 const app = createApp();
 const missing = '000000000000000000000000';
 type Doc = { _id: Types.ObjectId };
+type PersonDoc = Doc & { role: PersonRole };
 const id = (doc: Doc) => String(doc._id);
+const bearer = (personId: string, role: PersonRole = 'resident') =>
+  `Bearer ${signToken({ sub: personId, role, type: 'access' }, 3600)}`;
+const auth = (person: PersonDoc) => bearer(id(person), person.role);
 type DistrictJson = { id: string; nameFr: string; managerId: string | null; isClaimed: boolean };
 
 const NOT_ADMIN_CREATE = 'Only an admin can create a district';
@@ -26,10 +31,10 @@ describe(
   'district API against MongoDB',
   { skip: !testMongoUri && 'set TEST_MONGODB_URI to run' },
   () => {
-    let admin: Doc;
-    let manager: Doc;
-    let otherManager: Doc;
-    let resident: Doc;
+    let admin: PersonDoc;
+    let manager: PersonDoc;
+    let otherManager: PersonDoc;
+    let resident: PersonDoc;
 
     const fields = (slug: string, overrides: object = {}) => ({
       nameFr: `Nom ${slug}`,
@@ -38,10 +43,11 @@ describe(
       districtType: 'borough' as const,
       ...overrides,
     });
-    const post = (by: Doc, slug: string, overrides: object = {}) =>
+    const post = (by: PersonDoc, slug: string, overrides: object = {}) =>
       request(app)
         .post('/api/districts')
-        .send({ ...fields(slug, overrides), actorId: id(by) });
+        .set('Authorization', auth(by))
+        .send(fields(slug, overrides));
     /** Created by the admin; pass `{ managerId }` to assign a manager at creation. */
     const create = async (slug: string, overrides: object = {}) => {
       const res = await post(admin, slug, overrides);
@@ -49,14 +55,13 @@ describe(
       const district: DistrictJson = res.body;
       return district;
     };
-    const patch = (districtId: string, by: Doc, changes: object) =>
+    const patch = (districtId: string, by: PersonDoc, changes: object) =>
       request(app)
         .patch(`/api/districts/${districtId}`)
-        .send({ ...changes, actorId: id(by) });
-    const remove = (districtId: string, by: Doc) =>
-      request(app)
-        .delete(`/api/districts/${districtId}`)
-        .send({ actorId: id(by) });
+        .set('Authorization', auth(by))
+        .send(changes);
+    const remove = (districtId: string, by: PersonDoc) =>
+      request(app).delete(`/api/districts/${districtId}`).set('Authorization', auth(by));
 
     before(async () => {
       await connectTestDb('district_api');
@@ -104,7 +109,8 @@ describe(
         }
         const unknown = await request(app)
           .post('/api/districts')
-          .send({ ...fields('x'), actorId: missing });
+          .set('Authorization', bearer(missing, 'admin'))
+          .send(fields('x'));
         assert.equal(unknown.status, 403);
         assert.equal(await DistrictModel.countDocuments({ openNorthSlug: 'x' }), 0);
       });
@@ -237,7 +243,7 @@ describe(
       it('forbids anyone but the admin, including the current manager and self-claims', async () => {
         const managed = await create('plateau', { managerId: id(manager) });
         const unmanaged = await create('rosemont');
-        const attempts: [string, Doc, string | null][] = [
+        const attempts: [string, PersonDoc, string | null][] = [
           [managed.id, manager, id(otherManager)], // handing over
           [managed.id, manager, null], // releasing
           [unmanaged.id, otherManager, id(otherManager)], // claiming
