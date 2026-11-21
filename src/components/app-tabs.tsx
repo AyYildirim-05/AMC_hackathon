@@ -16,19 +16,32 @@ export default function AppTabs() {
       labelStyle={{ selected: { color: colors.text } }}
     >
       <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>{t('tabs.home')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Label>{t('tabs.issues')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
+          sf={{ default: 'exclamationmark.bubble', selected: 'exclamationmark.bubble.fill' }}
+          md="report"
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>{t('tabs.explore')}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="card">
+        <NativeTabs.Trigger.Label>{t('tabs.card')}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
+          sf={{ default: 'rectangle.stack', selected: 'rectangle.stack.fill' }}
+          md="style"
         />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="report">
+        <NativeTabs.Trigger.Label>{t('tabs.report')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'plus.circle', selected: 'plus.circle.fill' }}
+          md="add_circle"
+        />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="district">
+        <NativeTabs.Trigger.Label>{t('tabs.district')}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
