@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { Text } from 'react-native';
 
 import '@/i18n';
-import { AuthScreen } from '@/components/auth-screen';
+import { AuthScreen } from '@/app/auth';
 import * as authApi from '@/lib/auth/auth-api';
 import { resetTokenCache } from '@/lib/auth/token-storage';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
