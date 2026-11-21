@@ -1,5 +1,5 @@
 {
-  "name": "invitationcardapp",
+  "name": "montone",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
@@ -68,7 +68,6 @@
     "server:express": "npm --prefix server/express run dev",
     "server:nest": "npm --prefix server/nest run dev",
     "server:db": "docker compose -f server/docker-compose.yml up -d",
-    "server:emulators": "cd server && npx firebase-tools emulators:start --only auth",
     "docker:express": "docker compose -f server/docker-compose.yml --profile express up -d --build",
     "docker:nest": "docker compose -f server/docker-compose.yml --profile nest up -d --build",
     "docker:all": "docker compose -f server/docker-compose.yml --profile all up -d --build",
