@@ -7,6 +7,10 @@ Express 5 + MongoDB (Mongoose) API server written in TypeScript (ESM).
 | Method   | Path                               | Description                                                                                                                                               |
 | -------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`    | `/api/health`                      | `{ status: "ok", mongo: "ok" }`, or `503` if MongoDB is down                                                                                              |
+| `POST`   | `/api/auth/register`               | Register a new `Person` and return JWT `accessToken` / `refreshToken`                                                                                     |
+| `POST`   | `/api/auth/login`                  | Authenticate by email or username + password and return JWT tokens                                                                                        |
+| `POST`   | `/api/auth/refresh`                | Exchange a valid `refreshToken` for new JWT tokens                                                                                                        |
+| `GET`    | `/api/auth/me`                     | Return the authenticated `Person` (requires `Authorization: Bearer <token>`)                                                                              |
 | `POST`   | `/api/issues`                      | Report an issue                                                                                                                                           |
 | `GET`    | `/api/issues`                      | All issues, newest first                                                                                                                                  |
 | `GET`    | `/api/issues/:id`                  | One issue                                                                                                                                                 |
@@ -29,7 +33,7 @@ Errors are returned as JSON: `{ "error": "message", "details"?: ... }`.
 ## Local setup
 
 ```bash
-# 1. Start MongoDB (or use MongoDB Atlas via MONGODB_URI / DATABASE_URL in the root .env)
+# 1. Start MongoDB (or use MongoDB Atlas via MONGODB_URI / DATABASE_URL in server/.env)
 npm run server:db
 
 # 2. Install and run the Express server
@@ -43,12 +47,15 @@ in `.env.local` (on a physical device use your machine's LAN IP; on the Android 
 
 ## Environment variables
 
-| Variable      | Default                         | Purpose                                                  |
-| ------------- | ------------------------------- | -------------------------------------------------------- |
-| `PORT`        | `4000`                          | HTTP port                                                |
-| `CORS_ORIGIN` | `http://localhost:8081`         | Comma-separated allowed origins                          |
-| `MONGODB_URI` | `mongodb://localhost:27017/app` | MongoDB connection string (falls back to `DATABASE_URL`) |
-| `TRUST_PROXY` | `0`                             | Proxy hops in front of the server                        |
+| Variable                         | Default                         | Purpose                                                               |
+| -------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| `PORT`                           | `4000`                          | HTTP port                                                             |
+| `CORS_ORIGIN`                    | `http://localhost:8081`         | Comma-separated allowed origins                                       |
+| `MONGODB_URI`                    | `mongodb://localhost:27017/app` | MongoDB connection string (falls back to `DATABASE_URL`)              |
+| `TRUST_PROXY`                    | `0`                             | Proxy hops in front of the server                                     |
+| `JWT_SECRET`                     | _(required)_                    | Secret key (≥32 chars) in `server/.env` used to sign HS256 JWT tokens |
+| `JWT_ACCESS_EXPIRES_IN_SECONDS`  | `3600`                          | Access token lifetime in seconds                                      |
+| `JWT_REFRESH_EXPIRES_IN_SECONDS` | `604800`                        | Refresh token lifetime in seconds                                     |
 
 ## Scripts (in `server/`)
 
