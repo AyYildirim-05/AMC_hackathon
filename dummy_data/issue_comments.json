@@ -1,0 +1,49 @@
+{
+  "issue_comments": [
+    {
+      "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+      "issue_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "user_id": "5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b",
+      "body": "The bike lane on Rachel Street East near Parc La Fontaine is completely blocked by construction barriers with no detour signs.",
+      "is_official_response": false,
+      "created_at": "2026-11-18T08:15:30.000Z",
+      "updated_at": "2026-11-18T08:15:30.000Z"
+    },
+    {
+      "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+      "issue_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "user_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+      "body": "Thank you for reporting this. Le Plateau-Mont-Royal inspection team has been notified and will verify contractor permit compliance today.",
+      "is_official_response": true,
+      "created_at": "2026-11-18T11:42:10.000Z",
+      "updated_at": "2026-11-18T11:42:10.000Z"
+    },
+    {
+      "id": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7a",
+      "issue_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "user_id": "5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b",
+      "body": "Confirmed—they moved the fencing back onto the sidewalk perimeter this afternoon so cyclists can pass safely.",
+      "is_official_response": false,
+      "created_at": "2026-11-18T17:05:45.000Z",
+      "updated_at": "2026-11-18T17:10:12.000Z"
+    },
+    {
+      "id": "d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a",
+      "issue_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "user_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "body": "The elevator at Berri-UQAM station (Orange line platform) is out of service again. Difficult access with a stroller.",
+      "is_official_response": false,
+      "created_at": "2026-11-20T14:20:00.000Z",
+      "updated_at": "2026-11-20T14:20:00.000Z"
+    },
+    {
+      "id": "e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b",
+      "issue_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "user_id": "8f9e0d1c-2b3a-4f5e-6d7c-8b9a0e1f2d3c",
+      "body": "Maintenance crews are on-site in Ville-Marie. Estimated restoration time is 18:00.",
+      "is_official_response": true,
+      "created_at": "2026-11-20T15:05:19.000Z",
+      "updated_at": "2026-11-20T15:05:19.000Z"
+    }
+  ]
+}
