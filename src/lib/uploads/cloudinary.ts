@@ -9,6 +9,8 @@ export type UploadSignature = {
   apiKey: string;
   timestamp: number;
   folder: string;
+  /** Signed by the server, so it must be sent back unchanged or Cloudinary rejects the upload. */
+  allowedFormats: string;
   signature: string;
   uploadUrl: string;
 };
@@ -85,6 +87,7 @@ export async function uploadImageToCloudinary(
   formData.append('api_key', sig.apiKey);
   formData.append('timestamp', String(sig.timestamp));
   formData.append('folder', sig.folder);
+  formData.append('allowed_formats', sig.allowedFormats);
   formData.append('signature', sig.signature);
 
   const uploadRes = await fetch(sig.uploadUrl, {
@@ -114,4 +117,12 @@ export async function uploadImagesToCloudinary(
     images.map((image) => uploadImageToCloudinary(image, options)),
   );
   return uploaded.map((item) => item.url);
+}
+
+/**
+ * Uploads an issue report's photos and returns the URLs to send as the issue's `images`.
+ * Always the `issues` folder: the server accepts no other photo URL on an issue.
+ */
+export function uploadIssuePhotos(images: UploadableImage[]): Promise<string[]> {
+  return uploadImagesToCloudinary(images, { folder: 'issues' });
 }
