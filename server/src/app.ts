@@ -8,6 +8,7 @@ import { issueRouter } from './controllers/issue.controller.js';
 import { errorHandler, notFound } from './middleware/error-handler.js';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
+import { uploadRouter } from './routes/upload.routes.js';
 
 /** Builds the app without connecting to MongoDB, so tests can import it directly. */
 export function createApp() {
@@ -20,6 +21,7 @@ export function createApp() {
   app.use(express.json({ limit: '1mb' }));
 
   app.use('/api/health', healthRouter);
+  app.use('/api/uploads', uploadRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/issues', issueRouter);
   app.use('/api/districts', districtRouter);

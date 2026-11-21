@@ -16,6 +16,10 @@ const schema = z.object({
   MONGODB_URI: z.string().min(1).default('mongodb://localhost:27017/app'),
   /** Proxy hops in front of the app (1 on Cloud Run / behind a load balancer), so req.ip is the client's. */
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  CLOUDINARY_CLOUD_NAME: z.string().trim().min(1).optional(),
+  CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
+  CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
+  CLOUDINARY_UPLOAD_FOLDER: z.string().trim().min(1).default('issues'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be set in server/.env (at least 32 characters)'),
   JWT_ACCESS_EXPIRES_IN_SECONDS: z.coerce
     .number()
