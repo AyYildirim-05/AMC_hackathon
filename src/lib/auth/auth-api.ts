@@ -3,7 +3,7 @@ import type { AuthTokens } from '@/lib/auth/token-storage';
 
 export type Credentials = { email: string; password: string };
 
-/** Returned by the Express and Nest servers in `server/` (Firebase Auth behind the scenes). */
+/** Returned by the backend's login and register endpoints. */
 export type AuthResponse = AuthTokens & { expiresIn: number; uid: string };
 
 /**
