@@ -45,10 +45,14 @@
     {
       "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
       "username": "camille_mtl",
+      "display_name": "Camille Tremblay",
+      "avatar_url": null,
       "email": "camille.tremblay@example.ca",
       "postal_code": "H2J1S4",
       "home_district_id": "11111111-1111-4111-8111-111111111101",
       "role": "district_manager",
+      "is_verified": true,
+      "is_active_post": true,
       "preferred_language": "fr",
       "created_at": "2026-10-05T14:20:00.000Z",
       "updated_at": "2026-11-01T09:15:00.000Z"
@@ -56,10 +60,14 @@
     {
       "id": "5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b",
       "username": "marc_velo",
+      "display_name": "Marc Gagnon",
+      "avatar_url": null,
       "email": "marc.gagnon@example.ca",
       "postal_code": "H2H1M8",
       "home_district_id": "11111111-1111-4111-8111-111111111101",
       "role": "resident",
+      "is_verified": false,
+      "is_active_post": false,
       "preferred_language": "fr",
       "created_at": "2026-10-12T18:05:00.000Z",
       "updated_at": "2026-10-12T18:05:00.000Z"
@@ -67,10 +75,14 @@
     {
       "id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
       "username": "sarah_qc",
+      "display_name": "Sarah Chen",
+      "avatar_url": null,
       "email": "sarah.chen@example.ca",
       "postal_code": "H2X1Y4",
       "home_district_id": "11111111-1111-4111-8111-111111111102",
       "role": "resident",
+      "is_verified": false,
+      "is_active_post": false,
       "preferred_language": "en",
       "created_at": "2026-10-19T11:30:00.000Z",
       "updated_at": "2026-11-10T16:40:00.000Z"
@@ -78,10 +90,14 @@
     {
       "id": "8f9e0d1c-2b3a-4f5e-6d7c-8b9a0e1f2d3c",
       "username": "ops_villemarie",
+      "display_name": "Coordination Ville-Marie",
+      "avatar_url": null,
       "email": "coord.vm@example.ca",
       "postal_code": "H2Y1C6",
       "home_district_id": "11111111-1111-4111-8111-111111111102",
       "role": "district_manager",
+      "is_verified": true,
+      "is_active_post": true,
       "preferred_language": "fr",
       "created_at": "2026-10-02T08:00:00.000Z",
       "updated_at": "2026-10-02T08:00:00.000Z"
@@ -89,13 +105,47 @@
     {
       "id": "3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f",
       "username": "admin_mtl",
+      "display_name": "Admin MTL",
+      "avatar_url": null,
       "email": "admin@citypulse-mtl.example.ca",
       "postal_code": "H2S2A9",
       "home_district_id": "11111111-1111-4111-8111-111111111103",
       "role": "admin",
+      "is_verified": false,
+      "is_active_post": false,
       "preferred_language": "en",
       "created_at": "2026-10-01T09:00:00.000Z",
       "updated_at": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444401",
+      "username": "Ahmet",
+      "display_name": "Ahmet",
+      "avatar_url": null,
+      "email": "ahmet@example.ca",
+      "postal_code": "H1Y1X5",
+      "home_district_id": "11111111-1111-4111-8111-111111111103",
+      "role": "resident",
+      "is_verified": false,
+      "is_active_post": false,
+      "preferred_language": "fr",
+      "created_at": "2026-11-20T10:00:00.000Z",
+      "updated_at": "2026-11-20T10:00:00.000Z"
+    },
+    {
+      "id": "44444444-4444-4444-8444-444444444402",
+      "username": "AHM",
+      "display_name": "AHM",
+      "avatar_url": null,
+      "email": "ahm@example.ca",
+      "postal_code": "H3Z1A1",
+      "home_district_id": "11111111-1111-4111-8111-111111111104",
+      "role": "resident",
+      "is_verified": false,
+      "is_active_post": false,
+      "preferred_language": "en",
+      "created_at": "2026-11-20T10:05:00.000Z",
+      "updated_at": "2026-11-20T10:05:00.000Z"
     }
   ],
   "issues": [
@@ -188,6 +238,56 @@
       "external_311_ref": null,
       "created_at": "2026-11-21T07:45:00.000Z",
       "updated_at": "2026-11-21T07:45:00.000Z"
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555501",
+      "title": "Streetlight out on Rue Masson",
+      "description": "The streetlight in front of the library has been dark for three nights; the sidewalk is unlit.",
+      "category": "streetlights_utilities",
+      "status": "not_started",
+      "images": [],
+      "address": "2900 Rue Masson, Montréal, QC H1Y 1X5",
+      "latitude": 45.546412,
+      "longitude": -73.577655,
+      "district_id": "11111111-1111-4111-8111-111111111103",
+      "created_by_id": "44444444-4444-4444-8444-444444444401",
+      "author": {
+        "username": "Ahmet",
+        "name": "Ahmet"
+      },
+      "updated_by_id": null,
+      "official_response": null,
+      "upvote_count": 1,
+      "resolution_confirmations": 0,
+      "comments_count": 1,
+      "external_311_ref": null,
+      "created_at": "2026-11-21T09:30:00.000Z",
+      "updated_at": "2026-11-21T09:30:00.000Z"
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555502",
+      "title": "Sunken manhole cover on Rue Sherbrooke Ouest",
+      "description": "A manhole cover has sunk several centimetres below the road surface near Avenue Clarke.",
+      "category": "roads_potholes",
+      "status": "not_started",
+      "images": [],
+      "address": "4300 Rue Sherbrooke Ouest, Westmount, QC H3Z 1A1",
+      "latitude": 45.48572,
+      "longitude": -73.59456,
+      "district_id": "11111111-1111-4111-8111-111111111104",
+      "created_by_id": "44444444-4444-4444-8444-444444444402",
+      "author": {
+        "username": "AHM",
+        "name": "AHM"
+      },
+      "updated_by_id": null,
+      "official_response": null,
+      "upvote_count": 1,
+      "resolution_confirmations": 0,
+      "comments_count": 1,
+      "external_311_ref": null,
+      "created_at": "2026-11-21T10:15:00.000Z",
+      "updated_at": "2026-11-21T10:15:00.000Z"
     }
   ],
   "issue_votes": [
@@ -218,6 +318,20 @@
       "user_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
       "vote_type": "upvote",
       "created_at": "2026-11-20T14:16:10.000Z"
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666601",
+      "issue_id": "55555555-5555-4555-8555-555555555502",
+      "user_id": "44444444-4444-4444-8444-444444444401",
+      "vote_type": "upvote",
+      "created_at": "2026-11-21T11:00:00.000Z"
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666602",
+      "issue_id": "55555555-5555-4555-8555-555555555501",
+      "user_id": "44444444-4444-4444-8444-444444444402",
+      "vote_type": "upvote",
+      "created_at": "2026-11-21T11:05:00.000Z"
     }
   ],
   "issue_comments": [
@@ -265,6 +379,24 @@
       "is_official_response": true,
       "created_at": "2026-11-20T15:05:19.000Z",
       "updated_at": "2026-11-20T15:05:19.000Z"
+    },
+    {
+      "id": "77777777-7777-4777-8777-777777777701",
+      "issue_id": "55555555-5555-4555-8555-555555555502",
+      "user_id": "44444444-4444-4444-8444-444444444401",
+      "body": "Same here, my bike wheel caught the edge this morning.",
+      "is_official_response": false,
+      "created_at": "2026-11-21T11:01:00.000Z",
+      "updated_at": "2026-11-21T11:01:00.000Z"
+    },
+    {
+      "id": "77777777-7777-4777-8777-777777777702",
+      "issue_id": "55555555-5555-4555-8555-555555555501",
+      "user_id": "44444444-4444-4444-8444-444444444402",
+      "body": "Walked past last night, still out.",
+      "is_official_response": false,
+      "created_at": "2026-11-21T11:06:00.000Z",
+      "updated_at": "2026-11-21T11:06:00.000Z"
     }
   ]
 }

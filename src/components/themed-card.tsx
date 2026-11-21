@@ -79,21 +79,31 @@ export function ThemedCard({
     </View>
   );
 
-  return (
-    <Pressable
-      accessibilityRole={pressable ? 'button' : undefined}
-      disabled={!pressable}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.base,
-        variantStyle,
-        pressed && pressable && styles.pressed,
-        style,
-      ]}
-      {...rest}
-    >
+  const content = (
+    <>
       {media ? <View style={styles.media}>{media}</View> : null}
       {body}
+    </>
+  );
+
+  // A static card is a plain View: a disabled Pressable would be one accessibility element that
+  // reports itself (and so every button inside it) as disabled.
+  if (!pressable) {
+    return (
+      <View style={[styles.base, variantStyle, style]} {...rest}>
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.base, variantStyle, pressed && styles.pressed, style]}
+      {...rest}
+    >
+      {content}
     </Pressable>
   );
 }

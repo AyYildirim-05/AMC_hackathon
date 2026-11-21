@@ -211,7 +211,7 @@ describe('map-utils', () => {
         { query: 'Montreal', category: 'all', status: 'all', districtId: 'all' },
         districts,
       ),
-    ).toHaveLength(3);
+    ).toHaveLength(4); // the Westmount report's address has no "Montréal"
 
     // Borough name search
     expect(
@@ -228,15 +228,15 @@ describe('map-utils', () => {
         { query: '', category: 'roads_potholes', status: 'not_started', districtId: 'all' },
         districts,
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 
   it('computes accurate category counts', () => {
     expect(getCategoryCounts(issues)).toEqual({
-      all: 3,
+      all: 5,
       traffic_safety: 1,
-      roads_potholes: 1,
-      streetlights_utilities: 1,
+      roads_potholes: 2,
+      streetlights_utilities: 2,
     });
   });
 
@@ -426,8 +426,9 @@ describe('CardScreen (Map page) — all interactive controls', () => {
     expect(screen.getByText('2 confirmés')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('map-detail-modal-close'));
 
-    // Profile avatar modal -> Sign out button
+    // Profile avatar -> the same profile page as every other tab -> Sign out button
     await fireEvent.press(screen.getByTestId('map-profile-button'));
+    expect(screen.getByRole('header', { name: 'Profil' })).toBeOnTheScreen();
     await fireEvent.press(screen.getByText('Se déconnecter'));
     expect(mockSignOut).toHaveBeenCalledTimes(1);
 

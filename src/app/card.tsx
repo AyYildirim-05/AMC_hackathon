@@ -35,15 +35,15 @@ import {
   normalizeIssue,
   type StatusFilter,
 } from '@/components/map/map-utils';
-import { ThemedButton } from '@/components/themed-button';
+import { ProfileSheet } from '@/components/profile-sheet';
 import { ThemedText } from '@/components/themed-text';
 import { computeInitials } from '@/components/utils/formatter';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage, setLanguage } from '@/i18n';
 import { apiClient } from '@/lib/api/client';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
-import { useAuth } from '@/providers/auth-provider';
 
 const FALLBACK_ISSUES = dummyIssues.issues as Issue[];
 const FALLBACK_DISTRICTS = dummyDistricts.districts as District[];
@@ -66,7 +66,7 @@ function getCategoryChipIcon(category: IssueCategory): MapIconName {
 export default function CardScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const { user, signOut } = useAuth();
+  const user = useCurrentUser();
   const isDark = theme.text !== '#1C211F';
   const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'fr';
 
@@ -842,50 +842,8 @@ export default function CardScreen() {
         </Pressable>
       </Modal>
 
-      {/* ─── Citizen Profile / Sign-out Modal ─── */}
-      <Modal
-        visible={profileModalVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setProfileModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalBackdropCentered}
-          onPress={() => setProfileModalVisible(false)}
-        >
-          <Pressable
-            onPress={(event) => event.stopPropagation()}
-            style={[styles.pickerCard, { backgroundColor: isDark ? '#212A25' : '#FFFFFF' }]}
-          >
-            <ThemedText type="h3">{t('map.profileLabel')}</ThemedText>
-            {user ? (
-              <ThemedText type="small" tone="secondary">
-                {t('auth.signedInAs', { identity: user.username || user.email })}
-              </ThemedText>
-            ) : null}
-            <View style={styles.profileModalActions}>
-              <ThemedButton
-                type="secondary"
-                size="small"
-                onPress={() => setProfileModalVisible(false)}
-              >
-                {t('map.closeModal')}
-              </ThemedButton>
-              <ThemedButton
-                type="primary"
-                tone="danger"
-                size="small"
-                onPress={() => {
-                  setProfileModalVisible(false);
-                  void signOut();
-                }}
-              >
-                {t('auth.signOutButton')}
-              </ThemedButton>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {/* ─── Profile (same sheet as the avatar in every other tab's header) ─── */}
+      <ProfileSheet visible={profileModalVisible} onClose={() => setProfileModalVisible(false)} />
     </View>
   );
 }
@@ -1243,12 +1201,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     fontFamily: Fonts.mono,
-  },
-  profileModalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
-    marginTop: Spacing.two,
   },
   pressed: {
     opacity: 0.85,
