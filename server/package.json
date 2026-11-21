@@ -2,11 +2,11 @@
   "name": "amc-hackathon-server",
   "version": "1.0.0",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=../.env src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node --env-file-if-exists=../.env dist/index.js",
+    "start": "node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "JWT_SECRET=test-jwt-secret-only-for-automated-tests-32chars tsx --test test/*.test.ts"
   },
   "license": "MIT",
   "description": "Express + MongoDB API",
