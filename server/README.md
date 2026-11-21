@@ -4,9 +4,10 @@ Express 5 + MongoDB (Mongoose) API server written in TypeScript (ESM).
 
 ## Routes
 
-| Method | Path          | Description                                                  |
-| ------ | ------------- | ------------------------------------------------------------ |
-| `GET`  | `/api/health` | `{ status: "ok", mongo: "ok" }`, or `503` if MongoDB is down |
+| Method | Path                     | Description                                                                 |
+| ------ | ------------------------ | --------------------------------------------------------------------------- |
+| `GET`  | `/api/health`            | `{ status: "ok", mongo: "ok" }`, or `503` if MongoDB is down                |
+| `POST` | `/api/uploads/signature` | Return a signed Cloudinary upload payload (`folder`: `issues` \| `avatars`) |
 
 Errors are returned as JSON: `{ "error": "message", "details"?: ... }`.
 
@@ -27,12 +28,16 @@ in `.env.local` (on a physical device use your machine's LAN IP; on the Android 
 
 ## Environment variables
 
-| Variable      | Default                         | Purpose                                                  |
-| ------------- | ------------------------------- | -------------------------------------------------------- |
-| `PORT`        | `4000`                          | HTTP port                                                |
-| `CORS_ORIGIN` | `http://localhost:8081`         | Comma-separated allowed origins                          |
-| `MONGODB_URI` | `mongodb://localhost:27017/app` | MongoDB connection string (falls back to `DATABASE_URL`) |
-| `TRUST_PROXY` | `0`                             | Proxy hops in front of the server                        |
+| Variable                   | Default                         | Purpose                                                        |
+| -------------------------- | ------------------------------- | -------------------------------------------------------------- |
+| `PORT`                     | `4000`                          | HTTP port                                                      |
+| `CORS_ORIGIN`              | `http://localhost:8081`         | Comma-separated allowed origins                                |
+| `MONGODB_URI`              | `mongodb://localhost:27017/app` | MongoDB connection string (falls back to `DATABASE_URL`)       |
+| `TRUST_PROXY`              | `0`                             | Proxy hops in front of the server                              |
+| `CLOUDINARY_CLOUD_NAME`    | _(optional)_                    | Cloudinary cloud name for signed image uploads                 |
+| `CLOUDINARY_API_KEY`       | _(optional)_                    | Cloudinary API key                                             |
+| `CLOUDINARY_API_SECRET`    | _(optional)_                    | Cloudinary API secret (kept server-side only in `server/.env`) |
+| `CLOUDINARY_UPLOAD_FOLDER` | `issues`                        | Default Cloudinary folder for uploaded images                  |
 
 ## Scripts (in `server/`)
 
