@@ -6,10 +6,13 @@ const en = {
   common: {
     learnMore: 'Learn more',
     docs: 'Docs',
+    comingSoon: 'Coming soon',
   },
   tabs: {
-    home: 'Home',
-    explore: 'Explore',
+    issues: 'Issues',
+    card: 'Card',
+    report: 'Report',
+    district: 'District',
     brand: 'Expo Starter',
   },
   home: {
@@ -48,6 +51,25 @@ const en = {
       en: 'English',
       fr: 'French',
     },
+  },
+  issue: {
+    status: {
+      not_started: 'To do',
+      in_progress: 'In progress',
+      resolved: 'Resolved',
+    },
+    category: {
+      roads_potholes: 'Potholes & roads',
+      streetlights_utilities: 'Streetlights & utilities',
+      traffic_safety: 'Cycling safety',
+    },
+    photo: '{{count}} photo',
+    photos: '{{count}} photos',
+    confirmed: '{{count}} confirmed',
+    confirmedPlural: '{{count}} confirmed',
+    districtManager: 'Borough Manager',
+    upvoteLabel: 'Upvote, {{count}} votes',
+    commentsLabel: '{{count}} comments',
   },
 };
 

@@ -51,10 +51,10 @@ describe('getDeviceLanguage', () => {
 });
 
 it('translates, switches language and restores the saved choice', async () => {
-  expect(i18n.t('tabs.home')).toBe('Home');
+  expect(i18n.t('tabs.issues')).toBe('Issues');
 
   await setLanguage('fr');
-  expect(i18n.t('tabs.home')).toBe('Accueil');
+  expect(i18n.t('tabs.issues')).toBe('Signalements');
   expect(i18n.t('language.current', { language: 'Français' })).toBe('Langue actuelle : Français');
 
   await i18n.changeLanguage('en');

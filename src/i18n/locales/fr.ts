@@ -4,10 +4,13 @@ const fr: Translations = {
   common: {
     learnMore: 'En savoir plus',
     docs: 'Docs',
+    comingSoon: 'Bientôt disponible',
   },
   tabs: {
-    home: 'Accueil',
-    explore: 'Explorer',
+    issues: 'Signalements',
+    card: 'Carte',
+    report: 'Signaler',
+    district: 'Arrondissement',
     brand: 'Expo Starter',
   },
   home: {
@@ -46,6 +49,25 @@ const fr: Translations = {
       en: 'Anglais',
       fr: 'Français',
     },
+  },
+  issue: {
+    status: {
+      not_started: 'À faire',
+      in_progress: 'En cours',
+      resolved: 'Résolu',
+    },
+    category: {
+      roads_potholes: 'Nids-de-poule',
+      streetlights_utilities: 'Éclairage public',
+      traffic_safety: 'Sécurité cycliste',
+    },
+    photo: '{{count}} photo',
+    photos: '{{count}} photos',
+    confirmed: '{{count}} confirmé',
+    confirmedPlural: '{{count}} confirmés',
+    districtManager: 'Gestionnaire Arrondissement',
+    upvoteLabel: 'Voter pour, {{count}} votes',
+    commentsLabel: '{{count}} commentaires',
   },
 };
 
