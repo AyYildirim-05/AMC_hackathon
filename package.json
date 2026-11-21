@@ -71,6 +71,7 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "watchman": false,
     "moduleNameMapper": {
       "\\.css$": "<rootDir>/test/style-stub.js",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",

@@ -12,18 +12,14 @@ import {
   type IssueStatus,
   type OfficialResponse,
 } from '@/models/Issue';
+import { computeInitials, formatAddress, formatIssueDate } from './utils/formatter';
 
+export { computeInitials, formatAddress, formatIssueDate };
 export type { IssueAuthor, OfficialResponse };
 
 export interface IssueCardProps {
   /** The issue domain model. */
   issue: Issue;
-  /** Author / reporter info override (defaults to `issue.author`). */
-  author?: IssueAuthor;
-  /** Official district response callout override (defaults to `issue.official_response`). */
-  officialResponse?: OfficialResponse | null;
-  /** Total number of comments on this issue (defaults to `issue.comments_count`). */
-  commentsCount?: number;
   /** Accessibility label for the card button when pressable. Defaults to issue title. */
   accessibilityLabel?: string;
   /** Callback when tapping the whole card. */
@@ -48,35 +44,6 @@ export interface IssueCardProps {
   testID?: string;
 }
 
-/** Formats ISO timestamp to short day + month, e.g. `18 nov`. */
-export function formatIssueDate(isoString: string, locale = 'fr'): string {
-  try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return '';
-    const day = date.getUTCDate();
-    const month = date.toLocaleDateString(locale, { month: 'short' }).replace('.', '');
-    return `${day} ${month}`;
-  } catch {
-    return '';
-  }
-}
-
-/** Cleans address for card presentation, trimming trailing postal code if present. */
-export function formatAddress(address: string): string {
-  return address.replace(/,\s*[A-Z]{2}\s+[A-Z0-9\s]+$/i, '').trim();
-}
-
-/** Computes avatar initials from a username or full name. */
-export function computeInitials(nameOrHandle?: string): string {
-  if (!nameOrHandle) return 'AV';
-  const clean = nameOrHandle.replace(/^@/, '');
-  const parts = clean.split(/[_\s.-]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return clean.slice(0, 2).toUpperCase();
-}
-
 /** Subtle native location pin icon matching the design. */
 function PinIcon({ color }: { color: string }) {
   return (
@@ -99,9 +66,6 @@ function CommentBubbleIcon({ color }: { color: string }) {
 
 export function IssueCard({
   issue,
-  author: authorProp,
-  officialResponse: officialResponseProp,
-  commentsCount: commentsCountProp,
   accessibilityLabel,
   onPress,
   onUpvote,
@@ -128,20 +92,19 @@ export function IssueCard({
     }
   };
 
-  // 1. Resolve author directly from issue, allowing prop override
-  const resolvedAuthor = authorProp ?? issue.author;
-  const authorHandle = resolvedAuthor?.username ?? 'citoyen';
+  // 1. Author directly from issue
+  const author = issue.author;
+  const authorHandle = author?.username ?? 'citoyen';
   const authorInitials =
-    resolvedAuthor?.initials ??
-    (resolvedAuthor?.name ? computeInitials(resolvedAuthor.name) : undefined) ??
+    author?.initials ??
+    (author?.name ? computeInitials(author.name) : undefined) ??
     computeInitials(authorHandle);
 
-  // 2. Resolve official response directly from issue, allowing prop override
-  const officialResponse =
-    officialResponseProp !== undefined ? officialResponseProp : (issue.official_response ?? null);
+  // 2. Official response directly from issue
+  const officialResponse = issue.official_response ?? null;
 
-  // 3. Resolve comments count directly from issue, allowing prop override
-  const commentsCount = commentsCountProp ?? issue.comments_count ?? 0;
+  // 3. Comments count directly from issue
+  const commentsCount = issue.comments_count ?? 0;
 
   // 4. Format date and address
   const formattedDate = formatIssueDate(issue.created_at, i18n?.language || 'fr');
@@ -179,9 +142,9 @@ export function IssueCard({
         <View style={styles.headerUserInfo}>
           {/* Avatar */}
           <View style={[styles.avatar, { backgroundColor: isDark ? '#33443C' : '#DDE8E2' }]}>
-            {resolvedAuthor?.avatarUrl || resolvedAuthor?.avatar_url ? (
+            {author?.avatarUrl || author?.avatar_url ? (
               <Image
-                source={{ uri: resolvedAuthor.avatarUrl ?? resolvedAuthor.avatar_url }}
+                source={{ uri: author.avatarUrl ?? author.avatar_url }}
                 style={styles.avatarImage}
               />
             ) : (
