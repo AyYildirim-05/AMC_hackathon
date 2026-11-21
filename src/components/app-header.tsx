@@ -3,24 +3,16 @@ import Constants from 'expo-constants';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import {
-  initialWindowMetrics,
-  SafeAreaProvider,
-  SafeAreaView,
-} from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { computeInitials } from '@/components/utils/formatter';
-import { ProfileScreen } from '@/components/profile-screen';
-import { ThemedButton } from '@/components/themed-button';
+import { ProfileSheet } from '@/components/profile-sheet';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage, setLanguage, supportedLanguages } from '@/i18n';
 import { fetchDistrict } from '@/lib/api/districts';
-import { useAuth } from '@/providers/auth-provider';
 
 const APP_NAME = Constants.expoConfig?.name ?? 'Montone';
 
@@ -33,19 +25,12 @@ export function AppHeader() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const user = useCurrentUser();
-  const { signOut } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
-
-  // Close the sheet first; signing out then swaps the tabs for the login screen.
-  const handleSignOut = () => {
-    setProfileOpen(false);
-    void signOut();
-  };
   const districtId = user?.homeDistrictId ?? null;
   const { data: district } = useQuery({
     queryKey: ['districts', districtId],
     queryFn: () => fetchDistrict(districtId ?? ''),
-    enabled: districtId !== null,
+    enabled: Boolean(districtId),
   });
 
   const language = isSupportedLanguage(i18n.language) ? i18n.language : 'en';
@@ -110,61 +95,12 @@ export function AppHeader() {
         </Pressable>
       ) : null}
 
-      {user ? (
-        <Modal
-          visible={profileOpen}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setProfileOpen(false)}
-        >
-          {/* A Modal is a separate native window, so it needs its own safe-area context. */}
-          <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-            <ThemedView style={styles.flex}>
-              <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
-                <View style={styles.sheetHeader}>
-                  <ThemedText type="subtitle" accessibilityRole="header" style={styles.flex}>
-                    {t('profile.title')}
-                  </ThemedText>
-                  <ThemedButton
-                    type="border"
-                    size="small"
-                    rounded
-                    onPress={() => setProfileOpen(false)}
-                  >
-                    {t('profile.close')}
-                  </ThemedButton>
-                </View>
-                <ScrollView contentContainerStyle={styles.sheetContent}>
-                  <ProfileScreen user={user} />
-                  <ThemedButton
-                    type="border"
-                    tone="danger"
-                    fullWidth
-                    style={styles.signOut}
-                    onPress={handleSignOut}
-                  >
-                    {t('auth.signOutButton')}
-                  </ThemedButton>
-                </ScrollView>
-              </SafeAreaView>
-            </ThemedView>
-          </SafeAreaProvider>
-        </Modal>
-      ) : null}
+      <ProfileSheet visible={profileOpen} onClose={() => setProfileOpen(false)} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.three,
-  },
-  sheetContent: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.six },
-  signOut: { marginTop: Spacing.four },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',

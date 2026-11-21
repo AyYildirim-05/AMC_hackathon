@@ -37,7 +37,7 @@ export function ProfileScreen({ user, data = dummyProfileData }: ProfileScreenPr
   const { data: homeDistrict } = useQuery({
     queryKey: ['districts', user.homeDistrictId],
     queryFn: () => fetchDistrict(user.homeDistrictId ?? ''),
-    enabled: user.homeDistrictId !== null,
+    enabled: Boolean(user.homeDistrictId),
   });
   const homeName = homeDistrict
     ? i18n.language.startsWith('en')

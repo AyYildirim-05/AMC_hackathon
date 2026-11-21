@@ -426,8 +426,9 @@ describe('CardScreen (Map page) — all interactive controls', () => {
     expect(screen.getByText('2 confirmés')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('map-detail-modal-close'));
 
-    // Profile avatar modal -> Sign out button
+    // Profile avatar -> the same profile page as every other tab -> Sign out button
     await fireEvent.press(screen.getByTestId('map-profile-button'));
+    expect(screen.getByRole('header', { name: 'Profil' })).toBeOnTheScreen();
     await fireEvent.press(screen.getByText('Se déconnecter'));
     expect(mockSignOut).toHaveBeenCalledTimes(1);
 

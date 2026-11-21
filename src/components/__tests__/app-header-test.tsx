@@ -13,11 +13,6 @@ jest.mock('@/providers/auth-provider', () => ({
   useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: mockSignOut }),
 }));
 jest.mock('expo-symbols', () => ({ SymbolView: () => null }));
-// SafeAreaProvider renders nothing until native code reports insets; the library's mock does.
-jest.mock(
-  'react-native-safe-area-context',
-  () => jest.requireActual<{ default: object }>('react-native-safe-area-context/jest/mock').default,
-);
 // The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
 jest.mock('react-native-reanimated', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
