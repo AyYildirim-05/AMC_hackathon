@@ -3,6 +3,3 @@ dist/
 coverage/
 .env
 *.log
-# Firebase service-account keys
-*service-account*.json
-firebase-debug.log

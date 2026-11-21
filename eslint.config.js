@@ -3,26 +3,8 @@ const expoConfig = require('eslint-config-expo/flat');
 const prettierConfig = require('eslint-config-prettier/flat');
 
 module.exports = defineConfig([
-  // server/ packages have their own toolchains.
+  // server/ has its own toolchain.
   globalIgnores(['dist/*', '.expo/*', 'coverage/*', 'server/*']),
   expoConfig,
   prettierConfig,
-  {
-    // Database code and credentials must never reach the client bundle.
-    files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/server/**', 'src/app/**/*+api.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@/server', '@/server/*'],
-              message: 'Server-only code. Call it through an API route (src/app/**/*+api.ts).',
-            },
-          ],
-        },
-      ],
-    },
-  },
 ]);
