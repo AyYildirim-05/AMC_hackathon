@@ -19,6 +19,11 @@ const NOT_ALLOWED_EDIT = 'Only the district manager or the issue creator can edi
 const CREATOR_LOCKED = 'The creator can only edit an issue while its status is not_started';
 const NOT_MANAGER = 'Only the district manager can change the status';
 const finalError = (status: string) => `A ${status} issue's status cannot be changed`;
+// Issue photos must be on this app's Cloudinary cloud (see isIssuePhotoUrl). The cloud name is
+// read per call, so a stand-in works when the test run has no Cloudinary settings.
+process.env.CLOUDINARY_CLOUD_NAME ??= 'test-cloud';
+const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+const photoUrl = `https://res.cloudinary.com/${cloud}/image/upload/v1/issues/a.jpg`;
 
 describe(
   'issue API against MongoDB',
@@ -195,7 +200,7 @@ describe(
 
     describe('updateIssue', () => {
       it('lets the creator edit while not_started, keeping untouched fields', async () => {
-        const issue = await report(plateau._id, { images: ['https://example.com/a.jpg'] });
+        const issue = await report(plateau._id, { images: [photoUrl] });
         const res = await edit(issue.id, reporter, {
           title: '  Edited  ',
           status: 'completed',
@@ -203,7 +208,7 @@ describe(
         });
         assert.equal(res.status, 200);
         assert.equal(res.body.title, 'Edited');
-        assert.deepEqual(res.body.images, ['https://example.com/a.jpg']);
+        assert.deepEqual(res.body.images, [photoUrl]);
         assert.equal(res.body.description, 'Deep pothole.');
         assert.equal(res.body.status, 'not_started');
         assert.equal(res.body.upvoteCount, 0);

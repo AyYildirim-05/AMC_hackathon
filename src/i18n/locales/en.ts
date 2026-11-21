@@ -101,6 +101,15 @@ const en = {
       network: 'Unable to reach the server. Check that the backend is running.',
     },
   },
+  photos: {
+    take: 'Take photo',
+    choose: 'Choose from library',
+    remove: 'Remove photo {{number}}',
+    count: '{{count}} of {{max}} photos',
+    limitReached: 'You can add up to {{max}} photos.',
+    cameraDenied: 'Camera access is off. Allow it in Settings to take photos.',
+    unavailable: 'Could not open the camera or photo library.',
+  },
 };
 
 export default en;

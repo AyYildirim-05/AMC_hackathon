@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { createUploadSignature } from '../lib/cloudinary.js';
+import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 
 export const UPLOAD_FOLDERS = ['issues', 'avatars'] as const;
@@ -16,8 +17,8 @@ type UploadSignatureBody = z.infer<typeof uploadSignatureInput>;
 
 export const uploadRouter = Router();
 
-// Once feature/auth is merged, add `requireAuth` before `validateBody`.
-uploadRouter.post('/signature', validateBody(uploadSignatureInput), (req, res) => {
+/** Signed fields for uploading one image straight to Cloudinary. Signed-in users only. */
+uploadRouter.post('/signature', requireAuth, validateBody(uploadSignatureInput), (req, res) => {
   const { folder } = req.body as UploadSignatureBody;
   res.json(createUploadSignature({ folder }));
 });

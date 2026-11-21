@@ -43,6 +43,14 @@
             "android": ["en", "fr"]
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Montone uses your camera to photograph the issues you report.",
+          "photosPermission": "Montone uses your photo library to attach photos to the issues you report.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

@@ -99,6 +99,16 @@ const fr: Translations = {
       network: 'Impossible de joindre le serveur. Vérifiez que le backend est démarré.',
     },
   },
+  photos: {
+    take: 'Prendre une photo',
+    choose: 'Choisir dans la photothèque',
+    remove: 'Retirer la photo {{number}}',
+    count: '{{count}} photo(s) sur {{max}}',
+    limitReached: "Vous pouvez ajouter jusqu'à {{max}} photos.",
+    cameraDenied:
+      "L'accès à l'appareil photo est désactivé. Autorisez-le dans les Réglages pour prendre des photos.",
+    unavailable: "Impossible d'ouvrir l'appareil photo ou la photothèque.",
+  },
 };
 
 export default fr;

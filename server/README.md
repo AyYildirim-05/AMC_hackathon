@@ -4,25 +4,26 @@ Express 5 + MongoDB (Mongoose) API server written in TypeScript (ESM).
 
 ## Routes
 
-| Method   | Path                               | Description                                                                                                                                               |
-| -------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/health`                      | `{ status: "ok", mongo: "ok" }`, or `503` if MongoDB is down                                                                                              |
-| `POST`   | `/api/auth/register`               | Register a new `Person` and return JWT `accessToken` / `refreshToken`                                                                                     |
-| `POST`   | `/api/auth/login`                  | Authenticate by email or username + password and return JWT tokens                                                                                        |
-| `POST`   | `/api/auth/refresh`                | Exchange a valid `refreshToken` for new JWT tokens                                                                                                        |
-| `GET`    | `/api/auth/me`                     | Return the authenticated `Person` (requires `Authorization: Bearer <token>`)                                                                              |
-| `POST`   | `/api/issues`                      | Report an issue                                                                                                                                           |
-| `GET`    | `/api/issues`                      | All issues, newest first                                                                                                                                  |
-| `GET`    | `/api/issues/:id`                  | One issue                                                                                                                                                 |
-| `GET`    | `/api/issues/district/:districtId` | Issues in a district, newest first                                                                                                                        |
-| `PATCH`  | `/api/issues/:id`                  | Edit details: the district manager, or the creator while `not_started`                                                                                    |
-| `PATCH`  | `/api/issues/:id/status`           | Change status: the district manager only; `completed` and `cancelled` are final                                                                           |
-| `GET`    | `/api/districts`                   | All districts, in French alphabetical order                                                                                                               |
-| `POST`   | `/api/districts`                   | Create a district: admin only; may assign a manager                                                                                                       |
-| `GET`    | `/api/districts/:id`               | One district                                                                                                                                              |
-| `GET`    | `/api/districts/name/:name`        | District whose French or English name matches, ignoring case and accents                                                                                  |
-| `PATCH`  | `/api/districts/:id`               | Details: its manager, or an admin while it has none. `managerId` (assign, reassign, `null` to remove): admin only. A manager manages at most one district |
-| `DELETE` | `/api/districts/:id`               | Delete: its manager, or an admin while it has none; `409` while issues or residents reference it                                                          |
+| Method   | Path                               | Description                                                                                                                                                                         |
+| -------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/health`                      | `{ status: "ok", mongo: "ok" }`, or `503` if MongoDB is down                                                                                                                        |
+| `POST`   | `/api/auth/register`               | Register a new `Person` and return JWT `accessToken` / `refreshToken`                                                                                                               |
+| `POST`   | `/api/auth/login`                  | Authenticate by email or username + password and return JWT tokens                                                                                                                  |
+| `POST`   | `/api/auth/refresh`                | Exchange a valid `refreshToken` for new JWT tokens                                                                                                                                  |
+| `GET`    | `/api/auth/me`                     | Return the authenticated `Person` (requires `Authorization: Bearer <token>`)                                                                                                        |
+| `POST`   | `/api/issues`                      | Report an issue                                                                                                                                                                     |
+| `GET`    | `/api/issues`                      | All issues, newest first                                                                                                                                                            |
+| `GET`    | `/api/issues/:id`                  | One issue                                                                                                                                                                           |
+| `GET`    | `/api/issues/district/:districtId` | Issues in a district, newest first                                                                                                                                                  |
+| `PATCH`  | `/api/issues/:id`                  | Edit details: the district manager, or the creator while `not_started`                                                                                                              |
+| `PATCH`  | `/api/issues/:id/status`           | Change status: the district manager only; `completed` and `cancelled` are final                                                                                                     |
+| `GET`    | `/api/districts`                   | All districts, in French alphabetical order                                                                                                                                         |
+| `POST`   | `/api/districts`                   | Create a district: admin only; may assign a manager                                                                                                                                 |
+| `GET`    | `/api/districts/:id`               | One district                                                                                                                                                                        |
+| `GET`    | `/api/districts/name/:name`        | District whose French or English name matches, ignoring case and accents                                                                                                            |
+| `PATCH`  | `/api/districts/:id`               | Details: its manager, or an admin while it has none. `managerId` (assign, reassign, `null` to remove): admin only. A manager manages at most one district                           |
+| `DELETE` | `/api/districts/:id`               | Delete: its manager, or an admin while it has none; `409` while issues or residents reference it                                                                                    |
+| `POST`   | `/api/uploads/signature`           | Signed-in users: signed fields for uploading one image straight to Cloudinary (`folder`: `issues` or `avatars`; JPG, PNG, HEIC or WebP only). `503` if Cloudinary is not configured |
 
 District writes take an `actorId` in the body: the person acting (no auth yet).
 
