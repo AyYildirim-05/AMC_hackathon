@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -16,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { isSupportedLanguage, setLanguage, supportedLanguages } from '@/i18n';
 import { getApiErrorMessage, loginWithEmail, registerWithEmail } from '@/lib/auth/auth-api';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -32,25 +34,39 @@ export function AuthScreen() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [postalCode, setPostalCode] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const emailRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const confirmPasswordRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const postalCodeRef = useRef<ComponentRef<typeof TextInput>>(null);
+
   const isRegister = mode === 'register';
+  const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'en';
 
   const switchMode = () => {
     setMode((prev) => (prev === 'signIn' ? 'register' : 'signIn'));
+    setConfirmPassword('');
     setErrorMessage(null);
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     setErrorMessage(null);
 
     const trimmedEmail = email.trim();
     const trimmedUsername = username.trim();
     const normalizedPostal = postalCode.replace(/\s+/g, '').toUpperCase();
 
-    if (!trimmedEmail || !password || (isRegister && (!trimmedUsername || !normalizedPostal))) {
+    if (
+      !trimmedEmail ||
+      !password ||
+      (isRegister && (!trimmedUsername || !confirmPassword || !normalizedPostal))
+    ) {
       setErrorMessage(t('auth.errors.requiredFields'));
       return;
     }
@@ -62,6 +78,10 @@ export function AuthScreen() {
       }
       if (password.length < 8) {
         setErrorMessage(t('auth.errors.passwordTooShort'));
+        return;
+      }
+      if (password !== confirmPassword) {
+        setErrorMessage(t('auth.errors.passwordMismatch'));
         return;
       }
       if (!POSTAL_CODE_REGEX.test(normalizedPostal)) {
@@ -78,7 +98,7 @@ export function AuthScreen() {
             email: trimmedEmail.toLowerCase(),
             password,
             postalCode: normalizedPostal,
-            preferredLanguage: i18n.language === 'en' ? 'en' : 'fr',
+            preferredLanguage: currentLang === 'en' ? 'en' : 'fr',
           })
         : await loginWithEmail({
             email: trimmedEmail,
@@ -118,6 +138,34 @@ export function AuthScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.container}>
+              <View style={styles.topBar}>
+                <ThemedView type="backgroundElement" style={styles.langToggle}>
+                  {supportedLanguages.map((lang) => {
+                    const active = lang === currentLang;
+                    return (
+                      <Pressable
+                        key={lang}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        onPress={() => void setLanguage(lang)}
+                        style={[
+                          styles.langOption,
+                          active && { backgroundColor: theme.primaryBtnBackground },
+                        ]}
+                      >
+                        <ThemedText
+                          type="caption"
+                          weight="bold"
+                          themeColor={active ? 'buttonText' : 'textSecondary'}
+                        >
+                          {lang.toUpperCase()}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </ThemedView>
+              </View>
+
               <View style={styles.header}>
                 <ThemedText type="h1">
                   {isRegister ? t('auth.registerTitle') : t('auth.signInTitle')}
@@ -134,6 +182,8 @@ export function AuthScreen() {
                     <TextInput
                       autoCapitalize="none"
                       autoCorrect={false}
+                      returnKeyType="next"
+                      onSubmitEditing={() => emailRef.current?.focus()}
                       placeholder={t('auth.usernamePlaceholder')}
                       placeholderTextColor={theme.textSecondary}
                       value={username}
@@ -148,9 +198,12 @@ export function AuthScreen() {
                     {isRegister ? t('auth.emailLabel') : t('auth.emailOrUsernameLabel')}
                   </ThemedText>
                   <TextInput
+                    ref={emailRef}
                     autoCapitalize="none"
                     autoCorrect={false}
                     keyboardType="email-address"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
                     textContentType={isRegister ? 'emailAddress' : 'username'}
                     placeholder={
                       isRegister ? t('auth.emailPlaceholder') : t('auth.emailOrUsernamePlaceholder')
@@ -164,33 +217,78 @@ export function AuthScreen() {
 
                 <View style={styles.field}>
                   <ThemedText type="label">{t('auth.passwordLabel')}</ThemedText>
-                  <TextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    secureTextEntry
-                    textContentType={isRegister ? 'newPassword' : 'password'}
-                    placeholder={t('auth.passwordPlaceholder')}
-                    placeholderTextColor={theme.textSecondary}
-                    value={password}
-                    onChangeText={setPassword}
-                    style={inputStyle}
-                  />
+                  <View
+                    style={[
+                      styles.passwordRow,
+                      { backgroundColor: theme.background, borderColor: theme.border },
+                    ]}
+                  >
+                    <TextInput
+                      ref={passwordRef}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      secureTextEntry={!showPassword}
+                      returnKeyType={isRegister ? 'next' : 'done'}
+                      onSubmitEditing={() => {
+                        if (isRegister) confirmPasswordRef.current?.focus();
+                        else void handleSubmit();
+                      }}
+                      textContentType={isRegister ? 'newPassword' : 'password'}
+                      placeholder={t('auth.passwordPlaceholder')}
+                      placeholderTextColor={theme.textSecondary}
+                      value={password}
+                      onChangeText={setPassword}
+                      style={[styles.passwordInput, { color: theme.text }]}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setShowPassword((prev) => !prev)}
+                      style={styles.toggleBtn}
+                    >
+                      <ThemedText type="caption" weight="semibold" tone="accent">
+                        {showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                      </ThemedText>
+                    </Pressable>
+                  </View>
                 </View>
 
                 {isRegister ? (
-                  <View style={styles.field}>
-                    <ThemedText type="label">{t('auth.postalCodeLabel')}</ThemedText>
-                    <TextInput
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      maxLength={7}
-                      placeholder={t('auth.postalCodePlaceholder')}
-                      placeholderTextColor={theme.textSecondary}
-                      value={postalCode}
-                      onChangeText={setPostalCode}
-                      style={inputStyle}
-                    />
-                  </View>
+                  <>
+                    <View style={styles.field}>
+                      <ThemedText type="label">{t('auth.confirmPasswordLabel')}</ThemedText>
+                      <TextInput
+                        ref={confirmPasswordRef}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        secureTextEntry={!showPassword}
+                        returnKeyType="next"
+                        onSubmitEditing={() => postalCodeRef.current?.focus()}
+                        textContentType="newPassword"
+                        placeholder={t('auth.confirmPasswordPlaceholder')}
+                        placeholderTextColor={theme.textSecondary}
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        style={inputStyle}
+                      />
+                    </View>
+
+                    <View style={styles.field}>
+                      <ThemedText type="label">{t('auth.postalCodeLabel')}</ThemedText>
+                      <TextInput
+                        ref={postalCodeRef}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        maxLength={7}
+                        returnKeyType="done"
+                        onSubmitEditing={() => void handleSubmit()}
+                        placeholder={t('auth.postalCodePlaceholder')}
+                        placeholderTextColor={theme.textSecondary}
+                        value={postalCode}
+                        onChangeText={setPostalCode}
+                        style={inputStyle}
+                      />
+                    </View>
+                  </>
                 ) : null}
 
                 {errorMessage ? (
@@ -220,6 +318,8 @@ export function AuthScreen() {
   );
 }
 
+export default AuthScreen;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -241,6 +341,23 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.four,
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  langToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 2,
+    borderRadius: 999,
+  },
+  langOption: {
+    paddingHorizontal: Spacing.two + Spacing.half,
+    paddingVertical: Spacing.one,
+    borderRadius: 999,
+    minWidth: 36,
+    alignItems: 'center',
+  },
   header: {
     gap: Spacing.one,
   },
@@ -256,6 +373,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two + Spacing.half,
     fontSize: 16,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: Spacing.two,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.two,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: Spacing.two + Spacing.half,
+    fontSize: 16,
+  },
+  toggleBtn: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
   },
   submitButton: {
     marginTop: Spacing.one,

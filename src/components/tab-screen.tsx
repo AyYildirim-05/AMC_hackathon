@@ -1,11 +1,14 @@
 import { type ReactNode } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/app-header';
+import { ThemedButton } from '@/components/themed-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useAuth } from '@/providers/auth-provider';
 
 export type TabScreenProps = {
   title: string;
@@ -16,6 +19,8 @@ export type TabScreenProps = {
 
 /** Shared frame for the top-level tabs: safe area, title, and room for the tab bar. */
 export function TabScreen({ title, children, placeholder }: TabScreenProps) {
+  const { t } = useTranslation();
+  const { signOut } = useAuth();
   // iOS reports the floating native tab bar inside the bottom safe-area inset (about 97pt on an
   // iPhone 18 Pro: the bar plus the home indicator), so that inset alone keeps content above it.
   // Android keeps the starter's fixed inset (not measured).
@@ -29,9 +34,14 @@ export function TabScreen({ title, children, placeholder }: TabScreenProps) {
         edges={['top', 'left', 'right']}
       >
         <AppHeader />
-        <ThemedText type="subtitle" style={styles.title}>
-          {title}
-        </ThemedText>
+        <View style={styles.header}>
+          <ThemedText type="subtitle" style={styles.title}>
+            {title}
+          </ThemedText>
+          <ThemedButton type="text" tone="danger" size="small" onPress={() => void signOut()}>
+            {t('auth.signOutButton')}
+          </ThemedButton>
+        </View>
         {children ?? (
           <ThemedView style={styles.placeholder} align="center" justify="center">
             <ThemedText themeColor="textSecondary">{placeholder}</ThemedText>
@@ -52,10 +62,17 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
   },
-  title: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     paddingBottom: Spacing.two,
+    gap: Spacing.two,
+  },
+  title: {
+    flexShrink: 1,
   },
   placeholder: {
     flex: 1,
