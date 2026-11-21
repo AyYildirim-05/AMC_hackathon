@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 
-import { env } from '../config/env.js';
 import { HttpError } from './http-error.js';
 
 export type CloudinaryUploadSignature = {
@@ -33,15 +32,15 @@ export function createUploadSignature(options?: {
   folder?: string;
   timestamp?: number;
 }): CloudinaryUploadSignature {
-  const cloudName = env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = env.CLOUDINARY_API_KEY;
-  const apiSecret = env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
 
   if (!cloudName || !apiKey || !apiSecret) {
     throw new HttpError(503, 'Cloudinary is not configured on the server');
   }
 
-  const folder = options?.folder ?? env.CLOUDINARY_UPLOAD_FOLDER;
+  const folder = options?.folder ?? (process.env.CLOUDINARY_UPLOAD_FOLDER?.trim() || 'issues');
   const timestamp = options?.timestamp ?? Math.floor(Date.now() / 1000);
   const signature = signCloudinaryParams({ folder, timestamp }, apiSecret);
 

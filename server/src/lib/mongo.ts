@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
 
-import { env } from '../config/env.js';
+const defaultMongoUri = () =>
+  process.env.MONGODB_URI || process.env.DATABASE_URL || 'mongodb://localhost:27017/app';
 
-export async function connectMongo(uri = env.MONGODB_URI): Promise<typeof mongoose> {
+export async function connectMongo(uri = defaultMongoUri()): Promise<typeof mongoose> {
   mongoose.set('strictQuery', true);
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 5_000 });
   console.log(`[mongo] connected to ${mongoose.connection.host}/${mongoose.connection.name}`);

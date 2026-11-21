@@ -43,7 +43,7 @@ npm run dev
 ```
 
 Point the Expo app at `http://localhost:4000` by setting `EXPO_PUBLIC_API_URL=http://localhost:4000`
-in `.env.local` (on a physical device use your machine's LAN IP; on the Android emulator use `10.0.2.2`).
+in `.env` (on a physical device use your machine's LAN IP; on the Android emulator use `10.0.2.2`).
 
 ## Environment variables
 

@@ -1,8 +1,22 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-import { env } from '../config/env.js';
 import { HttpError } from './http-error.js';
 import { PERSON_ROLES, type PersonRole } from '../models/person.model.js';
+
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET must be set in server/.env (at least 32 characters)');
+  }
+  return secret;
+}
+
+function getPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 export type TokenType = 'access' | 'refresh';
 
@@ -23,7 +37,7 @@ function signSegment(signingInput: string, secret: string): string {
 export function signToken(
   claims: { sub: string; role: PersonRole; type: TokenType },
   expiresInSeconds: number,
-  secret = env.JWT_SECRET,
+  secret = getJwtSecret(),
 ): string {
   const now = Math.floor(Date.now() / 1000);
   const payload: JwtPayload = {
@@ -42,7 +56,7 @@ export function signToken(
 export function verifyToken(
   token: string,
   expectedType?: TokenType,
-  secret = env.JWT_SECRET,
+  secret = getJwtSecret(),
 ): JwtPayload {
   const parts = token.split('.');
   if (parts.length !== 3) {
@@ -102,18 +116,20 @@ export function verifyToken(
 }
 
 export function issueAuthTokens(person: { id: string; role: PersonRole }) {
+  const accessExpiresIn = getPositiveIntEnv('JWT_ACCESS_EXPIRES_IN_SECONDS', 60 * 60);
+  const refreshExpiresIn = getPositiveIntEnv('JWT_REFRESH_EXPIRES_IN_SECONDS', 60 * 60 * 24 * 7);
   const accessToken = signToken(
     { sub: person.id, role: person.role, type: 'access' },
-    env.JWT_ACCESS_EXPIRES_IN_SECONDS,
+    accessExpiresIn,
   );
   const refreshToken = signToken(
     { sub: person.id, role: person.role, type: 'refresh' },
-    env.JWT_REFRESH_EXPIRES_IN_SECONDS,
+    refreshExpiresIn,
   );
 
   return {
     accessToken,
     refreshToken,
-    expiresIn: env.JWT_ACCESS_EXPIRES_IN_SECONDS,
+    expiresIn: accessExpiresIn,
   };
 }
