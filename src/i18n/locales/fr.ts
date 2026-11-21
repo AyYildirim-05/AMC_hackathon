@@ -116,7 +116,7 @@ const fr: Translations = {
   },
   districtScreen: {
     headerTitle: 'Signale...',
-    stepIndicator: 'ÉTAPE 1 SUR 2',
+    stepIndicator: '• ÉTAPE 1 SUR 2',
     stepDetails: 'Détails & Localisation',
     openNorthPipeline: 'OPENNORTH PIPELINE • En direct',
     electoralSector: 'Secteur électoral {{postal}} • Arrondissement validé',

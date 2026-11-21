@@ -117,7 +117,7 @@ const en = {
   },
   districtScreen: {
     headerTitle: 'Report...',
-    stepIndicator: 'STEP 1 OF 2',
+    stepIndicator: '• STEP 1 OF 2',
     stepDetails: 'Details & Location',
     openNorthPipeline: 'OPENNORTH PIPELINE • Live',
     electoralSector: 'Electoral sector {{postal}} • Verified borough',
