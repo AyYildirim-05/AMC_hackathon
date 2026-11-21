@@ -27,6 +27,16 @@ const districtSchema = new Schema(
 );
 
 districtSchema.index({ openNorthSlug: 1 }, { unique: true, name: 'idx_districts_open_north_slug' });
+// One manager per district (a single field) and one district per manager (this index). Partial,
+// so any number of districts can be unmanaged (managerId null).
+districtSchema.index(
+  { managerId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { managerId: { $type: 'objectId' } },
+    name: 'uq_districts_manager',
+  },
+);
 
 export type District = InferSchemaType<typeof districtSchema>;
 export const DistrictModel = model('District', districtSchema);

@@ -27,7 +27,7 @@ A cross-platform (iOS, Android, web) starter built on **Expo SDK 58** and **Expo
 
 ```bash
 npm install
-cp .env.example .env.local   # then set DATABASE_URL
+touch .env                   # root .env (git-ignored, read by the server); set DATABASE_URL in it
 npm start                    # or: npm run ios | npm run android | npm run web
 ```
 
@@ -37,12 +37,12 @@ From the Expo CLI you can open the app in a [development build](https://docs.exp
 
 ## Environment variables
 
-| Variable              | Where it's read | Purpose                                                                                                                                                      |
-| --------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`        | Server only     | Database connection. The URL scheme picks the driver: `postgresql://`, `mysql://`, or `sqlite:./path.db`. Defaults to `postgresql://localhost:5432/montone`. |
-| `EXPO_PUBLIC_API_URL` | Client          | Base URL for the API client. Leave unset to call the app's own API routes (`/api/...`).                                                                      |
+| Variable              | Where it's read | Purpose                                                                                                                                   |
+| --------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Server only     | MongoDB connection string, read from the root `.env`. `MONGODB_URI` takes precedence if set. Defaults to `mongodb://localhost:27017/app`. |
+| `EXPO_PUBLIC_API_URL` | Client          | Base URL for the API client. Leave unset to call the app's own API routes (`/api/...`).                                                   |
 
-Keep secrets in `.env.local` (git-ignored) and **never** prefix server-only values with `EXPO_PUBLIC_`; anything with that prefix is inlined into the client bundle.
+Keep secrets in the root `.env` (git-ignored) and **never** prefix server-only values with `EXPO_PUBLIC_`; anything with that prefix is inlined into the client bundle.
 
 ## Scripts
 
