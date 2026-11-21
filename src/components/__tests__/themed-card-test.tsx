@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { ThemedCard } from '@/components/themed-card';
 import { Colors } from '@/constants/theme';
@@ -21,6 +21,20 @@ it('is not a button without onPress', async () => {
   await render(<ThemedCard title="Static" />);
 
   expect(screen.queryByRole('button')).toBeNull();
+});
+
+it('leaves buttons inside a static card enabled and reachable', async () => {
+  const onPress = jest.fn();
+  await render(
+    <ThemedCard title="Static">
+      <Pressable accessibilityRole="button" accessibilityLabel="Inner" onPress={onPress} />
+    </ThemedCard>,
+  );
+
+  const inner = screen.getByRole('button', { name: 'Inner' });
+  expect(inner).toBeEnabled();
+  await fireEvent.press(inner);
+  expect(onPress).toHaveBeenCalledTimes(1);
 });
 
 it('is a pressable button with onPress', async () => {
