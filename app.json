@@ -51,7 +51,9 @@
           "photosPermission": "Montone uses your photo library to attach photos to the issues you report.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

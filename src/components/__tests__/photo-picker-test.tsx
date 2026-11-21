@@ -22,11 +22,15 @@ jest.mock('react-native-reanimated', () => {
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'en', languageTag: 'en-US' }],
 }));
-jest.mock('expo-image-picker', () => ({
-  requestCameraPermissionsAsync: jest.fn(),
-  launchCameraAsync: jest.fn(),
-  launchImageLibraryAsync: jest.fn(),
-}));
+jest.mock(
+  'expo-image-picker',
+  () => ({
+    requestCameraPermissionsAsync: jest.fn(),
+    launchCameraAsync: jest.fn(),
+    launchImageLibraryAsync: jest.fn(),
+  }),
+  { virtual: true },
+);
 
 const picker = jest.mocked(ImagePicker);
 const granted = { granted: true } as Awaited<
