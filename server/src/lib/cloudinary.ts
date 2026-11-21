@@ -7,9 +7,17 @@ export type CloudinaryUploadSignature = {
   apiKey: string;
   timestamp: number;
   folder: string;
+  /** Signed, so the client must send it back unchanged as the `allowed_formats` form field. */
+  allowedFormats: string;
   signature: string;
   uploadUrl: string;
 };
+
+/** Cloudinary rejects any other format; enforced because the parameter is signed. */
+export const ALLOWED_IMAGE_FORMATS = 'jpg,png,heic,webp';
+
+/** Issue photos live here; `isIssuePhotoUrl` accepts nothing outside it. */
+export const ISSUE_PHOTO_FOLDER = 'issues';
 
 /**
  * Computes a Cloudinary upload signature per Cloudinary's REST API spec:
@@ -42,14 +50,42 @@ export function createUploadSignature(options?: {
 
   const folder = options?.folder ?? (process.env.CLOUDINARY_UPLOAD_FOLDER?.trim() || 'issues');
   const timestamp = options?.timestamp ?? Math.floor(Date.now() / 1000);
-  const signature = signCloudinaryParams({ folder, timestamp }, apiSecret);
+  const allowedFormats = ALLOWED_IMAGE_FORMATS;
+  const signature = signCloudinaryParams(
+    { allowed_formats: allowedFormats, folder, timestamp },
+    apiSecret,
+  );
 
   return {
     cloudName,
     apiKey,
     timestamp,
     folder,
+    allowedFormats,
     signature,
     uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
   };
+}
+
+/**
+ * True for a delivery URL of an image uploaded to `cloudName` directly inside `folder`, the shape
+ * Cloudinary returns as `secure_url`: https://res.cloudinary.com/<cloud>/image/upload/v<n>/<folder>/<id>.<ext>
+ * Transformations, sub-folders, queries and fragments are rejected.
+ */
+export function isCloudinaryImageUrl(url: string, cloudName: string, folder: string): boolean {
+  const prefix = `https://res.cloudinary.com/${cloudName}/image/upload/`;
+  if (!url.startsWith(prefix)) return false;
+  const path = url.slice(prefix.length).replace(/^v\d+\//, '');
+  return path.startsWith(`${folder}/`) && /^[\w.-]+$/.test(path.slice(folder.length + 1));
+}
+
+/**
+ * True only for photos in this app's Cloudinary cloud and the issue photo folder. Always false
+ * while CLOUDINARY_CLOUD_NAME is unset. The cloud name is read per call, like the rest of this file.
+ */
+export function isIssuePhotoUrl(
+  url: string,
+  { cloudName }: { cloudName?: string } = { cloudName: process.env.CLOUDINARY_CLOUD_NAME?.trim() },
+): boolean {
+  return cloudName ? isCloudinaryImageUrl(url, cloudName, ISSUE_PHOTO_FOLDER) : false;
 }

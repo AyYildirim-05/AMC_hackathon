@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isIssuePhotoUrl } from '../lib/cloudinary.js';
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type IssueStatus } from '../models/index.js';
@@ -14,6 +15,9 @@ import {
 } from '../repositories/issue.repository.js';
 import { personExists } from '../repositories/person.repository.js';
 
+/** Mirrors MAX_ISSUE_PHOTOS in the app's photo-picker.tsx. */
+const MAX_ISSUE_PHOTOS = 5;
+
 export const issueIdParams = z.object({ id: objectId });
 export const districtIdParams = z.object({ districtId: objectId });
 
@@ -22,7 +26,14 @@ const issueFields = {
   title: z.string().trim().min(1).max(150),
   description: z.string().trim().min(1),
   category: z.enum(ISSUE_CATEGORIES),
-  images: z.array(z.url()),
+  // Only photos uploaded through POST /api/uploads/signature; the app allows 5 per issue.
+  images: z
+    .array(
+      z.url().refine((url) => isIssuePhotoUrl(url), {
+        message: 'Must be a photo uploaded through /api/uploads/signature',
+      }),
+    )
+    .max(MAX_ISSUE_PHOTOS),
   address: z.string().trim().min(1).max(255),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),

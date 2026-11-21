@@ -20,6 +20,29 @@ const validBody = {
 
 // These cases are rejected before any database call, so they run without MongoDB.
 describe('POST /api/issues (reportIssue)', () => {
+  it('rejects photos that were not uploaded through /api/uploads/signature', async () => {
+    for (const images of [['https://example.com/a.jpg'], ['not a url']]) {
+      const res = await request(app)
+        .post('/api/issues')
+        .send({ ...validBody, images });
+      assert.equal(res.status, 400, images[0]);
+      assert.ok(res.body.details.fieldErrors.images, images[0]);
+    }
+  });
+
+  it('rejects more than five photos', async () => {
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME ?? 'unconfigured';
+    const images = Array.from(
+      { length: 6 },
+      (_, i) => `https://res.cloudinary.com/${cloud}/image/upload/v1/issues/${i}.jpg`,
+    );
+    const res = await request(app)
+      .post('/api/issues')
+      .send({ ...validBody, images });
+    assert.equal(res.status, 400);
+    assert.ok(res.body.details.fieldErrors.images);
+  });
+
   it('rejects a body missing required fields', async () => {
     const res = await request(app).post('/api/issues').send({ title: 'Only a title' });
     assert.equal(res.status, 400);

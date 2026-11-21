@@ -17,6 +17,7 @@ type UploadSignatureBody = z.infer<typeof uploadSignatureInput>;
 
 export const uploadRouter = Router();
 
+/** Signed fields for uploading one image straight to Cloudinary. Signed-in users only. */
 uploadRouter.post('/signature', requireAuth, validateBody(uploadSignatureInput), (req, res) => {
   const { folder } = req.body as UploadSignatureBody;
   res.json(createUploadSignature({ folder }));

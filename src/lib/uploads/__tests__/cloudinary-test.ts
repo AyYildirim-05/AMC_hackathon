@@ -1,5 +1,9 @@
 import { apiClient } from '@/lib/api/client';
-import { uploadImagesToCloudinary, uploadImageToCloudinary } from '@/lib/uploads/cloudinary';
+import {
+  uploadImagesToCloudinary,
+  uploadImageToCloudinary,
+  uploadIssuePhotos,
+} from '@/lib/uploads/cloudinary';
 
 describe('cloudinary upload helper', () => {
   const originalFetch = global.fetch;
@@ -16,6 +20,7 @@ describe('cloudinary upload helper', () => {
         apiKey: 'key-123',
         timestamp: 1700000000,
         folder: 'issues',
+        allowedFormats: 'jpg,png,heic,webp',
         signature: 'sig-abc',
         uploadUrl: 'https://api.cloudinary.com/v1_1/demo-cloud/image/upload',
       },
@@ -58,6 +63,7 @@ describe('cloudinary upload helper', () => {
         apiKey: 'key-123',
         timestamp: 1700000000,
         folder: 'issues',
+        allowedFormats: 'jpg,png,heic,webp',
         signature: 'sig-abc',
         uploadUrl: 'https://api.cloudinary.com/v1_1/demo-cloud/image/upload',
       },
@@ -83,6 +89,68 @@ describe('cloudinary upload helper', () => {
     ]);
   });
 
+  it('sends back every signed field, including allowed_formats', async () => {
+    jest.spyOn(apiClient, 'post').mockResolvedValueOnce({
+      data: {
+        cloudName: 'demo-cloud',
+        apiKey: 'key-123',
+        timestamp: 1700000000,
+        folder: 'issues',
+        allowedFormats: 'jpg,png,heic,webp',
+        signature: 'sig-abc',
+        uploadUrl: 'https://api.cloudinary.com/v1_1/demo-cloud/image/upload',
+      },
+    });
+    const fetchMock = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ secure_url: 'https://res.cloudinary.com/demo/1.jpg', public_id: '1' }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await uploadImageToCloudinary('file:///1.jpg', { folder: 'issues' });
+
+    // Cloudinary recomputes the signature from these exact fields; any missing one fails with 401.
+    const form: FormData = fetchMock.mock.calls[0][1].body;
+    expect({
+      api_key: form.get('api_key'),
+      timestamp: form.get('timestamp'),
+      folder: form.get('folder'),
+      allowed_formats: form.get('allowed_formats'),
+      signature: form.get('signature'),
+    }).toEqual({
+      api_key: 'key-123',
+      timestamp: '1700000000',
+      folder: 'issues',
+      allowed_formats: 'jpg,png,heic,webp',
+      signature: 'sig-abc',
+    });
+  });
+
+  it('uploads issue photos to the issues folder', async () => {
+    const postSpy = jest.spyOn(apiClient, 'post').mockResolvedValue({
+      data: {
+        cloudName: 'demo-cloud',
+        apiKey: 'key-123',
+        timestamp: 1700000000,
+        folder: 'issues',
+        allowedFormats: 'jpg,png,heic,webp',
+        signature: 'sig-abc',
+        uploadUrl: 'https://api.cloudinary.com/v1_1/demo-cloud/image/upload',
+      },
+    });
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ secure_url: 'https://res.cloudinary.com/demo/1.jpg', public_id: '1' }),
+    }) as unknown as typeof fetch;
+
+    expect(await uploadIssuePhotos([{ uri: 'file:///1.jpg' }])).toEqual([
+      'https://res.cloudinary.com/demo/1.jpg',
+    ]);
+    expect(postSpy).toHaveBeenCalledWith('/api/uploads/signature', { folder: 'issues' });
+  });
+
   it('throws the Cloudinary error message on failure', async () => {
     jest.spyOn(apiClient, 'post').mockResolvedValueOnce({
       data: {
@@ -90,6 +158,7 @@ describe('cloudinary upload helper', () => {
         apiKey: 'key-123',
         timestamp: 1700000000,
         folder: 'issues',
+        allowedFormats: 'jpg,png,heic,webp',
         signature: 'sig-abc',
         uploadUrl: 'https://api.cloudinary.com/v1_1/demo-cloud/image/upload',
       },
