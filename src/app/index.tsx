@@ -1,102 +1,35 @@
-import * as Device from 'expo-device';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, StyleSheet } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import dummyIssues from '../../dummy_data/issues.json';
 
-function getDevMenuHint(t: TFunction) {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">{t('home.devMenu.web')}</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        {t('home.devMenu.devicePrefix')} <ThemedText type="code">m</ThemedText>{' '}
-        {t('home.devMenu.deviceSuffix')}
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      {t('home.devMenu.press')} <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { IssueCard } from '@/components/IssueCard';
+import { TabScreen } from '@/components/tab-screen';
+import { Spacing } from '@/constants/theme';
+import type { Issue } from '@/models/Issue';
 
-export default function HomeScreen() {
+// Dummy data until the issues API exists.
+const issues = dummyIssues.issues as Issue[];
+
+export default function IssuesScreen() {
   const { t } = useTranslation();
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            {t('home.title')}
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          {t('home.getStarted')}
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title={t('home.tryEditing')}
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title={t('home.devTools')} hint={getDevMenuHint(t)} />
-          <HintRow
-            title={t('home.freshStart')}
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <TabScreen title={t('tabs.issues')}>
+      <FlatList
+        data={issues}
+        keyExtractor={(issue) => issue.id}
+        renderItem={({ item }) => <IssueCard issue={item} />}
+        contentContainerStyle={styles.list}
+      />
+    </TabScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
+  list: {
     gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingBottom: Spacing.four,
   },
 });
