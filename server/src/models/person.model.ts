@@ -17,6 +17,11 @@ const personSchema = new Schema(
       maxlength: 255,
       unique: true,
     },
+    passwordHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
     postalCode: {
       type: String,
       required: true,
@@ -25,7 +30,7 @@ const personSchema = new Schema(
       minlength: 6,
       maxlength: 6,
     },
-    homeDistrictId: { type: Schema.Types.ObjectId, ref: 'District', required: true },
+    homeDistrictId: { type: Schema.Types.ObjectId, ref: 'District', default: null },
     role: { type: String, required: true, enum: PERSON_ROLES, default: 'resident' },
     preferredLanguage: { type: String, required: true, enum: PREFERRED_LANGUAGES, default: 'fr' },
   },
@@ -37,6 +42,7 @@ const personSchema = new Schema(
       transform: (_doc, ret: Record<string, unknown>) => {
         ret.id = String(ret._id);
         delete ret._id;
+        delete ret.passwordHash;
         return ret;
       },
     },
