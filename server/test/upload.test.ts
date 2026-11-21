@@ -4,7 +4,6 @@ import { describe, it } from 'node:test';
 import request from 'supertest';
 
 import { createApp } from '../src/app.js';
-import { env } from '../src/config/env.js';
 import { signCloudinaryParams } from '../src/lib/cloudinary.js';
 
 const app = createApp();
@@ -34,32 +33,25 @@ describe('POST /api/uploads/signature', () => {
   });
 
   it('returns a valid upload signature when Cloudinary env vars are configured', async () => {
-    const hasCloudinary =
-      Boolean(env.CLOUDINARY_CLOUD_NAME) &&
-      Boolean(env.CLOUDINARY_API_KEY) &&
-      Boolean(env.CLOUDINARY_API_SECRET);
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+    const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+    const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
 
     const res = await request(app).post('/api/uploads/signature').send({ folder: 'issues' });
 
-    if (!hasCloudinary) {
+    if (!cloudName || !apiKey || !apiSecret) {
       assert.equal(res.status, 503);
       return;
     }
 
     assert.equal(res.status, 200);
-    assert.equal(res.body.cloudName, env.CLOUDINARY_CLOUD_NAME);
-    assert.equal(res.body.apiKey, env.CLOUDINARY_API_KEY);
+    assert.equal(res.body.cloudName, cloudName);
+    assert.equal(res.body.apiKey, apiKey);
     assert.equal(res.body.folder, 'issues');
-    assert.equal(
-      res.body.uploadUrl,
-      `https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD_NAME}/image/upload`,
-    );
+    assert.equal(res.body.uploadUrl, `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
     assert.equal(
       res.body.signature,
-      signCloudinaryParams(
-        { folder: 'issues', timestamp: res.body.timestamp },
-        env.CLOUDINARY_API_SECRET!,
-      ),
+      signCloudinaryParams({ folder: 'issues', timestamp: res.body.timestamp }, apiSecret),
     );
   });
 });

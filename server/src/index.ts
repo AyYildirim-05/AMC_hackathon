@@ -1,11 +1,12 @@
 import { createApp } from './app.js';
-import { env } from './config/env.js';
 import { connectMongo, disconnectMongo } from './lib/mongo.js';
+
+const port = Number(process.env.PORT ?? 4000);
 
 await connectMongo();
 
-const server = createApp().listen(env.PORT, () => {
-  console.log(`[express] listening on http://localhost:${env.PORT}`);
+const server = createApp().listen(port, () => {
+  console.log(`[express] listening on http://localhost:${port}`);
 });
 
 async function shutdown(signal: string) {
