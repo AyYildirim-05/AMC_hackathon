@@ -63,6 +63,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "server:dev": "npm --prefix server run dev",
     "server:db": "docker compose -f server/docker-compose.yml up -d mongo",
     "docker:server": "docker compose -f server/docker-compose.yml up -d --build",
     "docker:down": "docker compose -f server/docker-compose.yml down",

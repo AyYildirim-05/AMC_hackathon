@@ -4,7 +4,7 @@ import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 
 import { Text } from 'react-native';
 
 import { emitUnauthorized } from '@/lib/auth/auth-events';
-import { resetTokenCache, saveTokens } from '@/lib/auth/token-storage';
+import { clearTokens, resetTokenCache, saveTokens } from '@/lib/auth/token-storage';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { createQueryClient, QueryProvider, shouldRetry } from '@/providers/query-provider';
 
@@ -75,5 +75,48 @@ it('restores the session, then signs out and clears cached data on unauthorized'
 
   expect(screen.getByText('signedOut')).toBeOnTheScreen();
   expect(clear).toHaveBeenCalledTimes(1);
+  await unmount();
+});
+
+it('starts signedOut when no token is stored', async () => {
+  await clearTokens();
+  resetTokenCache();
+  const client = createQueryClient();
+  client.setDefaultOptions({
+    queries: { ...client.getDefaultOptions().queries, gcTime: Infinity },
+  });
+
+  const { unmount } = await render(
+    <QueryProvider client={client}>
+      <AuthProvider>
+        <Status />
+      </AuthProvider>
+    </QueryProvider>,
+  );
+
+  expect(await screen.findByText('signedOut')).toBeOnTheScreen();
+  await unmount();
+});
+
+it('clears expired JWTs and starts signedOut', async () => {
+  resetTokenCache();
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({ sub: 'u1', exp: 1 })).toString('base64url');
+  await saveTokens({ accessToken: `${header}.${payload}.sig` });
+
+  const client = createQueryClient();
+  client.setDefaultOptions({
+    queries: { ...client.getDefaultOptions().queries, gcTime: Infinity },
+  });
+
+  const { unmount } = await render(
+    <QueryProvider client={client}>
+      <AuthProvider>
+        <Status />
+      </AuthProvider>
+    </QueryProvider>,
+  );
+
+  expect(await screen.findByText('signedOut')).toBeOnTheScreen();
   await unmount();
 });
