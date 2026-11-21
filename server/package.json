@@ -1,5 +1,5 @@
 {
-  "name": "invitationcardapp-server-express",
+  "name": "amc-hackathon-server",
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
@@ -9,15 +9,12 @@
     "test": "tsx --test test/*.test.ts"
   },
   "license": "MIT",
-  "description": "Express + MongoDB + Firebase Admin API",
+  "description": "Express + MongoDB API",
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.3.0",
-    "firebase-admin": "^14.5.1",
     "helmet": "^8.3.0",
-    "ioredis": "^6.0.0",
     "mongoose": "^9.12.2",
-    "rate-limiter-flexible": "^11.5.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
