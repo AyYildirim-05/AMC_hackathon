@@ -105,9 +105,7 @@
       "description": "Construction barriers are blocking the protected bike lane near Parc La Fontaine with no marked detour.",
       "category": "traffic_safety",
       "status": "in_progress",
-      "images": [
-        "https://example.ca/images/rachel-bike-lane-1.jpg"
-      ],
+      "images": ["https://example.ca/images/rachel-bike-lane-1.jpg"],
       "address": "1250 Rue Rachel Est, Montréal, QC H2J 2J9",
       "latitude": 45.529841,
       "longitude": -73.575124,
