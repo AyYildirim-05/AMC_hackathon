@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "InvitationCardApp",
-    "slug": "InvitationCardApp",
+    "name": "Montone",
+    "slug": "Montone",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "invitationcardapp",
+    "scheme": "montone",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.yildirim.cuneyt.it.InvitationCardApp"
+      "bundleIdentifier": "com.yildirim.cuneyt.it.Montone"
     },
     "android": {
       "adaptiveIcon": {
