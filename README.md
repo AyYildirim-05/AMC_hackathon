@@ -1,4 +1,4 @@
-# InvitationCardApp
+# Montone
 
 A cross-platform (iOS, Android, web) starter built on **Expo SDK 58** and **Expo Router**. It ships with a themed component kit, an authenticated API client, TanStack Query wiring, and server-side API routes with a multi-database SQL helper. Use it as the base for new apps.
 
@@ -127,7 +127,7 @@ await signIn({ accessToken, refreshToken }); // store tokens returned by your lo
 
 `status` is `'loading' | 'signedIn' | 'signedOut'`. Signing out (or an unrecoverable 401) clears tokens and the query cache.
 
-The login, register, and `/api/auth/refresh` endpoints are implemented by the backends in [`server/`](server/README.md) (Firebase Auth). Point `EXPO_PUBLIC_API_URL` at one of them and sign in with the helpers in `src/lib/auth/auth-api.ts`:
+The login, register, and `/api/auth/refresh` endpoints are not implemented yet (auth is planned after the MVP). Once a backend provides them, point `EXPO_PUBLIC_API_URL` at one of them and sign in with the helpers in `src/lib/auth/auth-api.ts`:
 
 ```tsx
 const { signIn } = useAuth();
@@ -181,7 +181,6 @@ Check the connection with `GET /api/health` (returns `{ "status": "ok" }`, or `5
 
 ```bash
 npm run server:db           # MongoDB + Redis via Docker
-npm run server:emulators    # Firebase Auth emulator (or configure a real project)
 npm --prefix server/express install && npm run server:express   # or server/nest + server:nest
 ```
 
