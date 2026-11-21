@@ -224,3 +224,8 @@ Because the web build uses server output, deploy it to a host that supports Expo
 ## License
 
 [MIT](LICENSE)
+
+# Todo
+
+- update issue to have a type
+-

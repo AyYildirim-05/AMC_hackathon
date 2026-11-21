@@ -5,8 +5,13 @@ import request from 'supertest';
 
 import { createApp } from '../src/app.js';
 import { signCloudinaryParams } from '../src/lib/cloudinary.js';
+import { signToken } from '../src/lib/jwt.js';
 
 const app = createApp();
+const authToken = signToken(
+  { sub: '64b7f0c2a1b2c3d4e5f60719', role: 'resident', type: 'access' },
+  3600,
+);
 
 describe('cloudinary signing', () => {
   it('computes the documented SHA-1 signature with sorted parameters', () => {
@@ -26,8 +31,16 @@ describe('cloudinary signing', () => {
 });
 
 describe('POST /api/uploads/signature', () => {
+  it('requires authentication', async () => {
+    const res = await request(app).post('/api/uploads/signature').send({});
+    assert.equal(res.status, 401);
+  });
+
   it('rejects unknown folder names with 400', async () => {
-    const res = await request(app).post('/api/uploads/signature').send({ folder: '../etc' });
+    const res = await request(app)
+      .post('/api/uploads/signature')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ folder: '../etc' });
     assert.equal(res.status, 400);
     assert.equal(res.body.error, 'Validation failed');
   });
@@ -37,7 +50,10 @@ describe('POST /api/uploads/signature', () => {
     const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
     const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
 
-    const res = await request(app).post('/api/uploads/signature').send({ folder: 'issues' });
+    const res = await request(app)
+      .post('/api/uploads/signature')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ folder: 'issues' });
 
     if (!cloudName || !apiKey || !apiSecret) {
       assert.equal(res.status, 503);
