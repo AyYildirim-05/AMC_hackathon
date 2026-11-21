@@ -20,6 +20,17 @@ const schema = z.object({
   CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
   CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
   CLOUDINARY_UPLOAD_FOLDER: z.string().trim().min(1).default('issues'),
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be set in server/.env (at least 32 characters)'),
+  JWT_ACCESS_EXPIRES_IN_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60),
+  JWT_REFRESH_EXPIRES_IN_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 7),
 });
 
 export type Env = z.infer<typeof schema>;

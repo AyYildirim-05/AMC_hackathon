@@ -6,7 +6,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "JWT_SECRET=test-jwt-secret-only-for-automated-tests-32chars tsx --test test/*.test.ts"
   },
   "license": "MIT",
   "description": "Express + MongoDB API",

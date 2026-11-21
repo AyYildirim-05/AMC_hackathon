@@ -3,7 +3,10 @@ import express from 'express';
 import helmet from 'helmet';
 
 import { env } from './config/env.js';
+import { districtRouter } from './controllers/district.controller.js';
+import { issueRouter } from './controllers/issue.controller.js';
 import { errorHandler, notFound } from './middleware/error-handler.js';
+import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 
@@ -19,6 +22,9 @@ export function createApp() {
 
   app.use('/api/health', healthRouter);
   app.use('/api/uploads', uploadRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/issues', issueRouter);
+  app.use('/api/districts', districtRouter);
 
   app.use(notFound);
   app.use(errorHandler);
