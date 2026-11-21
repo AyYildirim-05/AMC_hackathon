@@ -16,6 +16,11 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({ error: `Invalid ${err.path}` });
     return;
   }
+  // Unique index violation, e.g. a second district with the same openNorthSlug.
+  if (err instanceof mongoose.mongo.MongoServerError && err.code === 11000) {
+    res.status(409).json({ error: 'Duplicate value', details: err.keyValue });
+    return;
+  }
   if (err instanceof mongoose.Error.ValidationError) {
     res.status(400).json({ error: 'Validation failed', details: err.errors });
     return;

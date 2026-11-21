@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
+import type { AuthUser } from '@/lib/auth/auth-api';
 import { onUnauthorized } from '@/lib/auth/auth-events';
 import { type AuthTokens, clearTokens, loadTokens, saveTokens } from '@/lib/auth/token-storage';
 
@@ -9,8 +10,9 @@ export type AuthStatus = 'loading' | 'signedIn' | 'signedOut';
 type AuthContextValue = {
   status: AuthStatus;
   isAuthenticated: boolean;
-  /** Store tokens returned by your login endpoint. */
-  signIn: (tokens: AuthTokens) => Promise<void>;
+  user: AuthUser | null;
+  /** Store tokens (and optionally user profile) returned by your login/register endpoint. */
+  signIn: (tokens: AuthTokens, user?: AuthUser | null) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -20,6 +22,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<AuthStatus>('loading');
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -27,7 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (active) setStatus(tokens ? 'signedIn' : 'signedOut');
     });
     // The axios interceptor emits this when a 401 can't be fixed by refreshing.
-    const unsubscribe = onUnauthorized(() => setStatus('signedOut'));
+    const unsubscribe = onUnauthorized(() => {
+      setUser(null);
+      setStatus('signedOut');
+    });
     return () => {
       active = false;
       unsubscribe();
@@ -38,17 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       isAuthenticated: status === 'signedIn',
-      signIn: async (tokens) => {
+      user,
+      signIn: async (tokens, signedInUser) => {
         await saveTokens(tokens);
+        if (signedInUser !== undefined) setUser(signedInUser);
         setStatus('signedIn');
       },
       signOut: async () => {
         await clearTokens();
         queryClient.clear();
+        setUser(null);
         setStatus('signedOut');
       },
     }),
-    [status, queryClient],
+    [status, user, queryClient],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

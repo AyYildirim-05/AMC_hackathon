@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { useTranslation } from 'react-i18next';
@@ -10,15 +11,25 @@ import { ColorPaletteShowcase } from '@/components/color-palette-showcase';
 import { ExternalLink } from '@/components/external-link';
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { TextVariantsShowcase } from '@/components/text-variants-showcase';
+import { ThemedButton } from '@/components/themed-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Collapsible } from '@/components/ui/collapsible';
 import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { fetchCurrentUser } from '@/lib/auth/auth-api';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function TabTwoScreen() {
   const { t } = useTranslation();
+  const { user, isAuthenticated, signOut } = useAuth();
+  const { data: fetchedUser } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: fetchCurrentUser,
+    enabled: isAuthenticated && !user,
+  });
+  const currentUser = user ?? fetchedUser ?? null;
   const safeAreaInsets = useSafeAreaInsets();
   const insets = {
     ...safeAreaInsets,
@@ -67,6 +78,19 @@ export default function TabTwoScreen() {
         </ThemedView>
 
         <ThemedView style={styles.sectionsWrapper}>
+          <Collapsible title={t('explore.sections.account')}>
+            {currentUser ? (
+              <ThemedText type="small">
+                {t('auth.signedInAs', {
+                  identity: `@${currentUser.username} (${currentUser.email})`,
+                })}
+              </ThemedText>
+            ) : null}
+            <ThemedButton type="border" tone="danger" size="small" onPress={() => void signOut()}>
+              {t('auth.signOutButton')}
+            </ThemedButton>
+          </Collapsible>
+
           <Collapsible title={t('explore.sections.language')}>
             <LanguageSwitcher />
           </Collapsible>
