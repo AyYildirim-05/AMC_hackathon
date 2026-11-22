@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
 import { PublishReportButton } from '@/components/report/PublishReportButton';
@@ -36,7 +37,7 @@ import {
   toggleIssueVote,
 } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
-import { detectDeviceLocation } from '@/lib/location';
+import { detectDeviceLocation, reverseGeocodeLocation } from '@/lib/location';
 import {
   ISSUE_STATUSES,
   WEATHER_ELEMENTS,
@@ -173,12 +174,12 @@ export function DistrictScreen({
   const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
   const statusColors = useIssueStatusColors();
   // The same shadow as every other card (ThemedCard), in the theme's shadow color.
   const cardShadow = { ...CARD_SHADOW, shadowColor: theme.shadow };
   const user = useCurrentUser();
   const queryClient = useQueryClient();
-  const isDark = theme.text !== '#1C211F';
 
   // Every Montréal borough (the server adds missing ones from OpenNorth), so a report can be filed
   // anywhere on the island, not only in districts someone created before.
@@ -492,17 +493,47 @@ export function DistrictScreen({
     };
   }, [queryClient]);
 
-  const handleAdjustPin = () => {
-    setIsAdjustingPin((prev) => !prev);
-    void locateAndResolveDistrict({ notifyOnFallback: false }).then((located) => {
-      if (!located) {
-        setCoordinates((prev) => ({
-          ...prev,
-          latitude: Number((prev.latitude + (Math.random() - 0.5) * 0.0005).toFixed(6)),
-          longitude: Number((prev.longitude + (Math.random() - 0.5) * 0.0005).toFixed(6)),
-        }));
+  // Pin mode: tap the map (or drag the report marker) to place the report point.
+  const handleAdjustPin = () => setIsAdjustingPin((prev) => !prev);
+
+  /** Only the latest pin placement may update the form, however fast the user taps. */
+  const pickRequestRef = useRef(0);
+
+  /**
+   * A point picked on the map becomes the report location: coordinates now, then the street
+   * address (reverse geocoding) and the Montreal district (OpenNorth) for it.
+   */
+  const handlePickPoint = async (picked: { latitude: number; longitude: number }) => {
+    const request = ++pickRequestRef.current;
+    const latitude = Number(picked.latitude.toFixed(6));
+    const longitude = Number(picked.longitude.toFixed(6));
+    setCoordinates((prev) => ({ ...prev, latitude, longitude }));
+
+    const geocoded = await reverseGeocodeLocation(latitude, longitude);
+    if (request !== pickRequestRef.current) return;
+    setAddress(geocoded.address ?? `${latitude}, ${longitude}`);
+    if (geocoded.place)
+      setCoordinates((prev) => ({ ...prev, place: geocoded.place ?? prev.place }));
+
+    try {
+      const { district } = await locateDistrictByCoordinates(latitude, longitude);
+      if (request !== pickRequestRef.current) return;
+      const item = toDistrictItem(district);
+      if (geocoded.postalCode && !district.postal_code) item.postalCode = geocoded.postalCode;
+      setPickedDistrict(item);
+      if (!geocoded.place) setCoordinates((prev) => ({ ...prev, place: item.name }));
+      void queryClient.invalidateQueries({ queryKey: ['districts'] });
+    } catch {
+      // Outside Montreal (or OpenNorth unavailable): keep the pin and address, not the district.
+      if (request === pickRequestRef.current) {
+        showToast(
+          tText(
+            'districtScreen.pinOutside',
+            "Cet endroit n'est dans aucun arrondissement de Montréal connu.",
+          ),
+        );
       }
-    });
+    }
   };
 
   const handleSaveDraft = () => {
@@ -663,10 +694,7 @@ export function DistrictScreen({
             <View style={styles.appIconBadge}>
               <Text style={styles.appIconText}>🏙</Text>
             </View>
-            <Text
-              numberOfLines={1}
-              style={[styles.navTitleText, { color: isDark ? '#E5F2EA' : '#0B1E16' }]}
-            >
+            <Text numberOfLines={1} style={[styles.navTitleText, { color: theme.text }]}>
               {tText('districtScreen.headerTitle', 'Municipalité')}
             </Text>
           </View>
@@ -695,27 +723,25 @@ export function DistrictScreen({
               styles.districtCard,
               cardShadow,
               {
-                backgroundColor: isDark ? '#1C3326' : '#E8F5EE',
-                borderColor: isDark ? '#2A4D3B' : '#CDE7D7',
+                backgroundColor: theme.background,
+                borderColor: theme.neutral200,
               },
             ]}
           >
             <View style={styles.districtTopRow}>
               {/* Radar / Crosshairs Green Badge */}
-              <View
-                style={[styles.radarBadge, { backgroundColor: isDark ? '#254D38' : '#D1FAE5' }]}
-              >
+              <View style={[styles.radarBadge, { backgroundColor: theme.background }]}>
                 <Text style={styles.radarIcon}>⌖</Text>
               </View>
 
               <View style={styles.districtInfoCol}>
                 <View style={styles.livePipelineRow}>
-                  <Text style={[styles.openNorthLabel, { color: isDark ? '#A3E3BE' : '#065F46' }]}>
+                  <Text style={[styles.openNorthLabel, { color: theme.neutral700 }]}>
                     {tText('districtScreen.openNorthPipeline', 'OPENNORTH PIPELINE • En direct')}
                   </Text>
                   <View style={styles.liveDot} />
                 </View>
-                <Text style={[styles.districtNameText, { color: isDark ? '#F0FAF4' : '#0C2E20' }]}>
+                <Text style={[styles.districtNameText, { color: theme.neutral900 }]}>
                   {selectedDistrict.name}
                 </Text>
               </View>
@@ -724,7 +750,7 @@ export function DistrictScreen({
             {/* Validation & Electoral Sector */}
             <View style={styles.sectorRow}>
               <Text style={styles.pinSmallIcon}>📍</Text>
-              <Text style={[styles.sectorText, { color: isDark ? '#A3C4B3' : '#335C48' }]}>
+              <Text style={[styles.sectorText, { color: theme.neutral700 }]}>
                 {tText(
                   'districtScreen.electoralSector',
                   `Secteur électoral ${selectedDistrict.postalCode} • ${selectedDistrict.status}`,
@@ -734,12 +760,7 @@ export function DistrictScreen({
             </View>
 
             {/* Segmented Buttons: Mon arrondissement / Autre arrondissement */}
-            <View
-              style={[
-                styles.segmentedContainer,
-                { backgroundColor: isDark ? '#14271D' : '#D6EADE' },
-              ]}
-            >
+            <View style={[styles.segmentedContainer, { backgroundColor: theme.neutral200 }]}>
               <Pressable
                 testID="tab-mon-arrondissement"
                 accessibilityRole="button"
@@ -751,7 +772,9 @@ export function DistrictScreen({
                   styles.segmentedBtn,
                   districtTab === 'my' && [
                     styles.segmentedBtnActive,
-                    { backgroundColor: isDark ? '#2B4235' : '#FFFFFF' },
+                    {
+                      backgroundColor: theme.neutral100,
+                    },
                   ],
                 ]}
               >
@@ -759,8 +782,13 @@ export function DistrictScreen({
                   style={[
                     styles.segmentedBtnText,
                     districtTab === 'my'
-                      ? [styles.segmentedBtnTextActive, { color: isDark ? '#E5F6EE' : '#0E2E20' }]
-                      : { color: isDark ? '#7FA692' : '#4E6B5C' },
+                      ? [
+                          styles.segmentedBtnTextActive,
+                          {
+                            color: theme.neutral900,
+                          },
+                        ]
+                      : { color: theme.neutral700 },
                   ]}
                 >
                   {tText('districtScreen.myDistrict', 'Mon arrondissement')}
@@ -778,7 +806,9 @@ export function DistrictScreen({
                   styles.segmentedBtn,
                   districtTab === 'other' && [
                     styles.segmentedBtnActive,
-                    { backgroundColor: isDark ? '#2B4235' : '#FFFFFF' },
+                    {
+                      backgroundColor: theme.neutral100,
+                    },
                   ],
                 ]}
               >
@@ -786,8 +816,13 @@ export function DistrictScreen({
                   style={[
                     styles.segmentedBtnText,
                     districtTab === 'other'
-                      ? [styles.segmentedBtnTextActive, { color: isDark ? '#E5F6EE' : '#0E2E20' }]
-                      : { color: isDark ? '#7FA692' : '#4E6B5C' },
+                      ? [
+                          styles.segmentedBtnTextActive,
+                          {
+                            color: theme.neutral900,
+                          },
+                        ]
+                      : { color: theme.neutral700 },
                   ]}
                 >
                   {tText('districtScreen.otherDistrict', 'Autre arrondissement')}
@@ -799,13 +834,13 @@ export function DistrictScreen({
           {/* ─── 4. Type d'incident civique (2x2 Grid) ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {tText('districtScreen.incidentType', "Type d'incident civique")}
               </Text>
               <Text style={styles.requiredBadge}>{tText('districtScreen.required', 'Requis')}</Text>
             </View>
 
-            <Text style={[styles.sectionSubtitle, { color: isDark ? '#8EA699' : '#57685F' }]}>
+            <Text style={[styles.sectionSubtitle, { color: theme.neutral700 }]}>
               {tText(
                 'districtScreen.categorySubtitle',
                 'Sélectionnez la catégorie qui correspond au problème rencontré.',
@@ -830,8 +865,8 @@ export function DistrictScreen({
                         : [
                             styles.categoryCardUnselected,
                             {
-                              backgroundColor: isDark ? '#1F2C24' : '#EEF4FA',
-                              borderColor: isDark ? '#2D3E33' : '#E2E9F2',
+                              backgroundColor: theme.background,
+                              borderColor: theme.neutral200,
                             },
                           ],
                       pressed && styles.pressedOpacity,
@@ -846,7 +881,9 @@ export function DistrictScreen({
                             ? styles.categoryIconCircleSelected
                             : [
                                 styles.categoryIconCircleUnselected,
-                                { backgroundColor: isDark ? '#2A3C31' : '#FFFFFF' },
+                                {
+                                  backgroundColor: theme.neutral100,
+                                },
                               ],
                         ]}
                       >
@@ -869,10 +906,7 @@ export function DistrictScreen({
                         styles.categoryTitle,
                         isSelected
                           ? styles.categoryTitleSelected
-                          : [
-                              styles.categoryTitleUnselected,
-                              { color: isDark ? '#E5F2EA' : '#14202B' },
-                            ],
+                          : [styles.categoryTitleUnselected, { color: theme.text }],
                       ]}
                     >
                       {tText(cat.titleKey, cat.fallbackTitle)}
@@ -886,7 +920,9 @@ export function DistrictScreen({
                           ? styles.categorySubSelected
                           : [
                               styles.categorySubUnselected,
-                              { color: isDark ? '#8BA396' : '#5E7385' },
+                              {
+                                color: theme.neutral600,
+                              },
                             ],
                       ]}
                     >
@@ -901,15 +937,15 @@ export function DistrictScreen({
           {/* ─── 4b. Météo & Éléments (Optionnel) ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {tText('districtScreen.weatherElementsTitle', 'Météo & Éléments')}
               </Text>
-              <Text style={[styles.optionalHeaderBadge, { color: isDark ? '#8EA699' : '#64748B' }]}>
+              <Text style={[styles.optionalHeaderBadge, { color: theme.neutral600 }]}>
                 {tText('districtScreen.optional', 'Optionnel')}
               </Text>
             </View>
 
-            <Text style={[styles.sectionSubtitle, { color: isDark ? '#8EA699' : '#57685F' }]}>
+            <Text style={[styles.sectionSubtitle, { color: theme.neutral700 }]}>
               {tText(
                 'districtScreen.weatherElementsSub',
                 'Indiquez les conditions météo liées à cet incident (optionnel).',
@@ -932,8 +968,8 @@ export function DistrictScreen({
                       isSelected
                         ? styles.elementChipSelected
                         : {
-                            backgroundColor: isDark ? '#1F2C24' : '#F1F6FA',
-                            borderColor: isDark ? '#2D3E33' : '#D9E4EE',
+                            backgroundColor: theme.neutral100,
+                            borderColor: theme.neutral200,
                           },
                       pressed && styles.pressedOpacity,
                     ]}
@@ -944,7 +980,9 @@ export function DistrictScreen({
                         styles.elementChipText,
                         isSelected
                           ? styles.elementChipTextSelected
-                          : { color: isDark ? '#D5E8DD' : '#1E3A5F' },
+                          : {
+                              color: theme.accent900,
+                            },
                       ]}
                     >
                       {tText(`issue.elements.${el}`, meta.fallbackLabel)}
@@ -958,7 +996,7 @@ export function DistrictScreen({
           {/* ─── 5. Localisation précise ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {tText('districtScreen.locationTitle', 'Localisation précise')}
               </Text>
               <Text style={styles.requiredBadge}>{tText('districtScreen.required', 'Requis')}</Text>
@@ -970,33 +1008,33 @@ export function DistrictScreen({
                 styles.addressCard,
                 cardShadow,
                 {
-                  backgroundColor: isDark ? '#1C2922' : '#FFFFFF',
-                  borderColor: isDark ? '#2E4136' : '#E2E9E4',
+                  backgroundColor: theme.neutral100,
+                  borderColor: theme.neutral200,
                 },
               ]}
             >
               <View
                 style={[
                   styles.addressPinBadge,
-                  { backgroundColor: isDark ? '#243C2E' : '#EFF6FF' },
+                  {
+                    backgroundColor: theme.neutral100,
+                  },
                 ]}
               >
                 <Text style={styles.addressPinIcon}>📍</Text>
               </View>
 
               <View style={styles.addressInfoCol}>
-                <Text
-                  style={[styles.detectedAddressLabel, { color: isDark ? '#8CA698' : '#697E72' }]}
-                >
+                <Text style={[styles.detectedAddressLabel, { color: theme.neutral600 }]}>
                   {tText('districtScreen.detectedAddress', 'ADRESSE DÉTECTÉE')}
                 </Text>
                 <TextInput
                   testID="location-address-input"
-                  style={[styles.addressValueText, { color: isDark ? '#E5F2EA' : '#141E18' }]}
+                  style={[styles.addressValueText, { color: theme.text }]}
                   value={address}
                   onChangeText={setAddress}
                   placeholder="1250 Rue Rachel Est, Montréal, QC..."
-                  placeholderTextColor={isDark ? '#6B8275' : '#889990'}
+                  placeholderTextColor={theme.neutral500}
                 />
               </View>
 
@@ -1009,7 +1047,7 @@ export function DistrictScreen({
                 }}
                 style={({ pressed }) => [
                   styles.searchIconButton,
-                  { backgroundColor: isDark ? '#263A2F' : '#F1F5F3' },
+                  { backgroundColor: theme.background },
                   pressed && styles.pressedOpacity,
                 ]}
               >
@@ -1028,17 +1066,15 @@ export function DistrictScreen({
               style={({ pressed }) => [
                 styles.useCurrentLocationBtn,
                 {
-                  backgroundColor: isDark ? '#1C3326' : '#E8F5EE',
-                  borderColor: isDark ? '#2A4D3B' : '#BDE3CC',
+                  backgroundColor: theme.background,
+                  borderColor: theme.neutral300,
                 },
                 pressed && styles.pressedOpacity,
                 isLocating && styles.disabledOpacity,
               ]}
             >
               <Text style={styles.useCurrentLocationIcon}>⌖</Text>
-              <Text
-                style={[styles.useCurrentLocationText, { color: isDark ? '#A3E3BE' : '#065F46' }]}
-              >
+              <Text style={[styles.useCurrentLocationText, { color: theme.neutral700 }]}>
                 {isLocating
                   ? tText('districtScreen.locating', 'Localisation en cours...')
                   : tText('districtScreen.useCurrentLocation', 'Utiliser ma position actuelle')}
@@ -1049,14 +1085,28 @@ export function DistrictScreen({
             <View
               style={[
                 styles.mapContainer,
+                isAdjustingPin && styles.mapContainerPinning,
                 {
-                  backgroundColor: isDark ? '#18241D' : '#E8EFEA',
-                  borderColor: isDark ? '#2B3D32' : '#DDE6E0',
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.neutral200,
                 },
               ]}
             >
               {/* Real map: the report point and the district's other issues by status */}
-              <ReportLocationMap point={coordinates} issues={mappableIssues} />
+              <ReportLocationMap
+                point={coordinates}
+                issues={mappableIssues}
+                pinMode={isAdjustingPin}
+                onPickPoint={(picked) => void handlePickPoint(picked)}
+              />
+
+              {isAdjustingPin ? (
+                <View testID="map-pin-hint" pointerEvents="none" style={styles.pinHint}>
+                  <Text style={styles.pinHintText}>
+                    {tText('districtScreen.pinHint', "Touchez la carte pour placer l'épingle")}
+                  </Text>
+                </View>
+              ) : null}
 
               {/* Coordinates Pill Badge under Pin */}
               <View style={styles.coordinatesPill}>
@@ -1072,10 +1122,10 @@ export function DistrictScreen({
                 onPress={handleAdjustPin}
                 style={({ pressed }) => [styles.adjustPinButton, pressed && styles.pressedOpacity]}
               >
-                <Text style={styles.adjustPinIcon}>🧭</Text>
+                <Text style={styles.adjustPinIcon}>{isAdjustingPin ? '✓' : '🧭'}</Text>
                 <Text style={styles.adjustPinText}>
                   {isAdjustingPin
-                    ? 'Épingle ajustée ✓'
+                    ? tText('districtScreen.pinDone', 'Terminé')
                     : tText('districtScreen.adjustPin', "Ajuster l'épingle")}
                 </Text>
               </Pressable>
@@ -1083,7 +1133,7 @@ export function DistrictScreen({
 
             {/* Status legend for the map's issue markers */}
             <View testID="report-map-legend" style={styles.mapLegend}>
-              <Text style={[styles.mapLegendTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.mapLegendTitle, { color: theme.text }]}>
                 {tText(
                   'reportMap.legendTitle',
                   `Autres signalements dans ${selectedDistrict.name}`,
@@ -1093,7 +1143,7 @@ export function DistrictScreen({
                 )}
               </Text>
               {mappableIssues.length === 0 ? (
-                <Text style={[styles.mapLegendText, { color: isDark ? '#A6C2B2' : '#434844' }]}>
+                <Text style={[styles.mapLegendText, { color: theme.neutral800 }]}>
                   {tText(
                     'reportMap.noIssues',
                     'Aucun autre signalement dans cet arrondissement pour le moment.',
@@ -1107,7 +1157,12 @@ export function DistrictScreen({
                         style={[styles.mapLegendDot, { backgroundColor: statusColors[status] }]}
                       />
                       <Text
-                        style={[styles.mapLegendText, { color: isDark ? '#A6C2B2' : '#434844' }]}
+                        style={[
+                          styles.mapLegendText,
+                          {
+                            color: theme.neutral800,
+                          },
+                        ]}
                       >
                         {`${tText(`issue.status.${status}`, status)} (${
                           mappableIssues.filter((i) => i.status === status).length
@@ -1123,10 +1178,10 @@ export function DistrictScreen({
           {/* ─── 6. Titre du signalement ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {tText('districtScreen.reportTitle', 'Titre du signalement')}
               </Text>
-              <Text style={[styles.charCountText, { color: isDark ? '#7E9689' : '#697B71' }]}>
+              <Text style={[styles.charCountText, { color: theme.neutral600 }]}>
                 {`${title.length}/70`}
               </Text>
             </View>
@@ -1136,23 +1191,23 @@ export function DistrictScreen({
               style={[
                 styles.singleLineInput,
                 {
-                  backgroundColor: isDark ? '#1C2922' : '#FFFFFF',
-                  borderColor: isDark ? '#2E4136' : '#DCE5E0',
-                  color: isDark ? '#E5F2EA' : '#141E18',
+                  backgroundColor: theme.neutral100,
+                  borderColor: theme.neutral200,
+                  color: theme.text,
                 },
               ]}
               value={title}
               maxLength={70}
               onChangeText={setTitle}
               placeholder="ex. Piste cyclable bloquée sur Rachel Est"
-              placeholderTextColor={isDark ? '#6B8275' : '#889990'}
+              placeholderTextColor={theme.neutral500}
             />
           </View>
 
           {/* ─── 7. Description détaillée ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {tText('districtScreen.detailedDesc', 'Description détaillée')}
               </Text>
               <Text style={styles.detourBadge}>
@@ -1167,25 +1222,25 @@ export function DistrictScreen({
               style={[
                 styles.multiLineInput,
                 {
-                  backgroundColor: isDark ? '#1C2922' : '#FFFFFF',
-                  borderColor: isDark ? '#2E4136' : '#DCE5E0',
-                  color: isDark ? '#E5F2EA' : '#141E18',
+                  backgroundColor: theme.neutral100,
+                  borderColor: theme.neutral200,
+                  color: theme.text,
                 },
               ]}
               value={description}
               onChangeText={setDescription}
               placeholder="Expliquez en détail le problème observé..."
-              placeholderTextColor={isDark ? '#6B8275' : '#889990'}
+              placeholderTextColor={theme.neutral500}
             />
           </View>
 
           {/* ─── 8. Photos justificatives (max. 3) ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {tText('districtScreen.photosTitle', 'Photos justificatives (max. 3)', { max: 3 })}
               </Text>
-              <Text style={[styles.photoCountBadge, { color: isDark ? '#8CA899' : '#576D61' }]}>
+              <Text style={[styles.photoCountBadge, { color: theme.neutral700 }]}>
                 {photos.length === 1
                   ? tText('districtScreen.photoAddedSingle', '1 ajoutée')
                   : tText('districtScreen.photoAddedPlural', `${photos.length} ajoutées`, {
@@ -1226,15 +1281,15 @@ export function DistrictScreen({
                     styles.photoSlot,
                     styles.photoAddSlot,
                     {
-                      backgroundColor: isDark ? '#1C2922' : '#F4F8FA',
-                      borderColor: isDark ? '#2B3D32' : '#D4E2EC',
+                      backgroundColor: theme.neutral100,
+                      borderColor: theme.neutral200,
                     },
                   ]}
                 >
                   <View style={styles.photoCameraCircle}>
                     <Text style={styles.photoCameraIcon}>📷</Text>
                   </View>
-                  <Text style={[styles.photoAddLabel, { color: isDark ? '#A2C2B1' : '#2D4B66' }]}>
+                  <Text style={[styles.photoAddLabel, { color: theme.neutral800 }]}>
                     {tText('districtScreen.takePhoto', 'Prendre photo')}
                   </Text>
                 </Pressable>
@@ -1262,15 +1317,15 @@ export function DistrictScreen({
                     styles.photoSlot,
                     styles.photoAddSlot,
                     {
-                      backgroundColor: isDark ? '#1C2922' : '#F4F8FA',
-                      borderColor: isDark ? '#2B3D32' : '#D4E2EC',
+                      backgroundColor: theme.neutral100,
+                      borderColor: theme.neutral200,
                     },
                   ]}
                 >
                   <View style={styles.photoCameraCircle}>
                     <Text style={styles.photoCameraIcon}>{photos.length === 1 ? '📷' : '🖼'}</Text>
                   </View>
-                  <Text style={[styles.photoAddLabel, { color: isDark ? '#A2C2B1' : '#2D4B66' }]}>
+                  <Text style={[styles.photoAddLabel, { color: theme.neutral800 }]}>
                     {photos.length === 1
                       ? tText('districtScreen.takePhoto', 'Prendre photo')
                       : tText('districtScreen.chooseFromGallery', 'Galerie')}
@@ -1300,15 +1355,13 @@ export function DistrictScreen({
                     styles.photoSlot,
                     styles.photoOptionalSlot,
                     {
-                      backgroundColor: isDark ? '#1A241E' : '#F1F4F6',
-                      borderColor: isDark ? '#25342B' : '#E2E7EA',
+                      backgroundColor: theme.background,
+                      borderColor: theme.neutral200,
                     },
                   ]}
                 >
                   <Text style={styles.photoOptionalIcon}>🖼</Text>
-                  <Text
-                    style={[styles.photoOptionalLabel, { color: isDark ? '#7E9689' : '#728593' }]}
-                  >
+                  <Text style={[styles.photoOptionalLabel, { color: theme.neutral600 }]}>
                     {photos.length === 1
                       ? tText('districtScreen.chooseFromGallery', 'Galerie')
                       : tText('districtScreen.optional', 'Optionnel')}
@@ -1324,8 +1377,8 @@ export function DistrictScreen({
               styles.mtlCard,
               cardShadow,
               {
-                backgroundColor: isDark ? '#1B2720' : '#FFFFFF',
-                borderColor: isDark ? '#2B3C32' : '#E0E8E3',
+                backgroundColor: theme.neutral100,
+                borderColor: theme.neutral200,
               },
             ]}
           >
@@ -1337,7 +1390,7 @@ export function DistrictScreen({
 
               <View style={styles.mtlTitleCol}>
                 <View style={styles.mtlHeaderLine}>
-                  <Text style={[styles.mtlTitle, { color: isDark ? '#E5F2EA' : '#0B1E16' }]}>
+                  <Text style={[styles.mtlTitle, { color: theme.text }]}>
                     {tText('districtScreen.mtl311Title', 'Transmission MTL-311')}
                   </Text>
                   <View style={styles.autoTicketPill}>
@@ -1353,12 +1406,15 @@ export function DistrictScreen({
                 testID="mtl-311-switch"
                 value={mtl311Enabled}
                 onValueChange={setMtl311Enabled}
-                trackColor={{ false: isDark ? '#3D5447' : '#D1DCD5', true: '#0D3B66' }}
-                thumbColor="#FFFFFF"
+                trackColor={{
+                  false: theme.neutral300,
+                  true: theme.accent900,
+                }}
+                thumbColor={theme.neutral100}
               />
             </View>
 
-            <Text style={[styles.mtlDescription, { color: isDark ? '#98B2A4' : '#475B50' }]}>
+            <Text style={[styles.mtlDescription, { color: theme.neutral700 }]}>
               {tText(
                 'districtScreen.mtl311Desc',
                 'Transmettre automatiquement une requête officielle aux services municipaux de la Ville de Montréal.',
@@ -1370,13 +1426,13 @@ export function DistrictScreen({
               style={[
                 styles.mtlNoticeBox,
                 {
-                  backgroundColor: isDark ? '#172738' : '#EFF6FF',
-                  borderColor: isDark ? '#233E5A' : '#DBEAFE',
+                  backgroundColor: theme.neutral100,
+                  borderColor: theme.backgroundElement,
                 },
               ]}
             >
               <Text style={styles.mtlNoticeIcon}>🛡</Text>
-              <Text style={[styles.mtlNoticeText, { color: isDark ? '#A9CBEB' : '#1E40AF' }]}>
+              <Text style={[styles.mtlNoticeText, { color: theme.accent800 }]}>
                 {tText(
                   'districtScreen.mtl311Tracking',
                   'Numéro de suivi municipal officiel délivré après publication (ex. MTL-311-2026-XXXXX).',
@@ -1403,15 +1459,13 @@ export function DistrictScreen({
               style={({ pressed }) => [
                 styles.secondaryDraftBtn,
                 {
-                  backgroundColor: isDark ? '#23352A' : '#E8EFF5',
+                  backgroundColor: theme.background,
                 },
                 pressed && styles.pressedOpacity,
               ]}
             >
-              <Text style={[styles.secondaryDraftIcon, { color: isDark ? '#C7E4D3' : '#0D3B66' }]}>
-                🔖
-              </Text>
-              <Text style={[styles.secondaryDraftText, { color: isDark ? '#C7E4D3' : '#0D3B66' }]}>
+              <Text style={[styles.secondaryDraftIcon, { color: theme.accent900 }]}>🔖</Text>
+              <Text style={[styles.secondaryDraftText, { color: theme.accent900 }]}>
                 {tText('districtScreen.draftButton', 'Enregistrer comme brouillon')}
               </Text>
             </Pressable>
@@ -1420,7 +1474,7 @@ export function DistrictScreen({
           {/* ─── 11. Footer Charter ─── */}
           <View style={styles.footerContainer}>
             <Text style={styles.footerIcon}>🛡</Text>
-            <Text style={[styles.footerText, { color: isDark ? '#7E988A' : '#687B70' }]}>
+            <Text style={[styles.footerText, { color: theme.neutral600 }]}>
               {tText(
                 'districtScreen.charterFooter',
                 'Charte citoyenne Montone • Données ouvertes OpenNorth',
@@ -1442,12 +1496,12 @@ export function DistrictScreen({
             style={[
               styles.modalDialog,
               {
-                backgroundColor: isDark ? '#1C2922' : '#FFFFFF',
-                borderColor: isDark ? '#2D3E33' : '#E2E9E4',
+                backgroundColor: theme.neutral100,
+                borderColor: theme.neutral200,
               },
             ]}
           >
-            <Text style={[styles.modalTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
               {tText('districtScreen.selectBorough', 'Sélectionner un arrondissement')}
             </Text>
 
@@ -1456,17 +1510,17 @@ export function DistrictScreen({
               value={boroughSearch}
               onChangeText={setBoroughSearch}
               placeholder={tText('districtScreen.searchBorough', 'Rechercher un arrondissement')}
-              placeholderTextColor={isDark ? '#8EA699' : '#6A7D73'}
+              placeholderTextColor={theme.neutral600}
               autoCorrect={false}
               style={[
                 styles.boroughSearchInput,
                 {
-                  color: isDark ? '#E5F2EA' : '#141E18',
-                  backgroundColor: isDark ? '#22332A' : '#F1F6F3',
+                  color: theme.text,
+                  backgroundColor: theme.neutral100,
                 },
               ]}
             />
-            <Text style={[styles.boroughOptionSub, { color: isDark ? '#8EA699' : '#57685F' }]}>
+            <Text style={[styles.boroughOptionSub, { color: theme.neutral700 }]}>
               {tText('districtScreen.boroughCount', `${visibleDistrictOptions.length}`, {
                 count: visibleDistrictOptions.length,
               })}
@@ -1486,20 +1540,14 @@ export function DistrictScreen({
                   style={({ pressed }) => [
                     styles.boroughOptionRow,
                     selectedDistrict.id === d.id && {
-                      backgroundColor: isDark ? '#283C30' : '#E8F5EE',
+                      backgroundColor: theme.background,
                     },
                     pressed && styles.pressedOpacity,
                   ]}
                 >
                   <View>
-                    <Text
-                      style={[styles.boroughOptionName, { color: isDark ? '#E5F2EA' : '#141E18' }]}
-                    >
-                      {d.name}
-                    </Text>
-                    <Text
-                      style={[styles.boroughOptionSub, { color: isDark ? '#8EA699' : '#57685F' }]}
-                    >
+                    <Text style={[styles.boroughOptionName, { color: theme.text }]}>{d.name}</Text>
+                    <Text style={[styles.boroughOptionSub, { color: theme.neutral700 }]}>
                       {d.hasPostalCode === false
                         ? d.status
                         : `Secteur ${d.postalCode} • ${d.status}`}
@@ -1533,19 +1581,19 @@ export function DistrictScreen({
         <View style={styles.modalOverlay}>
           <View
             testID="duplicate-issue-prompt"
-            style={[styles.successDialog, { backgroundColor: isDark ? '#1C2922' : '#FFFFFF' }]}
+            style={[styles.successDialog, { backgroundColor: theme.neutral100 }]}
           >
             {duplicate && (
               <>
                 <Text
                   accessibilityRole="header"
-                  style={[styles.successTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}
+                  style={[styles.successTitle, { color: theme.text }]}
                 >
                   {t('districtScreen.duplicate.prompt', {
                     distance: `${Math.round(duplicate.meters)} m`,
                   })}
                 </Text>
-                <Text style={[styles.successMessage, { color: isDark ? '#98B2A4' : '#4C5F54' }]}>
+                <Text style={[styles.successMessage, { color: theme.neutral700 }]}>
                   {duplicate.issue.title}
                 </Text>
               </>
@@ -1564,9 +1612,7 @@ export function DistrictScreen({
               onPress={handlePublishAnyway}
               style={styles.duplicateSecondaryBtn}
             >
-              <Text
-                style={[styles.duplicateSecondaryText, { color: isDark ? '#E5F2EA' : '#0A2540' }]}
-              >
+              <Text style={[styles.duplicateSecondaryText, { color: theme.text }]}>
                 {t('districtScreen.duplicate.publishAnyway')}
               </Text>
             </Pressable>
@@ -1576,9 +1622,7 @@ export function DistrictScreen({
               onPress={() => setDuplicate(null)}
               style={styles.duplicateSecondaryBtn}
             >
-              <Text
-                style={[styles.duplicateSecondaryText, { color: isDark ? '#98B2A4' : '#4C5F54' }]}
-              >
+              <Text style={[styles.duplicateSecondaryText, { color: theme.neutral700 }]}>
                 {t('districtScreen.duplicate.cancel')}
               </Text>
             </Pressable>
@@ -1589,795 +1633,814 @@ export function DistrictScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  pressedOpacity: {
-    opacity: 0.75,
-  },
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    pressedOpacity: {
+      opacity: 0.75,
+    },
 
-  // 1. Navigation Header
-  navHeader: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    borderBottomWidth: 1,
-  },
-  navIconButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backArrowText: {
-    fontSize: 22,
-    fontWeight: '500',
-  },
-  navTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  appIconBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#0D3B66',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appIconText: {
-    fontSize: 14,
-  },
-  navTitleText: {
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: Fonts.sans,
-  },
+    // 1. Navigation Header
+    navHeader: {
+      height: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.three,
+      borderBottomWidth: 1,
+    },
+    navIconButton: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backArrowText: {
+      fontSize: 22,
+      fontWeight: '500',
+    },
+    navTitleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.two,
+      flex: 1,
+      justifyContent: 'center',
+    },
+    appIconBadge: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: theme.accent900,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    appIconText: {
+      fontSize: 14,
+    },
+    navTitleText: {
+      fontSize: 17,
+      fontWeight: '700',
+      fontFamily: Fonts.sans,
+    },
 
-  // Toast
-  feedbackBanner: {
-    backgroundColor: '#0D3B66',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    alignItems: 'center',
-  },
-  feedbackText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+    // Toast
+    feedbackBanner: {
+      backgroundColor: theme.accent900,
+      paddingVertical: Spacing.two,
+      paddingHorizontal: Spacing.three,
+      alignItems: 'center',
+    },
+    feedbackText: {
+      color: theme.neutral100,
+      fontSize: 13,
+      fontWeight: '600',
+    },
 
-  // Scroll Content
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: Spacing.three,
-    paddingBottom: 48,
-    gap: Spacing.three,
-  },
+    // Scroll Content
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: Spacing.three,
+      paddingBottom: 48,
+      gap: Spacing.three,
+    },
 
-  // 3. OpenNorth Pipeline / District Card
-  districtCard: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  districtTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  radarBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radarIcon: {
-    fontSize: 20,
-    color: '#059669',
-    fontWeight: 'bold',
-  },
-  districtInfoCol: {
-    flex: 1,
-  },
-  livePipelineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  openNorthLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-  },
-  districtNameText: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  sectorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pinSmallIcon: {
-    fontSize: 14,
-  },
-  sectorText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  segmentedContainer: {
-    flexDirection: 'row',
-    borderRadius: 10,
-    padding: 3,
-    marginTop: 4,
-  },
-  segmentedBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
-  segmentedBtnActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  segmentedBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  segmentedBtnTextActive: {
-    fontWeight: '700',
-  },
+    // 3. OpenNorth Pipeline / District Card
+    districtCard: {
+      borderRadius: 18,
+      borderWidth: 1,
+      padding: Spacing.three,
+      gap: Spacing.two,
+    },
+    districtTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.two,
+    },
+    radarBadge: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    radarIcon: {
+      fontSize: 20,
+      color: theme.neutral600,
+      fontWeight: 'bold',
+    },
+    districtInfoCol: {
+      flex: 1,
+    },
+    livePipelineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    openNorthLabel: {
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 0.6,
+    },
+    liveDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.neutral500,
+    },
+    districtNameText: {
+      fontSize: 20,
+      fontWeight: '800',
+      marginTop: 2,
+    },
+    sectorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    pinSmallIcon: {
+      fontSize: 14,
+    },
+    sectorText: {
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    segmentedContainer: {
+      flexDirection: 'row',
+      borderRadius: 10,
+      padding: 3,
+      marginTop: 4,
+    },
+    segmentedBtn: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
+    },
+    segmentedBtnActive: {
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    segmentedBtnText: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    segmentedBtnTextActive: {
+      fontWeight: '700',
+    },
 
-  // 4. Section Blocks & 2x2 Grid
-  sectionBlock: {
-    gap: Spacing.two,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  requiredBadge: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#155EEF',
-  },
-  detourBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#155EEF',
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  categoryCard: {
-    width: '48.5%',
-    minHeight: 130,
-    borderRadius: 16,
-    padding: Spacing.three,
-    justifyContent: 'space-between',
-    borderWidth: 1,
-  },
-  categoryCardSelected: {
-    backgroundColor: '#0A2540',
-    borderColor: '#0A2540',
-  },
-  categoryCardUnselected: {},
-  categoryCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  categoryIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  categoryIconCircleSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  categoryIconCircleUnselected: {
-    borderWidth: 1,
-    borderColor: '#D8E2EC',
-  },
-  categoryIcon: {
-    fontSize: 18,
-  },
-  checkmarkCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmarkText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  emptyCirclePlaceholder: {
-    width: 20,
-    height: 20,
-  },
-  categoryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  categoryTitleSelected: {
-    color: '#FFFFFF',
-  },
-  categoryTitleUnselected: {},
-  categorySub: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  categorySubSelected: {
-    color: '#A4C5E6',
-  },
-  categorySubUnselected: {},
+    // 4. Section Blocks & 2x2 Grid
+    sectionBlock: {
+      gap: Spacing.two,
+    },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    sectionSubtitle: {
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    requiredBadge: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.accent700,
+    },
+    detourBadge: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.accent700,
+    },
+    categoryGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.two,
+    },
+    categoryCard: {
+      width: '48.5%',
+      minHeight: 130,
+      borderRadius: 16,
+      padding: Spacing.three,
+      justifyContent: 'space-between',
+      borderWidth: 1,
+    },
+    categoryCardSelected: {
+      backgroundColor: theme.text,
+      borderColor: theme.text,
+    },
+    categoryCardUnselected: {},
+    categoryCardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    categoryIconCircle: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categoryIconCircleSelected: {
+      backgroundColor: `${theme.neutral100}26`,
+    },
+    categoryIconCircleUnselected: {
+      borderWidth: 1,
+      borderColor: theme.neutral200,
+    },
+    categoryIcon: {
+      fontSize: 18,
+    },
+    checkmarkCircle: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.neutral100,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkmarkText: {
+      color: theme.neutral100,
+      fontSize: 12,
+      fontWeight: 'bold',
+    },
+    emptyCirclePlaceholder: {
+      width: 20,
+      height: 20,
+    },
+    categoryTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      marginTop: 6,
+    },
+    categoryTitleSelected: {
+      color: theme.neutral100,
+    },
+    categoryTitleUnselected: {},
+    categorySub: {
+      fontSize: 11,
+      marginTop: 2,
+      lineHeight: 15,
+    },
+    categorySubSelected: {
+      color: theme.neutral400,
+    },
+    categorySubUnselected: {},
 
-  // 4b. Weather Elements Chips
-  optionalHeaderBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  elementsChipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  elementChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  elementChipSelected: {
-    backgroundColor: '#0A2540',
-    borderColor: '#0A2540',
-  },
-  elementChipIcon: {
-    fontSize: 14,
-  },
-  elementChipText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
-  elementChipTextSelected: {
-    color: '#FFFFFF',
-  },
+    // 4b. Weather Elements Chips
+    optionalHeaderBadge: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    elementsChipsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    elementChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    elementChipSelected: {
+      backgroundColor: theme.text,
+      borderColor: theme.text,
+    },
+    elementChipIcon: {
+      fontSize: 14,
+    },
+    elementChipText: {
+      fontSize: 12.5,
+      fontWeight: '600',
+    },
+    elementChipTextSelected: {
+      color: theme.neutral100,
+    },
 
-  // 5. Precise Location
-  addressCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: Spacing.two,
-    gap: Spacing.two,
-  },
-  addressPinBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addressPinIcon: {
-    fontSize: 18,
-  },
-  addressInfoCol: {
-    flex: 1,
-  },
-  detectedAddressLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  addressValueText: {
-    fontSize: 14,
-    fontWeight: '600',
-    padding: 0,
-    margin: 0,
-  },
-  searchIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchIconText: {
-    fontSize: 16,
-  },
-  useCurrentLocationBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 11,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  useCurrentLocationIcon: {
-    fontSize: 16,
-    color: '#059669',
-    fontWeight: '700',
-  },
-  useCurrentLocationText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  disabledOpacity: {
-    opacity: 0.55,
-  },
+    // 5. Precise Location
+    addressCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: 14,
+      borderWidth: 1,
+      padding: Spacing.two,
+      gap: Spacing.two,
+    },
+    addressPinBadge: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addressPinIcon: {
+      fontSize: 18,
+    },
+    addressInfoCol: {
+      flex: 1,
+    },
+    detectedAddressLabel: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    addressValueText: {
+      fontSize: 14,
+      fontWeight: '600',
+      padding: 0,
+      margin: 0,
+    },
+    searchIconButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    searchIconText: {
+      fontSize: 16,
+    },
+    useCurrentLocationBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 11,
+      paddingHorizontal: Spacing.three,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    useCurrentLocationIcon: {
+      fontSize: 16,
+      color: theme.neutral600,
+      fontWeight: '700',
+    },
+    useCurrentLocationText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    disabledOpacity: {
+      opacity: 0.55,
+    },
 
-  // Map
-  mapLegend: { marginTop: 10, gap: 6 },
-  mapLegendTitle: { fontSize: 13, fontWeight: '700' },
-  mapLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  mapLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  mapLegendDot: { width: 10, height: 10, borderRadius: 5 },
-  mapLegendText: { fontSize: 12 },
-  mapContainer: {
-    height: 195,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+    // Map
+    mapLegend: { marginTop: 10, gap: 6 },
+    mapLegendTitle: { fontSize: 13, fontWeight: '700' },
+    mapLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+    mapLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    mapLegendDot: { width: 10, height: 10, borderRadius: 5 },
+    mapLegendText: { fontSize: 12 },
+    // Taller while placing the pin, so there is room to aim.
+    mapContainerPinning: {
+      height: 320,
+    },
+    pinHint: {
+      position: 'absolute',
+      top: Spacing.two,
+      alignSelf: 'center',
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.one,
+      borderRadius: 999,
+      backgroundColor: theme.text,
+    },
+    pinHintText: {
+      color: theme.background,
+      fontSize: 12.5,
+      fontWeight: '600',
+    },
+    mapContainer: {
+      height: 195,
+      borderRadius: 16,
+      borderWidth: 1,
+      overflow: 'hidden',
+      position: 'relative',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
 
-  // Pin on map
-  coordinatesPill: {
-    position: 'absolute',
-    bottom: 44,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  coordinatesPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#141E18',
-  },
-  adjustPinButton: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#D4DFD8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  adjustPinIcon: {
-    fontSize: 14,
-  },
-  adjustPinText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0A2540',
-  },
+    // Pin on map
+    coordinatesPill: {
+      position: 'absolute',
+      bottom: 44,
+      backgroundColor: `${theme.neutral100}F2`,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    coordinatesPillText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    adjustPinButton: {
+      position: 'absolute',
+      bottom: 10,
+      right: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: theme.neutral100,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.neutral300,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 2,
+      elevation: 3,
+    },
+    adjustPinIcon: {
+      fontSize: 14,
+    },
+    adjustPinText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.text,
+    },
 
-  // 6 & 7. Inputs
-  charCountText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  singleLineInput: {
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.three,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  multiLineInput: {
-    minHeight: 88,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: Spacing.three,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlignVertical: 'top',
-  },
+    // 6 & 7. Inputs
+    charCountText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    singleLineInput: {
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      paddingHorizontal: Spacing.three,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    multiLineInput: {
+      minHeight: 88,
+      borderRadius: 12,
+      borderWidth: 1,
+      padding: Spacing.three,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlignVertical: 'top',
+    },
 
-  // 8. Photo Slots
-  photoCountBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  photoSlotsRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  photoSlot: {
-    flex: 1,
-    height: 98,
-    borderRadius: 14,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  photoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  photoJoinedBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  photoJoinedText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  photoRemoveBtn: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoRemoveText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  photoAddSlot: {
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  photoCameraCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoCameraIcon: {
-    fontSize: 18,
-  },
-  photoAddLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  photoOptionalSlot: {
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  photoOptionalIcon: {
-    fontSize: 22,
-    color: '#8BA0B0',
-  },
-  photoOptionalLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+    // 8. Photo Slots
+    photoCountBadge: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    photoSlotsRow: {
+      flexDirection: 'row',
+      gap: Spacing.two,
+    },
+    photoSlot: {
+      flex: 1,
+      height: 98,
+      borderRadius: 14,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    photoImage: {
+      width: '100%',
+      height: '100%',
+    },
+    photoJoinedBadge: {
+      position: 'absolute',
+      top: 6,
+      left: 6,
+      backgroundColor: `${theme.text}A6`,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    photoJoinedText: {
+      color: theme.neutral100,
+      fontSize: 9,
+      fontWeight: '700',
+    },
+    photoRemoveBtn: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: `${theme.text}B2`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    photoRemoveText: {
+      color: theme.neutral100,
+      fontSize: 11,
+      fontWeight: 'bold',
+    },
+    photoAddSlot: {
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    photoCameraCircle: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.backgroundElement,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    photoCameraIcon: {
+      fontSize: 18,
+    },
+    photoAddLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    photoOptionalSlot: {
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    photoOptionalIcon: {
+      fontSize: 22,
+      color: theme.neutral500,
+    },
+    photoOptionalLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
 
-  // 9. MTL-311 Transmission
-  mtlCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  mtlTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  mtlBuildingBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#0A2540',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mtlBuildingIcon: {
-    fontSize: 20,
-    color: '#FFFFFF',
-  },
-  mtlTitleCol: {
-    flex: 1,
-  },
-  mtlHeaderLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  mtlTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  autoTicketPill: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  autoTicketText: {
-    color: '#1E40AF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  mtlDescription: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  mtlNoticeBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: 10,
-  },
-  mtlNoticeIcon: {
-    fontSize: 16,
-    color: '#2563EB',
-  },
-  mtlNoticeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    lineHeight: 15,
-    flex: 1,
-  },
+    // 9. MTL-311 Transmission
+    mtlCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: Spacing.three,
+      gap: Spacing.two,
+    },
+    mtlTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.two,
+    },
+    mtlBuildingBadge: {
+      width: 38,
+      height: 38,
+      borderRadius: 10,
+      backgroundColor: theme.text,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mtlBuildingIcon: {
+      fontSize: 20,
+      color: theme.neutral100,
+    },
+    mtlTitleCol: {
+      flex: 1,
+    },
+    mtlHeaderLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    mtlTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    autoTicketPill: {
+      backgroundColor: theme.backgroundElement,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    autoTicketText: {
+      color: theme.accent800,
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    mtlDescription: {
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    mtlNoticeBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.two,
+      borderRadius: 10,
+      borderWidth: 1,
+      padding: 10,
+    },
+    mtlNoticeIcon: {
+      fontSize: 16,
+      color: theme.accent700,
+    },
+    mtlNoticeText: {
+      fontSize: 11,
+      fontWeight: '600',
+      lineHeight: 15,
+      flex: 1,
+    },
 
-  // 10. Buttons
-  actionButtonsCol: {
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-  },
+    // 10. Buttons
+    actionButtonsCol: {
+      gap: Spacing.two,
+      marginTop: Spacing.two,
+    },
 
-  secondaryDraftBtn: {
-    height: 48,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  secondaryDraftIcon: {
-    fontSize: 15,
-  },
-  secondaryDraftText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
+    secondaryDraftBtn: {
+      height: 48,
+      borderRadius: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    secondaryDraftIcon: {
+      fontSize: 15,
+    },
+    secondaryDraftText: {
+      fontSize: 14,
+      fontWeight: '700',
+    },
 
-  // 11. Footer
-  footerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: Spacing.two,
-  },
-  footerIcon: {
-    fontSize: 13,
-    color: '#687B70',
-  },
-  footerText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
+    // 11. Footer
+    footerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginTop: Spacing.two,
+    },
+    footerIcon: {
+      fontSize: 13,
+      color: theme.neutral600,
+    },
+    footerText: {
+      fontSize: 11,
+      fontWeight: '500',
+    },
 
-  // Modals
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.three,
-  },
-  modalDialog: {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: Spacing.one,
-  },
-  boroughSearchInput: {
-    height: 40,
-    borderRadius: 10,
-    paddingHorizontal: Spacing.two,
-    fontSize: 15,
-  },
-  // About seven rows; the rest of the island's districts scroll.
-  boroughOptionsScroll: {
-    maxHeight: 380,
-  },
-  boroughOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.two,
-    borderRadius: 10,
-  },
-  boroughOptionName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  boroughOptionSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  boroughCheckmark: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#059669',
-  },
-  modalCloseBtn: {
-    alignSelf: 'center',
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    marginTop: Spacing.one,
-  },
-  modalCloseBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#155EEF',
-  },
+    // Modals
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: `${theme.text}8C`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Spacing.three,
+    },
+    modalDialog: {
+      width: '100%',
+      maxWidth: 420,
+      borderRadius: 18,
+      borderWidth: 1,
+      padding: Spacing.three,
+      gap: Spacing.two,
+    },
+    modalTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      marginBottom: Spacing.one,
+    },
+    boroughSearchInput: {
+      height: 40,
+      borderRadius: 10,
+      paddingHorizontal: Spacing.two,
+      fontSize: 15,
+    },
+    // About seven rows; the rest of the island's districts scroll.
+    boroughOptionsScroll: {
+      maxHeight: 380,
+    },
+    boroughOptionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: Spacing.two,
+      borderRadius: 10,
+    },
+    boroughOptionName: {
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    boroughOptionSub: {
+      fontSize: 12,
+      marginTop: 2,
+    },
+    boroughCheckmark: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: theme.neutral600,
+    },
+    modalCloseBtn: {
+      alignSelf: 'center',
+      paddingVertical: Spacing.two,
+      paddingHorizontal: Spacing.four,
+      marginTop: Spacing.one,
+    },
+    modalCloseBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.accent700,
+    },
 
-  // Success Dialog
-  successDialog: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 20,
-    padding: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  successIconBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#D1FAE5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  successCheckIcon: {
-    fontSize: 28,
-    color: '#059669',
-    fontWeight: 'bold',
-  },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  successMessage: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  ticketRefBox: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: Spacing.two,
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-  ticketRefLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  ticketRefValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  ticketBoroughText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  successCloseBtn: {
-    backgroundColor: '#0A2540',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    marginTop: 6,
-  },
-  successCloseBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  duplicateSecondaryBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-  },
-  duplicateSecondaryText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
+    // Success Dialog
+    successDialog: {
+      width: '100%',
+      maxWidth: 400,
+      borderRadius: 20,
+      padding: Spacing.four,
+      alignItems: 'center',
+      gap: Spacing.two,
+    },
+    successIconBadge: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 4,
+    },
+    successCheckIcon: {
+      fontSize: 28,
+      color: theme.neutral600,
+      fontWeight: 'bold',
+    },
+    successTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    successMessage: {
+      fontSize: 13,
+      lineHeight: 18,
+      textAlign: 'center',
+    },
+    ticketRefBox: {
+      width: '100%',
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: Spacing.two,
+      alignItems: 'center',
+      marginVertical: 4,
+    },
+    ticketRefLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+    },
+    ticketRefValue: {
+      fontSize: 18,
+      fontWeight: '800',
+      marginTop: 2,
+    },
+    ticketBoroughText: {
+      fontSize: 12,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    successCloseBtn: {
+      backgroundColor: theme.text,
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+      borderRadius: 12,
+      marginTop: 6,
+    },
+    successCloseBtnText: {
+      color: theme.neutral100,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    duplicateSecondaryBtn: {
+      paddingVertical: 10,
+      paddingHorizontal: 32,
+    },
+    duplicateSecondaryText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+  });

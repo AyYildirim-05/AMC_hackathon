@@ -16,9 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedText } from '@/components/utils/themed-text';
-import { Palette } from '@/constants/palette';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 export interface OnboardingPresentationModalProps {
@@ -108,8 +106,6 @@ export function OnboardingPresentationModal({
 }: OnboardingPresentationModalProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const brandScale = Palette[scheme];
   const { width: windowWidth } = useWindowDimensions();
   const slideWidth = Math.min(windowWidth, MaxContentWidth);
 
@@ -391,7 +387,7 @@ export function OnboardingPresentationModal({
                     style={[
                       styles.iconHero,
                       {
-                        backgroundColor: brandScale[200],
+                        backgroundColor: theme.neutral200,
                         borderColor: theme.tint,
                         shadowColor: theme.shadow,
                       },

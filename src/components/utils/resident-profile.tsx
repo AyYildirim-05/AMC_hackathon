@@ -48,7 +48,7 @@ export function ResidentProfile({ profile }: { profile: Profile }) {
             {t('profile.resident.noReports')}
           </ThemedText>
         ) : (
-          profile.reports.map((issue) => <IssueCard key={issue.id} issue={issue} />)
+          profile.reports.map((issue) => <IssueCard key={issue.id} issue={issue} collapsible />)
         )}
       </Section>
     </View>

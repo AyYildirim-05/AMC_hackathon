@@ -4,22 +4,6 @@ import { StyleSheet, Text } from 'react-native';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { Colors } from '@/constants/theme';
 
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
-
 it('renders a string label and calls onPress', async () => {
   const onPress = jest.fn();
   await render(<ThemedButton onPress={onPress}>RSVP</ThemedButton>);

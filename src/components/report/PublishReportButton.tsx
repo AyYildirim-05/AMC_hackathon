@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useTheme } from '@/hooks/use-theme';
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { MapIcon } from '@/components/map/MapIcon';
 
 export type PublishReportButtonProps = {
@@ -31,6 +33,8 @@ export function PublishReportButton({
   onPress,
   testID = 'publish-report-button',
 }: PublishReportButtonProps) {
+  const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [width, setWidth] = useState(0);
   const [drive] = useState(() => new Animated.Value(0));
   const [opacity] = useState(() => new Animated.Value(1));
@@ -94,7 +98,7 @@ export function PublishReportButton({
         importantForAccessibility="no-hide-descendants"
         style={[styles.truck, { opacity, transform: [{ translateX }, { translateY }] }]}
       >
-        <MapIcon name="truck" size={TRUCK_SIZE} color="#FFFFFF" />
+        <MapIcon name="truck" size={TRUCK_SIZE} color={theme.neutral100} />
       </Animated.View>
       <View style={styles.labelArea}>
         <Text style={styles.label}>{label}</Text>
@@ -103,42 +107,43 @@ export function PublishReportButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: '#0A2540',
-    justifyContent: 'center',
-    shadowColor: '#0A2540',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  pressed: { opacity: 0.85 },
-  truck: {
-    position: 'absolute',
-    left: INSET,
-    width: TRUCK_SIZE,
-    height: TRUCK_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Drives over the label.
-    zIndex: 1,
-  },
-  // Leaves room for the parked truck so the label stays centered and clear of it.
-  labelArea: {
-    paddingHorizontal: INSET + TRUCK_SIZE + 8,
-    alignItems: 'center',
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    button: {
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: theme.text,
+      justifyContent: 'center',
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 5,
+      elevation: 4,
+    },
+    buttonDisabled: {
+      opacity: 0.45,
+      elevation: 0,
+      shadowOpacity: 0,
+    },
+    pressed: { opacity: 0.85 },
+    truck: {
+      position: 'absolute',
+      left: INSET,
+      width: TRUCK_SIZE,
+      height: TRUCK_SIZE,
+      alignItems: 'center',
+      justifyContent: 'center',
+      // Drives over the label.
+      zIndex: 1,
+    },
+    // Leaves room for the parked truck so the label stays centered and clear of it.
+    labelArea: {
+      paddingHorizontal: INSET + TRUCK_SIZE + 8,
+      alignItems: 'center',
+    },
+    label: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: theme.neutral100,
+    },
+  });

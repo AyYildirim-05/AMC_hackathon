@@ -53,22 +53,6 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: (opts?: unknown) => mockLaunchImageLibrary(opts),
 }));
 
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
-
 const render = async (ui: React.ReactElement) => {
   // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.
   const client = new QueryClient({
@@ -518,6 +502,42 @@ describe('DistrictScreen', () => {
     await fireEvent.press(screen.getByTestId('district-screen-profile-button'));
 
     expect(screen.getByRole('header', { name: 'Profil' })).toBeOnTheScreen();
+  });
+
+  it('places the report pin from the map: address and borough follow the pin', async () => {
+    mockReverseGeocode.mockResolvedValue([
+      {
+        streetNumber: '2600',
+        street: 'Rue Masson',
+        city: 'Montréal',
+        region: 'QC',
+        postalCode: 'H1Y 1W1',
+        district: 'Rosemont',
+      },
+    ]);
+    await render(<DistrictScreen />);
+
+    await fireEvent.press(screen.getByTestId('map-adjust-pin-button'));
+    expect(screen.getByTestId('map-pin-hint')).toBeOnTheScreen();
+    expect(screen.getByText("Touchez la carte pour placer l'épingle")).toBeOnTheScreen();
+    expect(screen.getByText('Terminé')).toBeOnTheScreen();
+
+    await fireEvent(screen.getByTestId('report-location-map'), 'press', {
+      nativeEvent: { coordinate: { latitude: 45.5463121, longitude: -73.5774209 } },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-address-input').props.value).toBe(
+        '2600 Rue Masson, Montréal, QC H1Y 1W1',
+      ),
+    );
+    expect(screen.getByText(/45.546312, -73.577421/)).toBeOnTheScreen();
+    expect(mockReverseGeocode).toHaveBeenCalledWith({ latitude: 45.546312, longitude: -73.577421 });
+    // The borough follows the pin (OpenNorth lookup for the new point).
+    expect(await screen.findByText('Rosemont–La Petite-Patrie')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('map-adjust-pin-button'));
+    expect(screen.queryByTestId('map-pin-hint')).toBeNull();
   });
 
   it('auto-detects the borough via device GPS and OpenNorth API', async () => {

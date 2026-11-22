@@ -28,15 +28,22 @@ export function ColorSwatch({ color, label }: ColorSwatchProps) {
   );
 }
 
-/** The brand scale for the current color scheme. */
+/** The brand scales (neutral and accent) and base colors for the current color scheme. */
 export function PaletteScale() {
   const mode = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const palette = Palette[mode];
 
   return (
     <View style={styles.grid}>
       {PaletteShades.map((shade) => (
-        <ColorSwatch key={shade} label={String(shade)} color={Palette[mode][shade]} />
+        <ColorSwatch key={`n${shade}`} label={`neutral ${shade}`} color={palette.neutral[shade]} />
       ))}
+      {PaletteShades.map((shade) => (
+        <ColorSwatch key={`a${shade}`} label={`accent ${shade}`} color={palette.accent[shade]} />
+      ))}
+      <ColorSwatch label="bg" color={palette.bg} />
+      <ColorSwatch label="surface" color={palette.surface} />
+      <ColorSwatch label="ink" color={palette.ink} />
     </View>
   );
 }

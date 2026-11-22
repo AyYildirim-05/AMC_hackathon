@@ -4,6 +4,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
 import { useIssueStatusColors } from '@/components/utils/issue-status';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Roadwork } from '@/lib/api/roadworks';
 import type { Issue, IssueCategory } from '@/models/Issue';
@@ -70,7 +71,8 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
   ) {
     const { t } = useTranslation();
     const theme = useTheme();
-    const isDark = theme.text !== '#1C211F';
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     // Markers use theme colors only: status colors for reports, the text color for roadworks.
     const statusColors = useIssueStatusColors();
 
@@ -105,11 +107,9 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
           : 'standard';
 
     const revStrokeColor =
-      layerMode === 'works'
-        ? '#15803D'
-        : layerMode === 'contrast' || isDark
-          ? '#6EE7B7'
-          : '#446552';
+      // A light line on the dark satellite ("contrast") layer; otherwise neutral 700, which is dark
+      // in light mode and light in dark mode.
+      layerMode === 'contrast' && !isDark ? theme.neutral300 : theme.neutral700;
 
     const handleRegionChangeComplete = (next: Region) => {
       regionRef.current = next;

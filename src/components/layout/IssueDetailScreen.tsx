@@ -20,6 +20,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTheme } from '@/hooks/use-theme';
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { type District } from '@/components/utils/map-utils';
 import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { ProfileButton } from '@/components/utils/profile-button';
@@ -28,7 +30,6 @@ import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { computeInitials } from '@/components/utils/formatter';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
-import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts } from '@/lib/api/districts';
 import {
   type ApiIssueComment,
@@ -228,9 +229,9 @@ export function IssueDetailScreen({
   onConfirmResolution,
   testID = 'issue-detail-screen',
 }: IssueDetailScreenProps) {
-  const { t } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
+  const styles = useThemedStyles(createStyles);
+  const { t } = useTranslation();
   const user = useCurrentUser();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
@@ -447,7 +448,7 @@ export function IssueDetailScreen({
       <ProfilePanelProvider>
         <SafeAreaView
           testID={testID}
-          style={[styles.safeArea, { backgroundColor: isDark ? '#1A211D' : '#F7FAF8' }]}
+          style={[styles.safeArea, { backgroundColor: theme.neutral100 }]}
         >
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -458,8 +459,8 @@ export function IssueDetailScreen({
               style={[
                 styles.navBar,
                 {
-                  backgroundColor: isDark ? '#1A211D' : '#FFFFFF',
-                  borderBottomColor: isDark ? '#2C3A33' : '#E5E9E7',
+                  backgroundColor: theme.neutral100,
+                  borderBottomColor: theme.neutral200,
                 },
               ]}
             >
@@ -471,15 +472,13 @@ export function IssueDetailScreen({
                 hitSlop={12}
                 style={({ pressed }) => [styles.navIconButton, pressed && styles.pressedOpacity]}
               >
-                <Text style={[styles.backArrowText, { color: isDark ? '#E5F2EA' : '#1C211F' }]}>
-                  ←
-                </Text>
+                <Text style={[styles.backArrowText, { color: theme.text }]}>←</Text>
               </Pressable>
 
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={[styles.navTitle, { color: isDark ? '#E5F2EA' : '#1C211F' }]}
+                style={[styles.navTitle, { color: theme.text }]}
               >
                 {issue.title}
               </Text>
@@ -493,9 +492,7 @@ export function IssueDetailScreen({
                   hitSlop={12}
                   style={({ pressed }) => [styles.navIconButton, pressed && styles.pressedOpacity]}
                 >
-                  <Text style={[styles.shareIconText, { color: isDark ? '#E5F2EA' : '#1C211F' }]}>
-                    ↗
-                  </Text>
+                  <Text style={[styles.shareIconText, { color: theme.text }]}>↗</Text>
                 </Pressable>
                 <ProfileButton testID="issue-detail-profile-button" />
               </View>
@@ -511,8 +508,8 @@ export function IssueDetailScreen({
                 style={[
                   styles.card,
                   {
-                    backgroundColor: isDark ? '#232D28' : '#FFFFFF',
-                    borderColor: isDark ? '#35433C' : '#E8EEEA',
+                    backgroundColor: theme.neutral100,
+                    borderColor: theme.backgroundElement,
                   },
                 ]}
               >
@@ -523,13 +520,13 @@ export function IssueDetailScreen({
                     style={[
                       styles.pillBadge,
                       {
-                        backgroundColor: isDark ? '#2C3932' : '#F1F4F2',
-                        borderColor: isDark ? '#3B4D44' : '#E2E8E4',
+                        backgroundColor: theme.background,
+                        borderColor: theme.neutral200,
                       },
                     ]}
                   >
                     <Text style={styles.pillIcon}>🚧</Text>
-                    <Text style={[styles.pillText, { color: isDark ? '#CFE2D7' : '#334139' }]}>
+                    <Text style={[styles.pillText, { color: theme.neutral800 }]}>
                       Traffic & Safety
                     </Text>
                   </View>
@@ -539,18 +536,19 @@ export function IssueDetailScreen({
                     style={[
                       styles.pillBadge,
                       {
-                        backgroundColor: isDark ? '#1C3D2B' : '#ECF7F0',
-                        borderColor: isDark ? '#2B5E43' : '#C7EAD4',
+                        backgroundColor: theme.background,
+                        borderColor: theme.neutral200,
                       },
                     ]}
                   >
-                    <Text style={[styles.pillIcon, { color: isDark ? '#7EE0A7' : '#15803D' }]}>
-                      ✓
-                    </Text>
+                    <Text style={[styles.pillIcon, { color: theme.neutral700 }]}>✓</Text>
                     <Text
                       style={[
                         styles.pillText,
-                        { color: isDark ? '#A7F3D0' : '#166534', fontWeight: '600' },
+                        {
+                          color: theme.neutral700,
+                          fontWeight: '600',
+                        },
                       ]}
                     >
                       {districtName} • Verified
@@ -563,12 +561,19 @@ export function IssueDetailScreen({
                       style={[
                         styles.pillBadge,
                         {
-                          backgroundColor: isDark ? '#2A3630' : '#F1F4F2',
-                          borderColor: isDark ? '#384B42' : '#E5EAE7',
+                          backgroundColor: theme.background,
+                          borderColor: theme.backgroundElement,
                         },
                       ]}
                     >
-                      <Text style={[styles.refText, { color: isDark ? '#A6C4B4' : '#5A6C63' }]}>
+                      <Text
+                        style={[
+                          styles.refText,
+                          {
+                            color: theme.neutral700,
+                          },
+                        ]}
+                      >
                         # {issue.external_311_ref}
                       </Text>
                     </View>
@@ -584,13 +589,20 @@ export function IssueDetailScreen({
                         style={[
                           styles.pillBadge,
                           {
-                            backgroundColor: isDark ? '#1B3142' : '#EBF5FF',
-                            borderColor: isDark ? '#2C4D66' : '#BFDBFE',
+                            backgroundColor: theme.background,
+                            borderColor: theme.neutral300,
                           },
                         ]}
                       >
                         <Text style={styles.pillIcon}>{meta.icon}</Text>
-                        <Text style={[styles.pillText, { color: isDark ? '#BAE6FD' : '#1E40AF' }]}>
+                        <Text
+                          style={[
+                            styles.pillText,
+                            {
+                              color: theme.accent800,
+                            },
+                          ]}
+                        >
                           {t(`issue.elements.${el}`, { defaultValue: meta.fallbackLabel })}
                         </Text>
                       </View>
@@ -599,17 +611,15 @@ export function IssueDetailScreen({
                 </View>
 
                 {/* Large Issue Title */}
-                <Text style={[styles.issueTitle, { color: isDark ? '#F0FAF4' : '#141E18' }]}>
-                  {issue.title}
-                </Text>
+                <Text style={[styles.issueTitle, { color: theme.text }]}>{issue.title}</Text>
 
                 {/* Location & Reported Info Box */}
                 <View
                   style={[
                     styles.locationBox,
                     {
-                      backgroundColor: isDark ? '#1D2521' : '#F4F7F5',
-                      borderColor: isDark ? '#2C3A33' : '#E8EDE9',
+                      backgroundColor: theme.neutral100,
+                      borderColor: theme.backgroundElement,
                     },
                   ]}
                 >
@@ -617,14 +627,14 @@ export function IssueDetailScreen({
                     <Text style={styles.pinIcon}>📍</Text>
                     <Text
                       numberOfLines={1}
-                      style={[styles.addressText, { color: isDark ? '#E5F2EA' : '#1E2B24' }]}
+                      style={[styles.addressText, { color: theme.neutral900 }]}
                     >
                       {issue.address}
                     </Text>
                   </View>
                   <Text
                     numberOfLines={1}
-                    style={[styles.coordinatesText, { color: isDark ? '#8CB39D' : '#6A7D73' }]}
+                    style={[styles.coordinatesText, { color: theme.neutral600 }]}
                   >
                     Reported by @{authorHandle} • {issue.latitude.toFixed(4)},{' '}
                     {issue.longitude.toFixed(4)}
@@ -637,8 +647,8 @@ export function IssueDetailScreen({
                 style={[
                   styles.card,
                   {
-                    backgroundColor: isDark ? '#232D28' : '#FFFFFF',
-                    borderColor: isDark ? '#35433C' : '#E8EEEA',
+                    backgroundColor: theme.neutral100,
+                    borderColor: theme.backgroundElement,
                   },
                 ]}
               >
@@ -655,12 +665,19 @@ export function IssueDetailScreen({
                       style={[
                         styles.detailPhoto,
                         styles.photoPlaceholder,
-                        { backgroundColor: isDark ? '#1F2A24' : '#E8F0EB' },
+                        {
+                          backgroundColor: theme.backgroundElement,
+                        },
                       ]}
                     >
                       <Text style={styles.placeholderIcon}>📷</Text>
                       <Text
-                        style={[styles.placeholderText, { color: isDark ? '#8CB39D' : '#5A6C63' }]}
+                        style={[
+                          styles.placeholderText,
+                          {
+                            color: theme.neutral700,
+                          },
+                        ]}
                       >
                         Citizen Photo
                       </Text>
@@ -690,7 +707,7 @@ export function IssueDetailScreen({
                 <View style={styles.mapFooterRow}>
                   <View style={styles.gpsVerifiedRow}>
                     <View style={styles.gpsDot} />
-                    <Text style={[styles.gpsText, { color: isDark ? '#9ECEB0' : '#495C51' }]}>
+                    <Text style={[styles.gpsText, { color: theme.neutral700 }]}>
                       GPS Coordinates Verified • Ville de Montréal
                     </Text>
                   </View>
@@ -701,7 +718,7 @@ export function IssueDetailScreen({
                     hitSlop={8}
                     style={styles.fullMapLink}
                   >
-                    <Text style={[styles.fullMapText, { color: isDark ? '#A7F3D0' : '#14532D' }]}>
+                    <Text style={[styles.fullMapText, { color: theme.neutral800 }]}>
                       Full map ↗
                     </Text>
                   </Pressable>
@@ -713,8 +730,8 @@ export function IssueDetailScreen({
                 style={[
                   styles.card,
                   {
-                    backgroundColor: isDark ? '#232D28' : '#FFFFFF',
-                    borderColor: isDark ? '#35433C' : '#E8EEEA',
+                    backgroundColor: theme.neutral100,
+                    borderColor: theme.backgroundElement,
                   },
                 ]}
               >
@@ -722,9 +739,7 @@ export function IssueDetailScreen({
                   <ThemedText type="smallBold" style={styles.sectionHeaderTitle}>
                     Community Action & Validation
                   </ThemedText>
-                  <Text
-                    style={[styles.sectionHeaderSub, { color: isDark ? '#8CB39D' : '#6A7D73' }]}
-                  >
+                  <Text style={[styles.sectionHeaderSub, { color: theme.neutral600 }]}>
                     Ground verification
                   </Text>
                 </View>
@@ -739,13 +754,7 @@ export function IssueDetailScreen({
                     style={({ pressed }) => [
                       styles.primaryActionButton,
                       {
-                        backgroundColor: isUpvoted
-                          ? isDark
-                            ? '#15613B'
-                            : '#0F4E2E'
-                          : isDark
-                            ? '#2A4D3B'
-                            : '#1D3B2C',
+                        backgroundColor: isUpvoted ? theme.neutral800 : theme.neutral900,
                       },
                       pressed && styles.pressedOpacity,
                     ]}
@@ -763,29 +772,14 @@ export function IssueDetailScreen({
                     style={({ pressed }) => [
                       styles.secondaryActionButton,
                       {
-                        backgroundColor: isConfirmed
-                          ? isDark
-                            ? '#1C4A32'
-                            : '#C7EAD4'
-                          : isDark
-                            ? '#1E362A'
-                            : '#EDF7F1',
-                        borderColor: isDark ? '#326649' : '#C4E5D1',
+                        backgroundColor: isConfirmed ? theme.neutral200 : theme.background,
+                        borderColor: theme.neutral300,
                       },
                       pressed && styles.pressedOpacity,
                     ]}
                   >
-                    <Text
-                      style={[styles.confirmCheckSymbol, { color: isDark ? '#7EE0A7' : '#14532D' }]}
-                    >
-                      ✓
-                    </Text>
-                    <Text
-                      style={[
-                        styles.secondaryActionButtonText,
-                        { color: isDark ? '#A7F3D0' : '#14532D' },
-                      ]}
-                    >
+                    <Text style={[styles.confirmCheckSymbol, { color: theme.neutral800 }]}>✓</Text>
+                    <Text style={[styles.secondaryActionButtonText, { color: theme.neutral800 }]}>
                       Confirm Resolved ({confirmCount})
                     </Text>
                   </Pressable>
@@ -797,8 +791,8 @@ export function IssueDetailScreen({
                 style={[
                   styles.card,
                   {
-                    backgroundColor: isDark ? '#232D28' : '#FFFFFF',
-                    borderColor: isDark ? '#35433C' : '#E8EEEA',
+                    backgroundColor: theme.neutral100,
+                    borderColor: theme.backgroundElement,
                   },
                 ]}
               >
@@ -809,9 +803,7 @@ export function IssueDetailScreen({
                       {"Suivi de l'intervention municipale"}
                     </ThemedText>
                   </View>
-                  <Text style={[styles.arrCodeText, { color: isDark ? '#8CB39D' : '#6A7D73' }]}>
-                    ARR-08-311
-                  </Text>
+                  <Text style={[styles.arrCodeText, { color: theme.neutral600 }]}>ARR-08-311</Text>
                 </View>
 
                 {/* Vertical Timeline List */}
@@ -843,10 +835,8 @@ export function IssueDetailScreen({
                                 styles.timelineConnector,
                                 {
                                   backgroundColor: isCompleted
-                                    ? '#15803D'
-                                    : isDark
-                                      ? '#35453C'
-                                      : '#D8DFDB',
+                                    ? theme.neutral700
+                                    : theme.neutral300,
                                 },
                               ]}
                             />
@@ -860,8 +850,8 @@ export function IssueDetailScreen({
                               style={[
                                 styles.activeStepBox,
                                 {
-                                  backgroundColor: isDark ? '#1C2922' : '#F0F5F2',
-                                  borderColor: isDark ? '#2B4A39' : '#DDE8E1',
+                                  backgroundColor: theme.background,
+                                  borderColor: theme.neutral200,
                                 },
                               ]}
                             >
@@ -869,7 +859,9 @@ export function IssueDetailScreen({
                                 <Text
                                   style={[
                                     styles.activeStepTitle,
-                                    { color: isDark ? '#F0FAF4' : '#141E18' },
+                                    {
+                                      color: theme.text,
+                                    },
                                   ]}
                                 >
                                   {step.title}
@@ -877,7 +869,9 @@ export function IssueDetailScreen({
                                 <Text
                                   style={[
                                     styles.activeStepTime,
-                                    { color: isDark ? '#9ECEB0' : '#495C51' },
+                                    {
+                                      color: theme.neutral700,
+                                    },
                                   ]}
                                 >
                                   {step.time}
@@ -886,7 +880,9 @@ export function IssueDetailScreen({
                               <Text
                                 style={[
                                   styles.activeStepSubtitle,
-                                  { color: isDark ? '#8CB39D' : '#5A6C63' },
+                                  {
+                                    color: theme.neutral700,
+                                  },
                                 ]}
                               >
                                 {step.subtitle}
@@ -899,13 +895,7 @@ export function IssueDetailScreen({
                                   style={[
                                     styles.stepTitle,
                                     {
-                                      color: isCompleted
-                                        ? isDark
-                                          ? '#E5F2EA'
-                                          : '#1C211F'
-                                        : isDark
-                                          ? '#698875'
-                                          : '#8C9E94',
+                                      color: isCompleted ? theme.text : theme.neutral500,
                                     },
                                   ]}
                                 >
@@ -915,13 +905,7 @@ export function IssueDetailScreen({
                                   style={[
                                     styles.stepTime,
                                     {
-                                      color: isCompleted
-                                        ? isDark
-                                          ? '#8CB39D'
-                                          : '#5A6C63'
-                                        : isDark
-                                          ? '#597163'
-                                          : '#A0B0A7',
+                                      color: isCompleted ? theme.neutral700 : theme.neutral400,
                                     },
                                   ]}
                                 >
@@ -932,13 +916,7 @@ export function IssueDetailScreen({
                                 style={[
                                   styles.stepSubtitle,
                                   {
-                                    color: isCompleted
-                                      ? isDark
-                                        ? '#8CB39D'
-                                        : '#5A6C63'
-                                      : isDark
-                                        ? '#6A7D73'
-                                        : '#8C9E94',
+                                    color: isCompleted ? theme.neutral700 : theme.neutral500,
                                   },
                                 ]}
                               >
@@ -958,8 +936,8 @@ export function IssueDetailScreen({
                 style={[
                   styles.card,
                   {
-                    backgroundColor: isDark ? '#232D28' : '#FFFFFF',
-                    borderColor: isDark ? '#35433C' : '#E8EEEA',
+                    backgroundColor: theme.neutral100,
+                    borderColor: theme.backgroundElement,
                   },
                 ]}
               >
@@ -970,9 +948,7 @@ export function IssueDetailScreen({
                       Comments & Updates
                     </ThemedText>
                   </View>
-                  <Text
-                    style={[styles.updatesCountText, { color: isDark ? '#8CB39D' : '#6A7D73' }]}
-                  >
+                  <Text style={[styles.updatesCountText, { color: theme.neutral600 }]}>
                     {comments.length} updates
                   </Text>
                 </View>
@@ -987,8 +963,8 @@ export function IssueDetailScreen({
                           style={[
                             styles.officialResponseCard,
                             {
-                              backgroundColor: isDark ? '#1C2D24' : '#F2F7F4',
-                              borderColor: isDark ? '#294B37' : '#D4E6DC',
+                              backgroundColor: theme.neutral100,
+                              borderColor: theme.neutral200,
                             },
                           ]}
                         >
@@ -997,18 +973,15 @@ export function IssueDetailScreen({
                               <Text style={styles.officialCheckIcon}>✓</Text>
                             </View>
                             <View style={styles.officialHeaderTextGroup}>
-                              <Text
-                                style={[
-                                  styles.officialTitleText,
-                                  { color: isDark ? '#F0FAF4' : '#141E18' },
-                                ]}
-                              >
+                              <Text style={[styles.officialTitleText, { color: theme.text }]}>
                                 Official Borough Response
                               </Text>
                               <Text
                                 style={[
                                   styles.officialHandleText,
-                                  { color: isDark ? '#8CB39D' : '#5A6C63' },
+                                  {
+                                    color: theme.neutral700,
+                                  },
                                 ]}
                               >
                                 @{comment.username} ({districtName})
@@ -1019,7 +992,9 @@ export function IssueDetailScreen({
                               <Text
                                 style={[
                                   styles.commentTimeText,
-                                  { color: isDark ? '#8CB39D' : '#6A7D73' },
+                                  {
+                                    color: theme.neutral600,
+                                  },
                                 ]}
                               >
                                 {formatCommentDate(comment.created_at)}
@@ -1033,15 +1008,17 @@ export function IssueDetailScreen({
                               style={[
                                 styles.quoteBox,
                                 {
-                                  backgroundColor: isDark ? '#22382D' : '#FFFFFF',
-                                  borderColor: isDark ? '#2E503D' : '#E0ECE4',
+                                  backgroundColor: theme.neutral100,
+                                  borderColor: theme.backgroundElement,
                                 },
                               ]}
                             >
                               <Text
                                 style={[
                                   styles.quoteText,
-                                  { color: isDark ? '#DDEFE5' : '#233229' },
+                                  {
+                                    color: theme.neutral900,
+                                  },
                                 ]}
                               >
                                 &ldquo;{comment.body}&rdquo;
@@ -1069,7 +1046,9 @@ export function IssueDetailScreen({
                                     source={{ uri }}
                                     style={[
                                       styles.commentImageThumb,
-                                      { borderColor: isDark ? '#2E503D' : '#D4E6DC' },
+                                      {
+                                        borderColor: theme.neutral200,
+                                      },
                                     ]}
                                     contentFit="cover"
                                   />
@@ -1084,7 +1063,9 @@ export function IssueDetailScreen({
                             <Text
                               style={[
                                 styles.officialFooterText,
-                                { color: isDark ? '#8CB39D' : '#495C51' },
+                                {
+                                  color: theme.neutral700,
+                                },
                               ]}
                             >
                               Official ticket dispatched to Public Works Inspection
@@ -1102,8 +1083,8 @@ export function IssueDetailScreen({
                         style={[
                           styles.commentItemCard,
                           {
-                            backgroundColor: isDark ? '#202924' : '#F9FBFA',
-                            borderColor: isDark ? '#2E3D35' : '#E8EDE9',
+                            backgroundColor: theme.neutral100,
+                            borderColor: theme.backgroundElement,
                           },
                         ]}
                       >
@@ -1112,7 +1093,9 @@ export function IssueDetailScreen({
                           <View
                             style={[
                               styles.avatarCircle,
-                              { backgroundColor: isDark ? '#2A4436' : '#203A2B' },
+                              {
+                                backgroundColor: theme.neutral900,
+                              },
                             ]}
                           >
                             <Text style={styles.avatarInitialsText}>{initials}</Text>
@@ -1121,12 +1104,7 @@ export function IssueDetailScreen({
                           {/* User info & badges */}
                           <View style={styles.commentUserGroup}>
                             <View style={styles.commentUserMetaRow}>
-                              <Text
-                                style={[
-                                  styles.commentAuthorHandle,
-                                  { color: isDark ? '#F0FAF4' : '#141E18' },
-                                ]}
-                              >
+                              <Text style={[styles.commentAuthorHandle, { color: theme.text }]}>
                                 {comment.displayName}
                               </Text>
 
@@ -1136,12 +1114,12 @@ export function IssueDetailScreen({
                                     styles.commentBadgePill,
                                     comment.isFieldVerification
                                       ? {
-                                          backgroundColor: isDark ? '#1C4A32' : '#C6EED4',
-                                          borderColor: isDark ? '#2E6E4B' : '#A7E1BB',
+                                          backgroundColor: theme.neutral200,
+                                          borderColor: theme.neutral300,
                                         }
                                       : {
-                                          backgroundColor: isDark ? '#2C3932' : '#E8EDE9',
-                                          borderColor: isDark ? '#3B4D44' : '#DDE4DF',
+                                          backgroundColor: theme.backgroundElement,
+                                          borderColor: theme.neutral200,
                                         },
                                   ]}
                                 >
@@ -1150,10 +1128,12 @@ export function IssueDetailScreen({
                                       styles.commentBadgeText,
                                       comment.isFieldVerification
                                         ? {
-                                            color: isDark ? '#A7F3D0' : '#12542B',
+                                            color: theme.neutral800,
                                             fontWeight: '600',
                                           }
-                                        : { color: isDark ? '#CFE2D7' : '#495C51' },
+                                        : {
+                                            color: theme.neutral700,
+                                          },
                                     ]}
                                   >
                                     {comment.badge}
@@ -1167,7 +1147,9 @@ export function IssueDetailScreen({
                           <Text
                             style={[
                               styles.commentTimeText,
-                              { color: isDark ? '#8CB39D' : '#6A7D73' },
+                              {
+                                color: theme.neutral600,
+                              },
                             ]}
                           >
                             {formatCommentDate(comment.created_at)}
@@ -1179,7 +1161,9 @@ export function IssueDetailScreen({
                           <Text
                             style={[
                               styles.commentBodyText,
-                              { color: isDark ? '#D8E8DF' : '#2A3630' },
+                              {
+                                color: theme.neutral900,
+                              },
                             ]}
                           >
                             {comment.body}
@@ -1206,7 +1190,9 @@ export function IssueDetailScreen({
                                   source={{ uri }}
                                   style={[
                                     styles.commentImageThumb,
-                                    { borderColor: isDark ? '#2E3D35' : '#DCE5DF' },
+                                    {
+                                      borderColor: theme.neutral200,
+                                    },
                                   ]}
                                   contentFit="cover"
                                 />
@@ -1230,8 +1216,8 @@ export function IssueDetailScreen({
                 style={[
                   styles.pendingPhotosBar,
                   {
-                    backgroundColor: isDark ? '#1D2722' : '#F4F8F5',
-                    borderTopColor: isDark ? '#2C3A33' : '#E5EAE7',
+                    backgroundColor: theme.neutral100,
+                    borderTopColor: theme.backgroundElement,
                   },
                 ]}
               >
@@ -1262,9 +1248,7 @@ export function IssueDetailScreen({
                     </View>
                   ))}
                 </ScrollView>
-                <Text
-                  style={[styles.pendingPhotosCount, { color: isDark ? '#8CB39D' : '#5A6C63' }]}
-                >
+                <Text style={[styles.pendingPhotosCount, { color: theme.neutral700 }]}>
                   {pendingPhotos.length}/{MAX_COMMENT_PHOTOS}
                 </Text>
               </View>
@@ -1275,8 +1259,8 @@ export function IssueDetailScreen({
               style={[
                 styles.bottomInputBar,
                 {
-                  backgroundColor: isDark ? '#1A211D' : '#FFFFFF',
-                  borderTopColor: isDark ? '#2C3A33' : '#E5EAE7',
+                  backgroundColor: theme.neutral100,
+                  borderTopColor: theme.backgroundElement,
                 },
               ]}
             >
@@ -1291,9 +1275,8 @@ export function IssueDetailScreen({
                 style={({ pressed }) => [
                   styles.cameraButton,
                   {
-                    backgroundColor: isDark ? '#24302A' : '#EFF3F0',
-                    borderColor:
-                      pendingPhotos.length > 0 ? '#1E3B2C' : isDark ? '#33443C' : '#DFE5E1',
+                    backgroundColor: theme.background,
+                    borderColor: pendingPhotos.length > 0 ? theme.neutral900 : theme.neutral200,
                   },
                   (pressed || pendingPhotos.length >= MAX_COMMENT_PHOTOS) && styles.pressedOpacity,
                 ]}
@@ -1308,13 +1291,13 @@ export function IssueDetailScreen({
                 onChangeText={setNewCommentText}
                 editable={!isSubmittingComment}
                 placeholder="Add a comment..."
-                placeholderTextColor={isDark ? '#698875' : '#8C9E94'}
+                placeholderTextColor={theme.neutral500}
                 style={[
                   styles.commentTextInput,
                   {
-                    backgroundColor: isDark ? '#24302A' : '#F3F6F4',
-                    color: isDark ? '#F0FAF4' : '#141E18',
-                    borderColor: isDark ? '#33443C' : '#E0E6E2',
+                    backgroundColor: theme.neutral100,
+                    color: theme.text,
+                    borderColor: theme.neutral200,
                   },
                 ]}
               />
@@ -1330,13 +1313,13 @@ export function IssueDetailScreen({
                 style={({ pressed }) => [
                   styles.sendButton,
                   {
-                    backgroundColor: canSendComment ? '#1E3B2C' : isDark ? '#24352C' : '#9EBAA9',
+                    backgroundColor: canSendComment ? theme.neutral900 : theme.neutral400,
                   },
                   pressed && styles.pressedOpacity,
                 ]}
               >
                 {isSubmittingComment ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color={theme.neutral100} />
                 ) : (
                   <Text style={styles.sendButtonIcon}>➤</Text>
                 )}
@@ -1368,667 +1351,668 @@ export function IssueDetailScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  keyboardContainer: {
-    flex: 1,
-  },
-  pressedOpacity: {
-    opacity: 0.75,
-  },
-  /* Navigation Bar */
-  navBar: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    borderBottomWidth: 1,
-  },
-  navActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  navIconButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-  },
-  backArrowText: {
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  navTitle: {
-    flex: 1,
-    marginHorizontal: Spacing.two,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-    fontFamily: Fonts.sans,
-  },
-  shareIconText: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  /* Scroll Content */
-  scrollContent: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.four,
-    gap: Spacing.three,
-  },
-  card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: Spacing.three,
-  },
-  /* 1. Header Badges & Info */
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
-    marginBottom: Spacing.two,
-  },
-  pillBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 4,
-  },
-  pillIcon: {
-    fontSize: 12,
-  },
-  pillText: {
-    fontSize: 12,
-    fontFamily: Fonts.sans,
-    fontWeight: '500',
-  },
-  refText: {
-    fontSize: 12,
-    fontFamily: Fonts.mono,
-    fontWeight: '500',
-  },
-  issueTitle: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '800',
-    marginBottom: Spacing.three,
-    fontFamily: Fonts.sans,
-  },
-  locationBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: Spacing.two,
-    gap: 4,
-  },
-  locationHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pinIcon: {
-    fontSize: 14,
-  },
-  addressText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: Fonts.sans,
-    flex: 1,
-  },
-  coordinatesText: {
-    fontSize: 12,
-    paddingLeft: 20,
-    fontFamily: Fonts.mono,
-  },
-  /* 2. Photo & Overlays */
-  photoContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 220,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  detailPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  photoPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  placeholderIcon: {
-    fontSize: 32,
-  },
-  placeholderText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  overlayStatusPill: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(254, 243, 199, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  statusDotAmber: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D97706',
-  },
-  overlayStatusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  overlayCitizenPill: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    gap: 6,
-  },
-  overlayCameraIcon: {
-    fontSize: 12,
-  },
-  overlayCitizenText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  overlayLocationPill: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(17, 24, 39, 0.82)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    gap: 4,
-  },
-  overlayPinIcon: {
-    fontSize: 12,
-  },
-  overlayLocationText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#F9FAFB',
-  },
-  mapFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.two,
-  },
-  gpsVerifiedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flex: 1,
-  },
-  gpsDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#15803D',
-  },
-  gpsText: {
-    fontSize: 12,
-    fontFamily: Fonts.sans,
-  },
-  fullMapLink: {
-    paddingLeft: Spacing.one,
-  },
-  fullMapText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  /* 3. Community Action */
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.two,
-  },
-  sectionHeaderTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  sectionHeaderSub: {
-    fontSize: 12,
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  primaryActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 6,
-  },
-  upvoteArrowSymbol: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  primaryActionButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-  },
-  confirmCheckSymbol: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  secondaryActionButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  /* 4. Timeline */
-  rowAlign: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  pulseIcon: {
-    fontSize: 16,
-  },
-  arrCodeText: {
-    fontSize: 12,
-    fontFamily: Fonts.mono,
-  },
-  timelineList: {
-    paddingTop: Spacing.one,
-  },
-  timelineRow: {
-    flexDirection: 'row',
-    minHeight: 56,
-  },
-  timelineLeftCol: {
-    width: 32,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  completedNode: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#15803D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  completedNodeCheck: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  activeNodeOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#1E3B2C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    zIndex: 2,
-  },
-  activeNodeInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#1E3B2C',
-  },
-  pendingNode: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#9CA3AF',
-    backgroundColor: '#FFFFFF',
-    zIndex: 2,
-  },
-  timelineConnector: {
-    position: 'absolute',
-    top: 20,
-    bottom: -4,
-    width: 2,
-    zIndex: 1,
-  },
-  timelineContentCol: {
-    flex: 1,
-    paddingLeft: 8,
-    paddingBottom: Spacing.two,
-  },
-  activeStepBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: Spacing.two,
-  },
-  normalStepBox: {
-    paddingVertical: 2,
-  },
-  stepTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  activeStepTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  activeStepTime: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  activeStepSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  stepTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  stepTime: {
-    fontSize: 12,
-  },
-  stepSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  /* 5. Comments Section */
-  chatIcon: {
-    fontSize: 16,
-  },
-  updatesCountText: {
-    fontSize: 12,
-  },
-  commentsList: {
-    gap: Spacing.two,
-    paddingTop: Spacing.one,
-  },
-  officialResponseCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: Spacing.two,
-    gap: Spacing.two,
-  },
-  officialHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  officialBadgeCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#15803D',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  officialCheckIcon: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  officialHeaderTextGroup: {
-    flex: 1,
-  },
-  officialTitleText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  officialHandleText: {
-    fontSize: 12,
-  },
-  officialTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  clockIcon: {
-    fontSize: 11,
-  },
-  quoteBox: {
-    borderRadius: 10,
-    borderWidth: 1,
-    padding: Spacing.two,
-  },
-  quoteText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontStyle: 'italic',
-  },
-  officialFooterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  shieldCheckIcon: {
-    fontSize: 12,
-  },
-  officialFooterText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  commentItemCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: Spacing.two,
-    gap: 6,
-  },
-  commentHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  avatarCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  avatarInitialsText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  commentUserGroup: {
-    flex: 1,
-  },
-  commentUserMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  commentAuthorHandle: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  commentBadgePill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  commentBadgeText: {
-    fontSize: 11,
-  },
-  commentTimeText: {
-    fontSize: 11,
-  },
-  commentBodyText: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  commentImagesRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 4,
-  },
-  commentImageThumb: {
-    width: 112,
-    height: 84,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  pendingPhotosBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    gap: Spacing.two,
-  },
-  pendingPhotosList: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  pendingPhotoWrap: {
-    position: 'relative',
-    width: 56,
-    height: 56,
-  },
-  pendingPhotoThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-  },
-  pendingPhotoRemoveBtn: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(18, 28, 22, 0.88)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pendingPhotoRemoveText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  pendingPhotosCount: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  lightboxOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.three,
-    zIndex: 50,
-  },
-  lightboxCloseBadge: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 51,
-  },
-  lightboxCloseText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  lightboxImage: {
-    width: '100%',
-    height: '80%',
-  },
-  /* Bottom Comment Input Bar */
-  bottomInputBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderTopWidth: 1,
-    gap: Spacing.two,
-  },
-  cameraButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cameraButtonIcon: {
-    fontSize: 18,
-  },
-  commentTextInput: {
-    flex: 1,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 14,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendButtonIcon: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    marginLeft: 2,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+    },
+    keyboardContainer: {
+      flex: 1,
+    },
+    pressedOpacity: {
+      opacity: 0.75,
+    },
+    /* Navigation Bar */
+    navBar: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.three,
+      borderBottomWidth: 1,
+    },
+    navActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.one,
+    },
+    navIconButton: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 18,
+    },
+    backArrowText: {
+      fontSize: 22,
+      fontWeight: '600',
+    },
+    navTitle: {
+      flex: 1,
+      marginHorizontal: Spacing.two,
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'center',
+      fontFamily: Fonts.sans,
+    },
+    shareIconText: {
+      fontSize: 20,
+      fontWeight: '600',
+    },
+    /* Scroll Content */
+    scrollContent: {
+      paddingHorizontal: Spacing.three,
+      paddingTop: Spacing.three,
+      paddingBottom: Spacing.four,
+      gap: Spacing.three,
+    },
+    card: {
+      borderRadius: 18,
+      borderWidth: 1,
+      padding: Spacing.three,
+    },
+    /* 1. Header Badges & Info */
+    badgeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.one,
+      marginBottom: Spacing.two,
+    },
+    pillBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+      borderWidth: 1,
+      gap: 4,
+    },
+    pillIcon: {
+      fontSize: 12,
+    },
+    pillText: {
+      fontSize: 12,
+      fontFamily: Fonts.sans,
+      fontWeight: '500',
+    },
+    refText: {
+      fontSize: 12,
+      fontFamily: Fonts.mono,
+      fontWeight: '500',
+    },
+    issueTitle: {
+      fontSize: 22,
+      lineHeight: 28,
+      fontWeight: '800',
+      marginBottom: Spacing.three,
+      fontFamily: Fonts.sans,
+    },
+    locationBox: {
+      borderRadius: 12,
+      borderWidth: 1,
+      padding: Spacing.two,
+      gap: 4,
+    },
+    locationHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    pinIcon: {
+      fontSize: 14,
+    },
+    addressText: {
+      fontSize: 14,
+      fontWeight: '600',
+      fontFamily: Fonts.sans,
+      flex: 1,
+    },
+    coordinatesText: {
+      fontSize: 12,
+      paddingLeft: 20,
+      fontFamily: Fonts.mono,
+    },
+    /* 2. Photo & Overlays */
+    photoContainer: {
+      position: 'relative',
+      width: '100%',
+      height: 220,
+      borderRadius: 14,
+      overflow: 'hidden',
+    },
+    detailPhoto: {
+      width: '100%',
+      height: '100%',
+    },
+    photoPlaceholder: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    placeholderIcon: {
+      fontSize: 32,
+    },
+    placeholderText: {
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    overlayStatusPill: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${theme.background}F2`,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 16,
+      gap: 6,
+      borderWidth: 1,
+      borderColor: theme.accent200,
+    },
+    statusDotAmber: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: theme.accent500,
+    },
+    overlayStatusText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.accent700,
+    },
+    overlayCitizenPill: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${theme.neutral100}EB`,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 16,
+      gap: 6,
+    },
+    overlayCameraIcon: {
+      fontSize: 12,
+    },
+    overlayCitizenText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.neutral900,
+    },
+    overlayLocationPill: {
+      position: 'absolute',
+      bottom: 12,
+      left: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: `${theme.text}D1`,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 16,
+      gap: 4,
+    },
+    overlayPinIcon: {
+      fontSize: 12,
+    },
+    overlayLocationText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.neutral100,
+    },
+    mapFooterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingTop: Spacing.two,
+    },
+    gpsVerifiedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flex: 1,
+    },
+    gpsDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.neutral700,
+    },
+    gpsText: {
+      fontSize: 12,
+      fontFamily: Fonts.sans,
+    },
+    fullMapLink: {
+      paddingLeft: Spacing.one,
+    },
+    fullMapText: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    /* 3. Community Action */
+    cardHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.two,
+    },
+    sectionHeaderTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    sectionHeaderSub: {
+      fontSize: 12,
+    },
+    actionButtonsRow: {
+      flexDirection: 'row',
+      gap: Spacing.two,
+    },
+    primaryActionButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+      gap: 6,
+    },
+    upvoteArrowSymbol: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.neutral100,
+    },
+    primaryActionButtonText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.neutral100,
+    },
+    secondaryActionButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 6,
+    },
+    confirmCheckSymbol: {
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    secondaryActionButtonText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    /* 4. Timeline */
+    rowAlign: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    pulseIcon: {
+      fontSize: 16,
+    },
+    arrCodeText: {
+      fontSize: 12,
+      fontFamily: Fonts.mono,
+    },
+    timelineList: {
+      paddingTop: Spacing.one,
+    },
+    timelineRow: {
+      flexDirection: 'row',
+      minHeight: 56,
+    },
+    timelineLeftCol: {
+      width: 32,
+      alignItems: 'center',
+      position: 'relative',
+    },
+    completedNode: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.neutral700,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2,
+    },
+    completedNodeCheck: {
+      color: theme.neutral100,
+      fontSize: 12,
+      fontWeight: '800',
+    },
+    activeNodeOuter: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 2,
+      borderColor: theme.neutral900,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.neutral100,
+      zIndex: 2,
+    },
+    activeNodeInner: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.neutral900,
+    },
+    pendingNode: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: theme.neutral500,
+      backgroundColor: theme.neutral100,
+      zIndex: 2,
+    },
+    timelineConnector: {
+      position: 'absolute',
+      top: 20,
+      bottom: -4,
+      width: 2,
+      zIndex: 1,
+    },
+    timelineContentCol: {
+      flex: 1,
+      paddingLeft: 8,
+      paddingBottom: Spacing.two,
+    },
+    activeStepBox: {
+      borderRadius: 12,
+      borderWidth: 1,
+      padding: Spacing.two,
+    },
+    normalStepBox: {
+      paddingVertical: 2,
+    },
+    stepTitleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    activeStepTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    activeStepTime: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    activeStepSubtitle: {
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    stepTitle: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    stepTime: {
+      fontSize: 12,
+    },
+    stepSubtitle: {
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    /* 5. Comments Section */
+    chatIcon: {
+      fontSize: 16,
+    },
+    updatesCountText: {
+      fontSize: 12,
+    },
+    commentsList: {
+      gap: Spacing.two,
+      paddingTop: Spacing.one,
+    },
+    officialResponseCard: {
+      borderRadius: 14,
+      borderWidth: 1,
+      padding: Spacing.two,
+      gap: Spacing.two,
+    },
+    officialHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    officialBadgeCircle: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: theme.neutral700,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    officialCheckIcon: {
+      color: theme.neutral100,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    officialHeaderTextGroup: {
+      flex: 1,
+    },
+    officialTitleText: {
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    officialHandleText: {
+      fontSize: 12,
+    },
+    officialTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    clockIcon: {
+      fontSize: 11,
+    },
+    quoteBox: {
+      borderRadius: 10,
+      borderWidth: 1,
+      padding: Spacing.two,
+    },
+    quoteText: {
+      fontSize: 13,
+      lineHeight: 18,
+      fontStyle: 'italic',
+    },
+    officialFooterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    shieldCheckIcon: {
+      fontSize: 12,
+    },
+    officialFooterText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    commentItemCard: {
+      borderRadius: 14,
+      borderWidth: 1,
+      padding: Spacing.two,
+      gap: 6,
+    },
+    commentHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    avatarCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 8,
+    },
+    avatarInitialsText: {
+      color: theme.neutral100,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    commentUserGroup: {
+      flex: 1,
+    },
+    commentUserMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    commentAuthorHandle: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    commentBadgePill: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    commentBadgeText: {
+      fontSize: 11,
+    },
+    commentTimeText: {
+      fontSize: 11,
+    },
+    commentBodyText: {
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    commentImagesRow: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingTop: 4,
+    },
+    commentImageThumb: {
+      width: 112,
+      height: 84,
+      borderRadius: 10,
+      borderWidth: 1,
+    },
+    pendingPhotosBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.three,
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      gap: Spacing.two,
+    },
+    pendingPhotosList: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    pendingPhotoWrap: {
+      position: 'relative',
+      width: 56,
+      height: 56,
+    },
+    pendingPhotoThumb: {
+      width: 56,
+      height: 56,
+      borderRadius: 10,
+    },
+    pendingPhotoRemoveBtn: {
+      position: 'absolute',
+      top: -6,
+      right: -6,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: `${theme.text}E0`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pendingPhotoRemoveText: {
+      color: theme.neutral100,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    pendingPhotosCount: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    lightboxOverlay: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      backgroundColor: `${theme.text}E6`,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.three,
+      zIndex: 50,
+    },
+    lightboxCloseBadge: {
+      position: 'absolute',
+      top: 20,
+      right: 20,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: `${theme.neutral100}33`,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 51,
+    },
+    lightboxCloseText: {
+      color: theme.neutral100,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    lightboxImage: {
+      width: '100%',
+      height: '80%',
+    },
+    /* Bottom Comment Input Bar */
+    bottomInputBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      borderTopWidth: 1,
+      gap: Spacing.two,
+    },
+    cameraButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cameraButtonIcon: {
+      fontSize: 18,
+    },
+    commentTextInput: {
+      flex: 1,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      paddingHorizontal: 16,
+      fontSize: 14,
+    },
+    sendButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonIcon: {
+      color: theme.neutral100,
+      fontSize: 16,
+      marginLeft: 2,
+    },
+  });
 
 export default IssueDetailScreen;

@@ -73,33 +73,6 @@ jest.mock('react-native-maps', () => {
   };
 });
 
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let current = initial;
-    return {
-      get value() {
-        return current;
-      },
-      set value(next: T) {
-        current = next;
-      },
-      get: () => current,
-      set: (next: T) => {
-        current = next;
-      },
-    };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    Easing: { out: (fn: unknown) => fn, ease: (v: number) => v },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-    withRepeat: <T,>(value: T) => value,
-  };
-});
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'fr', languageTag: 'fr-CA' }],
 }));

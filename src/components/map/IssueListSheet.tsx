@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { shortStreetLabel } from '@/components/utils/map-utils';
 import { Spacing } from '@/constants/theme';
@@ -42,7 +43,7 @@ export function IssueListSheet({
 }: IssueListSheetProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
+  const styles = useThemedStyles(createStyles);
   const statusColors = useIssueStatusColors();
 
   // Same colors as the page and the tab bar above it (theme only), so the floating iOS tab bar
@@ -65,7 +66,7 @@ export function IssueListSheet({
         },
       ]}
     >
-      <View style={[styles.dragHandle, { backgroundColor: isDark ? '#3B4B42' : '#DFE4E0' }]} />
+      <View style={[styles.dragHandle, { backgroundColor: theme.neutral200 }]} />
 
       {issues.length === 0 ? (
         <View testID="map-empty-sheet" style={styles.emptyContent}>
@@ -142,55 +143,56 @@ export function IssueListSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: Spacing.three,
-    paddingTop: 8,
-    gap: 8,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 10,
-    backgroundColor: 'green',
-  },
-  dragHandle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3 },
-  header: { gap: 2 },
-  title: { fontSize: 16, fontWeight: '700' },
-  hint: { fontSize: 12 },
-  // About three rows visible, the same height as the details card; the rest scroll.
-  list: { maxHeight: 170 },
-  listContent: { gap: 6 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-    borderRadius: 14,
-  },
-  iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowText: { flex: 1, minWidth: 0, gap: 2 },
-  rowTitle: { fontSize: 14, fontWeight: '600' },
-  rowMeta: { fontSize: 12 },
-  statusCol: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 110 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 11.5, fontWeight: '600', flexShrink: 1 },
-  emptyContent: { alignItems: 'center', gap: 12, paddingVertical: Spacing.three },
-  emptyTitle: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
-  primaryCta: {
-    backgroundColor: '#39473F',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  primaryCtaText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
-  pressed: { opacity: 0.85 },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    sheet: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: Spacing.three,
+      paddingTop: 8,
+      gap: 8,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.14,
+      shadowRadius: 14,
+      elevation: 10,
+      backgroundColor: 'green',
+    },
+    dragHandle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3 },
+    header: { gap: 2 },
+    title: { fontSize: 16, fontWeight: '700' },
+    hint: { fontSize: 12 },
+    // About three rows visible, the same height as the details card; the rest scroll.
+    list: { maxHeight: 170 },
+    listContent: { gap: 6 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      borderRadius: 14,
+    },
+    iconCircle: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowText: { flex: 1, minWidth: 0, gap: 2 },
+    rowTitle: { fontSize: 14, fontWeight: '600' },
+    rowMeta: { fontSize: 12 },
+    statusCol: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 110 },
+    statusDot: { width: 8, height: 8, borderRadius: 4 },
+    statusText: { fontSize: 11.5, fontWeight: '600', flexShrink: 1 },
+    emptyContent: { alignItems: 'center', gap: 12, paddingVertical: Spacing.three },
+    emptyTitle: { fontSize: 15, fontWeight: '600', textAlign: 'center' },
+    primaryCta: {
+      backgroundColor: theme.neutral800,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 999,
+    },
+    primaryCtaText: { color: theme.neutral100, fontWeight: '700', fontSize: 13 },
+    pressed: { opacity: 0.85 },
+  });

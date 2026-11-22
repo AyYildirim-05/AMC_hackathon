@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaInsetsContext, SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { IssueCard } from '@/components/layout/IssueCard';
 import { useProfilePanel } from '@/components/layout/profile-panel';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
@@ -21,6 +22,7 @@ import { IssueListSheet } from '@/components/map/IssueListSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
 import { MontrealMapCanvas, type MontrealMapHandle } from '@/components/map/MontrealMapCanvas';
 import { RoadworkPreviewCard } from '@/components/map/RoadworkPreviewCard';
+import { BoroughPickerSheet } from '@/components/utils/borough-picker-sheet';
 import { RoadworksFilterBar } from '@/components/map/RoadworksFilterBar';
 import {
   BOROUGH_REGIONS,
@@ -64,10 +66,10 @@ function getCategoryChipIcon(category: IssueCategory): MapIconName {
 export default function CardScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
+  const styles = useThemedStyles(createStyles);
   const user = useCurrentUser();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const isDark = theme.text !== '#1C211F';
   const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'fr';
 
   const mapRef = useRef<MontrealMapHandle>(null);
@@ -351,8 +353,8 @@ export default function CardScreen() {
   // Same page background as every other tab (TabScreen / ThemedView).
   const headerBg = theme.background;
   const headerBorder = theme.backgroundElement;
-  const pillSurface = isDark ? 'rgba(33, 42, 37, 0.94)' : 'rgba(255, 255, 255, 0.94)';
-  const chipText = isDark ? '#D7E6DB' : '#39473F';
+  const pillSurface = `${theme.neutral100}F0`;
+  const chipText = theme.neutral800;
 
   return (
     <View style={[styles.screenRoot, { backgroundColor: headerBg }]}>
@@ -363,10 +365,10 @@ export default function CardScreen() {
         >
           <View style={styles.headerLeft}>
             <View style={styles.brandIconBox}>
-              <MapIcon name="city" size={18} color="#FFFFFF" />
+              <MapIcon name="city" size={18} color={theme.neutral100} />
             </View>
             <View style={styles.brandTextCol}>
-              <Text style={[styles.brandTitle, { color: isDark ? '#ECF4EF' : '#39473F' }]}>
+              <Text style={[styles.brandTitle, { color: theme.neutral800 }]}>
                 {t('map.brandTitle')}
               </Text>
               <Pressable
@@ -377,10 +379,7 @@ export default function CardScreen() {
                 style={styles.boroughTrigger}
               >
                 <View style={styles.boroughDot} />
-                <Text
-                  numberOfLines={1}
-                  style={[styles.boroughLabel, { color: isDark ? '#9ECEB0' : '#434844' }]}
-                >
+                <Text numberOfLines={1} style={[styles.boroughLabel, { color: theme.neutral800 }]}>
                   {activeBoroughLabel} ▾
                 </Text>
               </Pressable>
@@ -397,12 +396,12 @@ export default function CardScreen() {
               style={[
                 styles.profileAvatar,
                 {
-                  backgroundColor: isDark ? '#2D3E35' : '#D7E6DB',
-                  borderColor: isDark ? '#495C51' : '#C3C8C3',
+                  backgroundColor: theme.neutral200,
+                  borderColor: theme.neutral300,
                 },
               ]}
             >
-              <Text style={[styles.profileInitials, { color: isDark ? '#C6EBD3' : '#39473F' }]}>
+              <Text style={[styles.profileInitials, { color: theme.neutral800 }]}>
                 {userInitials}
               </Text>
             </Pressable>
@@ -432,14 +431,14 @@ export default function CardScreen() {
           <View pointerEvents="box-none" style={styles.topControlsOverlay}>
             <View style={styles.searchRow}>
               <View style={[styles.searchBar, { backgroundColor: pillSurface }]}>
-                <MapIcon name="search" size={16} color={isDark ? '#C6EBD3' : '#39473F'} />
+                <MapIcon name="search" size={16} color={theme.neutral800} />
                 <TextInput
                   testID="map-search-input"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   placeholder={t('map.searchPlaceholder')}
-                  placeholderTextColor={isDark ? '#8CA497' : '#6A736E'}
-                  style={[styles.searchInput, { color: isDark ? '#ECF4EF' : '#181D1B' }]}
+                  placeholderTextColor={theme.neutral600}
+                  style={[styles.searchInput, { color: theme.text }]}
                   returnKeyType="search"
                 />
                 {searchQuery.length > 0 ? (
@@ -448,9 +447,14 @@ export default function CardScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={t('map.clearSearch')}
                     onPress={() => setSearchQuery('')}
-                    style={[styles.clearBtn, { backgroundColor: isDark ? '#2F3D35' : '#EAEFEB' }]}
+                    style={[
+                      styles.clearBtn,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                      },
+                    ]}
                   >
-                    <MapIcon name="close" size={13} color={isDark ? '#C6EBD3' : '#434844'} />
+                    <MapIcon name="close" size={13} color={theme.neutral800} />
                   </Pressable>
                 ) : null}
               </View>
@@ -467,7 +471,7 @@ export default function CardScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <MapIcon name="tune" size={16} color="#FFFFFF" />
+                <MapIcon name="tune" size={16} color={theme.neutral100} />
               </Pressable>
 
               <Pressable
@@ -485,7 +489,7 @@ export default function CardScreen() {
                 <MapIcon
                   name="roadwork"
                   size={16}
-                  color={showRoadworks ? '#FFFFFF' : isDark ? '#FDBA74' : '#C2410C'}
+                  color={showRoadworks ? theme.neutral100 : theme.accent600}
                 />
               </Pressable>
             </View>
@@ -512,7 +516,7 @@ export default function CardScreen() {
                 <Text
                   style={[
                     styles.filterChipLabel,
-                    { color: selectedCategory === 'all' ? '#FFFFFF' : chipText },
+                    { color: selectedCategory === 'all' ? theme.neutral100 : chipText },
                   ]}
                 >
                   {t('map.filterAll')}
@@ -523,10 +527,8 @@ export default function CardScreen() {
                     {
                       backgroundColor:
                         selectedCategory === 'all'
-                          ? 'rgba(255,255,255,0.22)'
-                          : isDark
-                            ? '#2D3A33'
-                            : '#EAEFEB',
+                          ? `${theme.neutral100}38`
+                          : theme.backgroundElement,
                     },
                   ]}
                 >
@@ -534,8 +536,7 @@ export default function CardScreen() {
                     style={[
                       styles.chipCountText,
                       {
-                        color:
-                          selectedCategory === 'all' ? '#FFFFFF' : isDark ? '#A6E3B9' : '#434844',
+                        color: selectedCategory === 'all' ? theme.neutral100 : theme.neutral800,
                       },
                     ]}
                   >
@@ -563,10 +564,13 @@ export default function CardScreen() {
                     <MapIcon
                       name={getCategoryChipIcon(category)}
                       size={14}
-                      color={isActive ? '#C6EBD3' : isDark ? '#9ECEB0' : '#446552'}
+                      color={isActive ? theme.neutral200 : theme.neutral700}
                     />
                     <Text
-                      style={[styles.filterChipLabel, { color: isActive ? '#FFFFFF' : chipText }]}
+                      style={[
+                        styles.filterChipLabel,
+                        { color: isActive ? theme.neutral100 : chipText },
+                      ]}
                     >
                       {t(`map.categoryShort.${category}`)}
                     </Text>
@@ -575,17 +579,17 @@ export default function CardScreen() {
                         styles.chipCountPill,
                         {
                           backgroundColor: isActive
-                            ? 'rgba(255,255,255,0.22)'
-                            : isDark
-                              ? '#2D3A33'
-                              : '#EAEFEB',
+                            ? `${theme.neutral100}38`
+                            : theme.backgroundElement,
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.chipCountText,
-                          { color: isActive ? '#FFFFFF' : isDark ? '#A6E3B9' : '#434844' },
+                          {
+                            color: isActive ? theme.neutral100 : theme.neutral800,
+                          },
                         ]}
                       >
                         {count}
@@ -618,7 +622,7 @@ export default function CardScreen() {
                   <Text
                     style={[
                       styles.statusFilterLabel,
-                      { color: selectedStatus === 'all' ? '#FFFFFF' : chipText },
+                      { color: selectedStatus === 'all' ? theme.neutral100 : chipText },
                     ]}
                   >
                     {t('map.filterAllStatuses')}
@@ -641,7 +645,7 @@ export default function CardScreen() {
                       <Text
                         style={[
                           styles.statusFilterLabel,
-                          { color: isActive ? '#FFFFFF' : chipText },
+                          { color: isActive ? theme.neutral100 : chipText },
                         ]}
                       >
                         {t(`issue.status.${status}`)}
@@ -677,7 +681,7 @@ export default function CardScreen() {
             {layerMode !== 'standard' ? (
               <View style={styles.layerBadgeRow}>
                 <View style={styles.layerBadgePill}>
-                  <MapIcon name="layers" size={12} color="#C6EBD3" />
+                  <MapIcon name="layers" size={12} color={theme.neutral200} />
                   <Text style={styles.layerBadgeText}>{t(`map.layers.${layerMode}`)}</Text>
                 </View>
               </View>
@@ -697,7 +701,7 @@ export default function CardScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <MapIcon name="myLocation" size={19} color={isDark ? '#C6EBD3' : '#39473F'} />
+              <MapIcon name="myLocation" size={19} color={theme.neutral800} />
             </Pressable>
 
             <Pressable
@@ -708,7 +712,7 @@ export default function CardScreen() {
               style={({ pressed }) => [
                 styles.utilityCircleBtn,
                 {
-                  backgroundColor: layerMode === 'standard' ? pillSurface : '#39473F',
+                  backgroundColor: layerMode === 'standard' ? pillSurface : theme.neutral800,
                 },
                 pressed && styles.pressed,
               ]}
@@ -716,7 +720,7 @@ export default function CardScreen() {
               <MapIcon
                 name="layers"
                 size={19}
-                color={layerMode === 'standard' ? (isDark ? '#A6E3B9' : '#434844') : '#C6EBD3'}
+                color={layerMode === 'standard' ? theme.neutral800 : theme.neutral200}
               />
             </Pressable>
 
@@ -728,12 +732,14 @@ export default function CardScreen() {
                 onPress={handleZoomIn}
                 style={({ pressed }) => [styles.zoomBtn, pressed && styles.pressed]}
               >
-                <MapIcon name="plus" size={18} color={isDark ? '#C6EBD3' : '#434844'} />
+                <MapIcon name="plus" size={18} color={theme.neutral800} />
               </Pressable>
               <View
                 style={[
                   styles.zoomDivider,
-                  { backgroundColor: isDark ? 'rgba(158,206,176,0.2)' : 'rgba(195,200,195,0.5)' },
+                  {
+                    backgroundColor: `${theme.neutral300}80`,
+                  },
                 ]}
               />
               <Pressable
@@ -743,7 +749,7 @@ export default function CardScreen() {
                 onPress={handleZoomOut}
                 style={({ pressed }) => [styles.zoomBtn, pressed && styles.pressed]}
               >
-                <MapIcon name="minus" size={18} color={isDark ? '#C6EBD3' : '#434844'} />
+                <MapIcon name="minus" size={18} color={theme.neutral800} />
               </Pressable>
             </View>
           </View>
@@ -805,9 +811,14 @@ export default function CardScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('map.closeModal')}
                 onPress={() => setDetailModalVisible(false)}
-                style={[styles.modalCloseBtn, { backgroundColor: isDark ? '#2A362F' : '#DFE8E2' }]}
+                style={[
+                  styles.modalCloseBtn,
+                  {
+                    backgroundColor: theme.neutral200,
+                  },
+                ]}
               >
-                <MapIcon name="close" size={16} color={isDark ? '#ECF4EF' : '#39473F'} />
+                <MapIcon name="close" size={16} color={theme.neutral800} />
               </Pressable>
             </View>
 
@@ -829,12 +840,17 @@ export default function CardScreen() {
                   onConfirmResolution={() => handleToggleConfirm(selectedIssue.id)}
                 />
                 <View
-                  style={[styles.coordsBox, { backgroundColor: isDark ? '#232D28' : '#FFFFFF' }]}
+                  style={[
+                    styles.coordsBox,
+                    {
+                      backgroundColor: theme.neutral100,
+                    },
+                  ]}
                 >
                   <ThemedText type="caption" tone="secondary">
                     {t('map.coordinates')}
                   </ThemedText>
-                  <Text style={[styles.coordsText, { color: isDark ? '#C6EBD3' : '#39473F' }]}>
+                  <Text style={[styles.coordsText, { color: theme.neutral800 }]}>
                     {selectedIssue.latitude.toFixed(5)}, {selectedIssue.longitude.toFixed(5)}
                     {selectedIssueDistrictName ? ` • ${selectedIssueDistrictName}` : ''}
                   </Text>
@@ -845,425 +861,352 @@ export default function CardScreen() {
         </View>
       </Modal>
 
-      {/* ─── Borough Picker Modal ─── */}
-      <Modal
+      {/* ─── Borough Picker (scrolls; closes with ✕ or a tap above it) ─── */}
+      <BoroughPickerSheet
         visible={boroughModalVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setBoroughModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalBackdropCentered}
-          onPress={() => setBoroughModalVisible(false)}
-        >
-          <Pressable
-            onPress={(event) => event.stopPropagation()}
-            style={[styles.pickerCard, { backgroundColor: isDark ? '#212A25' : '#FFFFFF' }]}
-          >
-            <ThemedText type="h3" style={styles.pickerTitle}>
-              {t('map.boroughFilterTitle')}
-            </ThemedText>
-
-            <Pressable
-              testID="map-borough-option-all"
-              accessibilityRole="button"
-              onPress={() => handleSelectDistrict('all')}
-              style={[
-                styles.boroughOption,
-                selectedDistrictId === 'all' && {
-                  backgroundColor: isDark ? '#2D4337' : '#E3EFE7',
-                },
-              ]}
-            >
-              <Text style={[styles.boroughOptionText, { color: isDark ? '#ECF4EF' : '#181D1B' }]}>
-                {t('map.allBoroughs')}
-              </Text>
-              <Text style={[styles.boroughOptionCount, { color: isDark ? '#A6E3B9' : '#446552' }]}>
-                {issues.length}
-              </Text>
-            </Pressable>
-
-            {districts.map((district) => {
-              const count = issues.filter((item) => item.district_id === district.id).length;
-              const isSelected = selectedDistrictId === district.id;
-              return (
-                <Pressable
-                  key={district.id}
-                  testID={`map-borough-option-${district.open_north_slug}`}
-                  accessibilityRole="button"
-                  onPress={() => handleSelectDistrict(district.id)}
-                  style={[
-                    styles.boroughOption,
-                    isSelected && {
-                      backgroundColor: isDark ? '#2D4337' : '#E3EFE7',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[styles.boroughOptionText, { color: isDark ? '#ECF4EF' : '#181D1B' }]}
-                  >
-                    {currentLang === 'en' ? district.name_en : district.name_fr}
-                  </Text>
-                  <Text
-                    style={[styles.boroughOptionCount, { color: isDark ? '#A6E3B9' : '#446552' }]}
-                  >
-                    {count}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
+        title={t('map.boroughFilterTitle')}
+        testID="map-borough-picker"
+        options={[
+          {
+            key: 'all',
+            label: t('map.allBoroughs'),
+            detail: t('map.clusterLabel', { count: issues.length }),
+            selected: selectedDistrictId === 'all',
+            testID: 'map-borough-option-all',
+            hideWhileSearching: true,
+          },
+          ...districts.map((district) => ({
+            key: district.id,
+            label: currentLang === 'en' ? district.name_en : district.name_fr,
+            detail: t('map.clusterLabel', {
+              count: issues.filter((item) => item.district_id === district.id).length,
+            }),
+            selected: selectedDistrictId === district.id,
+            testID: `map-borough-option-${district.open_north_slug}`,
+          })),
+        ]}
+        onSelect={(key) => handleSelectDistrict(key)}
+        onClose={() => setBoroughModalVisible(false)}
+      />
 
       {/* ─── Profile (same sheet as the avatar in every other tab's header) ─── */}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screenRoot: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  safeArea: {
-    flex: 1,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingBottom: BottomTabInset,
-  },
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    screenRoot: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    safeArea: {
+      flex: 1,
+      width: '100%',
+      maxWidth: MaxContentWidth,
+      paddingBottom: BottomTabInset,
+    },
 
-  // ── Header Bar ──
-  headerBar: {
-    height: 60,
-    paddingHorizontal: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-    borderBottomWidth: 1,
-    zIndex: 1020,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-    minWidth: 0,
-  },
-  brandIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    backgroundColor: '#39473F',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandTextCol: {
-    flex: 1,
-    minWidth: 0,
-  },
-  brandTitle: {
-    fontSize: 16.5,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  boroughTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 1,
-  },
-  boroughDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#ABCFB7',
-  },
-  boroughLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    flexShrink: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  profileAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileInitials: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
+    // ── Header Bar ──
+    headerBar: {
+      height: 60,
+      paddingHorizontal: Spacing.three,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      borderBottomWidth: 1,
+      zIndex: 1020,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+      minWidth: 0,
+    },
+    brandIconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 11,
+      backgroundColor: theme.neutral800,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    brandTextCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    brandTitle: {
+      fontSize: 16.5,
+      fontWeight: '700',
+      letterSpacing: -0.3,
+    },
+    boroughTrigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      marginTop: 1,
+    },
+    boroughDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: theme.neutral400,
+    },
+    boroughLabel: {
+      fontSize: 12,
+      fontWeight: '500',
+      flexShrink: 1,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    profileAvatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      borderWidth: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    profileInitials: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
 
-  // ── Map Stage ──
-  mapStage: {
-    flex: 1,
-    position: 'relative',
-    overflow: 'hidden',
-  },
+    // ── Map Stage ──
+    mapStage: {
+      flex: 1,
+      position: 'relative',
+      overflow: 'hidden',
+    },
 
-  // ── Floating Top Controls ──
-  topControlsOverlay: {
-    position: 'absolute',
-    top: 12,
-    left: 0,
-    right: 0,
-    gap: 8,
-    zIndex: 1005,
-  },
-  // Search, filters and roadworks must share one row even on narrow phones (iPhone SE / mini):
-  // the buttons keep their size and the search field takes whatever width is left.
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.three,
-  },
-  searchBar: {
-    flex: 1,
-    minWidth: 0,
-    height: 40,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#1C211F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  searchInput: {
-    flex: 1,
-    minWidth: 0,
-    fontSize: 13.5,
-    paddingVertical: 0,
-  },
-  clearBtn: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tuneButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    flexShrink: 0,
-    backgroundColor: '#39473F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#1C211F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  tuneButtonActive: {
-    backgroundColor: '#14532D',
-  },
-  roadworksButtonActive: {
-    backgroundColor: '#C2410C',
-  },
-  chipsScrollContent: {
-    paddingHorizontal: Spacing.three,
-    gap: 8,
-  },
-  filterChip: {
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    shadowColor: '#1C211F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  filterChipActive: {
-    backgroundColor: '#39473F',
-  },
-  filterChipLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  chipCountPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 999,
-  },
-  chipCountText: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    fontFamily: Fonts.mono,
-  },
-  statusFilterChip: {
-    height: 28,
-    paddingHorizontal: 11,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusFilterChipActive: {
-    backgroundColor: '#446552',
-  },
-  statusFilterLabel: {
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  layerBadgeRow: {
-    paddingHorizontal: Spacing.three,
-    alignItems: 'flex-start',
-  },
-  layerBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(57, 71, 63, 0.9)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  layerBadgeText: {
-    color: '#C6EBD3',
-    fontSize: 11,
-    fontWeight: '600',
-  },
+    // ── Floating Top Controls ──
+    topControlsOverlay: {
+      position: 'absolute',
+      top: 12,
+      left: 0,
+      right: 0,
+      gap: 8,
+      zIndex: 1005,
+    },
+    // Search, filters and roadworks must share one row even on narrow phones (iPhone SE / mini):
+    // the buttons keep their size and the search field takes whatever width is left.
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: Spacing.three,
+    },
+    searchBar: {
+      flex: 1,
+      minWidth: 0,
+      height: 40,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    searchInput: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: 13.5,
+      paddingVertical: 0,
+    },
+    clearBtn: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tuneButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      flexShrink: 0,
+      backgroundColor: theme.neutral800,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.16,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    tuneButtonActive: {
+      backgroundColor: theme.neutral800,
+    },
+    roadworksButtonActive: {
+      backgroundColor: theme.accent600,
+    },
+    chipsScrollContent: {
+      paddingHorizontal: Spacing.three,
+      gap: 8,
+    },
+    filterChip: {
+      height: 32,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    filterChipActive: {
+      backgroundColor: theme.neutral800,
+    },
+    filterChipLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    chipCountPill: {
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      borderRadius: 999,
+    },
+    chipCountText: {
+      fontSize: 10.5,
+      fontWeight: '600',
+      fontFamily: Fonts.mono,
+    },
+    statusFilterChip: {
+      height: 28,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statusFilterChipActive: {
+      backgroundColor: theme.neutral700,
+    },
+    statusFilterLabel: {
+      fontSize: 11.5,
+      fontWeight: '600',
+    },
+    layerBadgeRow: {
+      paddingHorizontal: Spacing.three,
+      alignItems: 'flex-start',
+    },
+    layerBadgePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: `${theme.neutral800}E6`,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    layerBadgeText: {
+      color: theme.neutral200,
+      fontSize: 11,
+      fontWeight: '600',
+    },
 
-  // ── Right-Side Map Utilities ──
-  mapUtilitiesCol: {
-    position: 'absolute',
-    right: Spacing.three,
-    bottom: 248,
-    gap: 8,
-    zIndex: 1005,
-  },
-  utilityCircleBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#1C211F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  zoomPillGroup: {
-    borderRadius: 999,
-    overflow: 'hidden',
-    shadowColor: '#1C211F',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  zoomBtn: {
-    width: 42,
-    height: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zoomDivider: {
-    width: 24,
-    height: 1,
-    alignSelf: 'center',
-  },
+    // ── Right-Side Map Utilities ──
+    mapUtilitiesCol: {
+      position: 'absolute',
+      right: Spacing.three,
+      bottom: 248,
+      gap: 8,
+      zIndex: 1005,
+    },
+    utilityCircleBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.14,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    zoomPillGroup: {
+      borderRadius: 999,
+      overflow: 'hidden',
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.14,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    zoomBtn: {
+      width: 42,
+      height: 38,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    zoomDivider: {
+      width: 24,
+      height: 1,
+      alignSelf: 'center',
+    },
 
-  // ── Bottom Sheet Dock ──
-  bottomSheetDock: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1010,
-  },
+    // ── Bottom Sheet Dock ──
+    bottomSheetDock: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 1010,
+    },
 
-  // ── Modals ──
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(24, 29, 27, 0.48)',
-    justifyContent: 'flex-end',
-  },
-  modalBackdropCentered: {
-    flex: 1,
-    backgroundColor: 'rgba(24, 29, 27, 0.48)',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
-  detailModalSheet: {
-    maxHeight: '86%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalCloseBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailScrollContent: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.four,
-  },
-  coordsBox: {
-    padding: Spacing.three,
-    borderRadius: 14,
-    gap: 4,
-  },
-  coordsText: {
-    fontSize: 12.5,
-    fontFamily: Fonts.mono,
-    fontWeight: '600',
-  },
-  pickerCard: {
-    borderRadius: 20,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  pickerTitle: {
-    marginBottom: 4,
-  },
-  boroughOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  boroughOptionText: {
-    fontSize: 14.5,
-    fontWeight: '600',
-  },
-  boroughOptionCount: {
-    fontSize: 13,
-    fontWeight: '700',
-    fontFamily: Fonts.mono,
-  },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.96 }],
-  },
-});
+    // ── Modals ──
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: `${theme.text}7A`,
+      justifyContent: 'flex-end',
+    },
+    detailModalSheet: {
+      maxHeight: '86%',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: Spacing.three,
+      gap: Spacing.three,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    modalCloseBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    detailScrollContent: {
+      gap: Spacing.three,
+      paddingBottom: Spacing.four,
+    },
+    coordsBox: {
+      padding: Spacing.three,
+      borderRadius: 14,
+      gap: 4,
+    },
+    coordsText: {
+      fontSize: 12.5,
+      fontFamily: Fonts.mono,
+      fontWeight: '600',
+    },
+    pressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.96 }],
+    },
+  });

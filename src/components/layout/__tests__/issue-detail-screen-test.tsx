@@ -32,21 +32,6 @@ const mockUser: AuthUser = {
 jest.mock('@/providers/auth-provider', () => ({
   useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: async () => {} }),
 }));
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
 
 const render = (ui: React.ReactElement) => {
   // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.

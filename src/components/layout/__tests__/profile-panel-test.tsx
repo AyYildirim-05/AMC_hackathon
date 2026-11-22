@@ -7,21 +7,6 @@ import { ProfilePanelProvider, useProfilePanel } from '@/components/layout/profi
 // The panel's motion is under test, not the profile's content: no signed-in user to load.
 jest.mock('@/hooks/use-current-user', () => ({ useCurrentUser: () => null }));
 jest.mock('@/providers/auth-provider', () => ({ useAuth: () => ({ signOut: async () => {} }) }));
-// The buttons' ripple animation isn't under test; a minimal stand-in avoids the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
 
 function Screen() {
   const panel = useProfilePanel();

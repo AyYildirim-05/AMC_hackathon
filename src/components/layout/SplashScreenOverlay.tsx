@@ -12,9 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { Palette } from '@/constants/palette';
 import { Fonts, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 export interface SplashScreenOverlayProps {
@@ -39,8 +37,6 @@ export function SplashScreenOverlay({
 }: SplashScreenOverlayProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const brandScale = Palette[scheme];
 
   const [minElapsed, setMinElapsed] = useState(minimumDurationMs <= 0);
   const [visible, setVisible] = useState(true);
@@ -168,8 +164,8 @@ export function SplashScreenOverlay({
             style={[
               styles.outerRing,
               {
-                borderColor: brandScale[400],
-                backgroundColor: brandScale[200],
+                borderColor: theme.neutral400,
+                backgroundColor: theme.neutral200,
               },
               pulseAnimatedStyle,
             ]}
@@ -179,7 +175,7 @@ export function SplashScreenOverlay({
             style={[
               styles.innerRing,
               {
-                borderColor: brandScale[300],
+                borderColor: theme.neutral300,
                 backgroundColor: theme.backgroundElement,
               },
             ]}

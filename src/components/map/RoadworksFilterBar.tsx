@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ROADWORK_TYPES, type RoadworkType, type RoadworkWhen } from '@/lib/api/roadworks';
@@ -35,9 +36,9 @@ export function RoadworksFilterBar({
 }: RoadworksFilterBarProps) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
-  const surface = isDark ? 'rgba(33, 42, 37, 0.94)' : 'rgba(255, 255, 255, 0.94)';
-  const text = isDark ? '#D7E6DB' : '#39473F';
+  const styles = useThemedStyles(createStyles);
+  const surface = `${theme.neutral100}F0`;
+  const text = theme.neutral800;
 
   const statusLabel =
     status === 'loading'
@@ -106,7 +107,7 @@ export function RoadworksFilterBar({
                 onPress={() => onChangeWhen(option)}
                 style={[styles.segmentOption, selected && styles.segmentOptionSelected]}
               >
-                <Text style={[styles.chipLabel, { color: selected ? '#FFFFFF' : text }]}>
+                <Text style={[styles.chipLabel, { color: selected ? theme.neutral100 : text }]}>
                   {t(`map.roadworks.when.${option}`)}
                 </Text>
               </Pressable>
@@ -124,8 +125,8 @@ export function RoadworksFilterBar({
             cityOnly ? styles.cityOnlySelected : { backgroundColor: surface, borderColor: text },
           ]}
         >
-          <MapIcon name="city" size={13} color={cityOnly ? '#FFFFFF' : text} />
-          <Text style={[styles.chipLabel, { color: cityOnly ? '#FFFFFF' : text }]}>
+          <MapIcon name="city" size={13} color={cityOnly ? theme.neutral100 : text} />
+          <Text style={[styles.chipLabel, { color: cityOnly ? theme.neutral100 : text }]}>
             {t('map.roadworks.cityOnly')}
           </Text>
         </Pressable>
@@ -140,36 +141,40 @@ export function RoadworksFilterBar({
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 6 },
-  row: { paddingHorizontal: Spacing.three, gap: 6, alignItems: 'center' },
-  chip: {
-    height: 30,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  chipLabel: { fontSize: 11.5, fontWeight: '600' },
-  chipCount: { fontSize: 10.5, fontWeight: '700', opacity: 0.85 },
-  segment: { flexDirection: 'row', borderRadius: 999, padding: 2 },
-  segmentOption: {
-    height: 26,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    justifyContent: 'center',
-  },
-  segmentOptionSelected: { backgroundColor: '#39473F' },
-  cityOnlySelected: { backgroundColor: '#39473F', borderColor: '#39473F' },
-  statusPill: {
-    height: 26,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(57, 71, 63, 0.9)',
-  },
-  statusText: { color: '#C6EBD3', fontSize: 11, fontWeight: '600' },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    section: { gap: 6 },
+    row: { paddingHorizontal: Spacing.three, gap: 6, alignItems: 'center' },
+    chip: {
+      height: 30,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      borderWidth: 1.5,
+      borderColor: 'transparent',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    chipLabel: { fontSize: 11.5, fontWeight: '600' },
+    chipCount: { fontSize: 10.5, fontWeight: '700', opacity: 0.85 },
+    segment: { flexDirection: 'row', borderRadius: 999, padding: 2 },
+    segmentOption: {
+      height: 26,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      justifyContent: 'center',
+    },
+    segmentOptionSelected: { backgroundColor: theme.neutral800 },
+    cityOnlySelected: {
+      backgroundColor: theme.neutral800,
+      borderColor: theme.neutral800,
+    },
+    statusPill: {
+      height: 26,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      justifyContent: 'center',
+      backgroundColor: `${theme.neutral800}E6`,
+    },
+    statusText: { color: theme.neutral200, fontSize: 11, fontWeight: '600' },
+  });
