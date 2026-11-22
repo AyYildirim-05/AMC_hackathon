@@ -35,6 +35,7 @@ import { describeIssueImages, type AiImageSource } from '@/lib/api/ai';
 import { fetchMontrealDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
 import {
   createIssue,
+  emitIssueCreated,
   fetchIssuesByDistrict,
   fetchMyVotes,
   toggleIssueVote,
@@ -762,6 +763,7 @@ export function DistrictScreen({
       }
       void queryClient.invalidateQueries({ queryKey: ['issues'] });
       void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      emitIssueCreated(created);
 
       resetForm();
       onSubmitSuccess?.(created);
