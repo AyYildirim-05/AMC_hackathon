@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
+import * as maps from 'react-native-maps';
 
 import CardScreen from '@/app/card';
 import { setLanguage } from '@/i18n';
@@ -65,6 +66,9 @@ const issue = (
   latitude,
   longitude: -73.58,
 });
+// The shared react-native-maps mock (__mocks__) records the map's animateToRegion calls.
+const { mockAnimateToRegion } = maps as unknown as { mockAnimateToRegion: jest.Mock };
+
 const dotColor = (label: RegExp) =>
   StyleSheet.flatten(screen.getByLabelText(label).props.style).backgroundColor;
 
@@ -106,16 +110,34 @@ describe('ReportLocationMap', () => {
       expect(onPickPoint).not.toHaveBeenCalled();
     });
 
-    it('picks the point where the report marker is dropped after dragging', async () => {
+    it('shows a fixed pin in the middle and picks the spot the map is panned to', async () => {
       const onPickPoint = jest.fn();
       await render(
         <ReportLocationMap point={point} issues={[]} pinMode onPickPoint={onPickPoint} />,
       );
 
-      expect(screen.getByTestId('report-map-point').props.draggable).toBe(true);
-      await fireEvent(screen.getByTestId('report-map-point'), 'dragEnd', press(masson));
+      expect(screen.getByTestId('report-map-center-pin')).toBeOnTheScreen();
+      expect(screen.queryByTestId('report-map-point')).toBeNull();
+      // Entering pin mode centers the map on the point, under the fixed pin.
+      expect(mockAnimateToRegion).toHaveBeenLastCalledWith(
+        expect.objectContaining({ latitude: point.latitude, longitude: point.longitude }),
+        300,
+      );
 
+      const region = { ...masson, latitudeDelta: 0.01, longitudeDelta: 0.01 };
+      await fireEvent(screen.getByTestId('report-location-map'), 'regionChangeComplete', region);
       expect(onPickPoint).toHaveBeenCalledWith(masson);
+    });
+
+    it('ignores the map settling on the point it already has', async () => {
+      const onPickPoint = jest.fn();
+      await render(
+        <ReportLocationMap point={point} issues={[]} pinMode onPickPoint={onPickPoint} />,
+      );
+
+      const region = { ...point, latitudeDelta: 0.01, longitudeDelta: 0.01 };
+      await fireEvent(screen.getByTestId('report-location-map'), 'regionChangeComplete', region);
+      expect(onPickPoint).not.toHaveBeenCalled();
     });
 
     it('does nothing outside pin mode', async () => {
@@ -124,8 +146,13 @@ describe('ReportLocationMap', () => {
 
       await fireEvent(screen.getByTestId('report-location-map'), 'press', press(masson));
 
+      await fireEvent(screen.getByTestId('report-location-map'), 'regionChangeComplete', {
+        ...masson,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
       expect(onPickPoint).not.toHaveBeenCalled();
-      expect(screen.getByTestId('report-map-point').props.draggable).toBe(false);
+      expect(screen.queryByTestId('report-map-center-pin')).toBeNull();
     });
   });
 

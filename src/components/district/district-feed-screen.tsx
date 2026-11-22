@@ -376,7 +376,6 @@ export function DistrictFeedScreen() {
         options={districts.map((d) => ({
           key: d.id,
           label: districtName(d),
-          detail: d.open_north_slug,
           selected: d.id === district.id,
           testID: `district-feed-option-${d.open_north_slug}`,
         }))}
