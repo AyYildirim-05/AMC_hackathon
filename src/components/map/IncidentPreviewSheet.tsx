@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { computeInitials, formatAddress, formatIssueDate } from '@/components/utils/formatter';
+import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Issue, IssueCategory, IssueStatus } from '@/models/Issue';
@@ -182,6 +183,22 @@ export function IncidentPreviewSheet({
               {statusLabel}
             </Text>
           </View>
+
+          {(issue.elements ?? []).map((el) => {
+            const meta = WEATHER_ELEMENT_META[el];
+            return (
+              <View
+                key={el}
+                testID={`map-preview-element-${el}`}
+                style={[styles.categoryBadge, { backgroundColor: isDark ? '#1B3142' : '#EBF5FF' }]}
+              >
+                <Text style={styles.elementIcon}>{meta.icon}</Text>
+                <Text style={[styles.categoryBadgeText, { color: isDark ? '#BAE6FD' : '#1E40AF' }]}>
+                  {t(`issue.elements.${el}`, { defaultValue: meta.fallbackLabel })}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         {issue.external_311_ref ? (
@@ -394,6 +411,9 @@ const styles = StyleSheet.create({
   categoryBadgeText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  elementIcon: {
+    fontSize: 11,
   },
   statusBadge: {
     flexDirection: 'row',

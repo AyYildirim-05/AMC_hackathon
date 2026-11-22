@@ -1,9 +1,11 @@
 import {
   ISSUE_CATEGORIES,
   ISSUE_STATUSES,
+  isWeatherElement,
   type Issue,
   type IssueCategory,
   type IssueStatus,
+  type WeatherElement,
 } from '@/models/Issue';
 
 export interface District {
@@ -147,12 +149,17 @@ export function normalizeIssue(raw: Record<string, unknown>): Issue {
   const updatedByRaw = raw.updated_by_id ?? raw.updatedById ?? null;
   const externalRefRaw = raw.external_311_ref ?? raw.external311Ref ?? null;
 
+  const elements: WeatherElement[] = Array.isArray(raw.elements)
+    ? Array.from(new Set(raw.elements.filter(isWeatherElement)))
+    : [];
+
   return {
     id,
     title: String(raw.title ?? ''),
     description: String(raw.description ?? ''),
     category: normalizeCategory(raw.category),
     status: normalizeStatus(raw.status),
+    elements,
     images: Array.isArray(raw.images) ? raw.images.map(String) : [],
     address: String(raw.address ?? ''),
     latitude: Number(raw.latitude ?? MONTREAL_DEFAULT_REGION.latitude),

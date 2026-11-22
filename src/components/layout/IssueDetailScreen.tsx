@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { type District } from '@/components/utils/map-utils';
 import { ProfileButton } from '@/components/utils/profile-button';
 import { ThemedText } from '@/components/utils/themed-text';
+import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { computeInitials } from '@/components/utils/formatter';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
@@ -146,7 +148,7 @@ function getTimelineSteps(issue: Issue, districtNameOverride?: string): Timeline
       {
         id: 'step-1',
         title: 'Signalé par le citoyen',
-        subtitle: 'Ticket créé et géolocalisé via CityPulse MTL',
+        subtitle: 'Ticket créé et géolocalisé via Montone',
         time: '08:00',
         status: 'completed',
       },
@@ -183,7 +185,7 @@ function getTimelineSteps(issue: Issue, districtNameOverride?: string): Timeline
     {
       id: 'step-1',
       title: 'Signalé par le citoyen',
-      subtitle: 'Ticket créé et géolocalisé via CityPulse MTL',
+      subtitle: 'Ticket créé et géolocalisé via Montone',
       time: createdTime,
       status: 'completed',
     },
@@ -225,6 +227,7 @@ export function IssueDetailScreen({
   onConfirmResolution,
   testID = 'issue-detail-screen',
 }: IssueDetailScreenProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isDark = theme.text !== '#1C211F';
   const user = useCurrentUser();
@@ -567,6 +570,29 @@ export function IssueDetailScreen({
                     </Text>
                   </View>
                 ) : null}
+
+                {/* Weather Element Pills */}
+                {(issue.elements ?? []).map((el) => {
+                  const meta = WEATHER_ELEMENT_META[el];
+                  return (
+                    <View
+                      key={el}
+                      testID={`detail-element-pill-${el}`}
+                      style={[
+                        styles.pillBadge,
+                        {
+                          backgroundColor: isDark ? '#1B3142' : '#EBF5FF',
+                          borderColor: isDark ? '#2C4D66' : '#BFDBFE',
+                        },
+                      ]}
+                    >
+                      <Text style={styles.pillIcon}>{meta.icon}</Text>
+                      <Text style={[styles.pillText, { color: isDark ? '#BAE6FD' : '#1E40AF' }]}>
+                        {t(`issue.elements.${el}`, { defaultValue: meta.fallbackLabel })}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
 
               {/* Large Issue Title */}

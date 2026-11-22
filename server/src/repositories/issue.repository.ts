@@ -3,7 +3,14 @@ import { type Issue, IssueModel, type IssueStatus } from '../models/index.js';
 /** Reporter-supplied fields; everything else takes its schema default. Ids are cast by Mongoose. */
 export type NewIssue = Pick<
   Issue,
-  'title' | 'description' | 'category' | 'images' | 'address' | 'latitude' | 'longitude'
+  | 'title'
+  | 'description'
+  | 'category'
+  | 'elements'
+  | 'images'
+  | 'address'
+  | 'latitude'
+  | 'longitude'
 > & {
   districtId: string;
   createdById: string;

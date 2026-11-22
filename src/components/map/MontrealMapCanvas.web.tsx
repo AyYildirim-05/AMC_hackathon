@@ -255,7 +255,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
 
         const icon = isSelected
           ? L.divIcon({
-              className: 'citypulse-active-pin',
+              className: 'montone-active-pin',
               html: `
                 <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);cursor:pointer;">
                   <div style="display:flex;align-items:center;gap:6px;background:${theme.text};color:${theme.background};padding:5px 10px;border-radius:12px;box-shadow:0 4px 12px ${markerShadow};margin-bottom:5px;white-space:nowrap;font-family:Inter,system-ui,sans-serif;">
@@ -273,7 +273,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
               iconAnchor: [0, 0],
             })
           : L.divIcon({
-              className: 'citypulse-pin',
+              className: 'montone-pin',
               html: `
                 <div style="width:34px;height:34px;border-radius:9999px;background:${statusColor};border:2.5px solid ${theme.background};display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px ${markerShadow};cursor:pointer;">
                   ${glyph}

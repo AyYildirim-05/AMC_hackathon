@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
 import { ProfileButton } from '@/components/utils/profile-button';
+import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
@@ -34,11 +35,16 @@ import {
 } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
 import { detectDeviceLocation } from '@/lib/location';
-import { ISSUE_STATUSES } from '@/models/Issue';
+import {
+  ISSUE_STATUSES,
+  WEATHER_ELEMENTS,
+  type Issue,
+  type IssueCategory,
+  type WeatherElement,
+} from '@/models/Issue';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 
 import { ReportLocationMap } from './ReportLocationMap';
-import { type Issue, type IssueCategory } from '@/models/Issue';
 
 /** A new report this close to an open issue is probably a duplicate of it. */
 const DUPLICATE_RADIUS_METERS = 50;
@@ -127,6 +133,8 @@ export interface DistrictScreenProps {
   initialDistrictId?: string;
   /** Initial selected category. */
   initialCategory?: CivicCategoryKey | null;
+  /** Initial selected weather elements. */
+  initialElements?: WeatherElement[];
   /** Initial report address. */
   initialAddress?: string;
   /** Initial report title. */
@@ -152,6 +160,7 @@ export function DistrictScreen({
   onSubmitSuccess,
   initialDistrictId = '11111111-1111-4111-8111-111111111101',
   initialCategory = null,
+  initialElements = [],
   initialAddress = '',
   initialTitle = '',
   initialDescription = '',
@@ -242,6 +251,7 @@ export function DistrictScreen({
       : selectedCategory === 'parks_cleanliness'
         ? 'traffic_safety'
         : selectedCategory;
+  const [selectedElements, setSelectedElements] = useState<WeatherElement[]>(initialElements);
   const [address, setAddress] = useState(initialAddress);
   const [coordinates, setCoordinates] = useState(DEFAULT_COORDINATES);
   const [isAdjustingPin, setIsAdjustingPin] = useState(false);
@@ -286,6 +296,12 @@ export function DistrictScreen({
     setPickedDistrict(item);
     setIsBoroughModalVisible(false);
     setBoroughSearch('');
+  };
+
+  const handleToggleElement = (element: WeatherElement) => {
+    setSelectedElements((prev) =>
+      prev.includes(element) ? prev.filter((item) => item !== element) : [...prev, element],
+    );
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -491,6 +507,7 @@ export function DistrictScreen({
 
   const resetForm = () => {
     setSelectedCategory(null);
+    setSelectedElements([]);
     setAddress('');
     setTitle('');
     setDescription('');
@@ -578,6 +595,7 @@ export function DistrictScreen({
         title: title.trim(),
         description: description.trim(),
         category: issueCategory,
+        elements: selectedElements,
         address: address.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
@@ -867,6 +885,63 @@ export function DistrictScreen({
                       ]}
                     >
                       {tText(cat.subKey, cat.fallbackSub)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ─── 4b. Météo & Éléments (Optionnel) ─── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+                {tText('districtScreen.weatherElementsTitle', 'Météo & Éléments')}
+              </Text>
+              <Text style={[styles.optionalHeaderBadge, { color: isDark ? '#8EA699' : '#64748B' }]}>
+                {tText('districtScreen.optional', 'Optionnel')}
+              </Text>
+            </View>
+
+            <Text style={[styles.sectionSubtitle, { color: isDark ? '#8EA699' : '#57685F' }]}>
+              {tText(
+                'districtScreen.weatherElementsSub',
+                'Indiquez les conditions météo liées à cet incident (optionnel).',
+              )}
+            </Text>
+
+            <View style={styles.elementsChipsWrap}>
+              {WEATHER_ELEMENTS.map((el) => {
+                const meta = WEATHER_ELEMENT_META[el];
+                const isSelected = selectedElements.includes(el);
+                return (
+                  <Pressable
+                    key={el}
+                    testID={`weather-element-chip-${el}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => handleToggleElement(el)}
+                    style={({ pressed }) => [
+                      styles.elementChip,
+                      isSelected
+                        ? styles.elementChipSelected
+                        : {
+                            backgroundColor: isDark ? '#1F2C24' : '#F1F6FA',
+                            borderColor: isDark ? '#2D3E33' : '#D9E4EE',
+                          },
+                      pressed && styles.pressedOpacity,
+                    ]}
+                  >
+                    <Text style={styles.elementChipIcon}>{meta.icon}</Text>
+                    <Text
+                      style={[
+                        styles.elementChipText,
+                        isSelected
+                          ? styles.elementChipTextSelected
+                          : { color: isDark ? '#D5E8DD' : '#1E3A5F' },
+                      ]}
+                    >
+                      {tText(`issue.elements.${el}`, meta.fallbackLabel)}
                     </Text>
                   </Pressable>
                 );
@@ -1351,7 +1426,7 @@ export function DistrictScreen({
             <Text style={[styles.footerText, { color: isDark ? '#7E988A' : '#687B70' }]}>
               {tText(
                 'districtScreen.charterFooter',
-                'Charte citoyenne CityPulse MTL • Données ouvertes OpenNorth',
+                'Charte citoyenne Montone • Données ouvertes OpenNorth',
               )}
             </Text>
           </View>
@@ -1785,6 +1860,40 @@ const styles = StyleSheet.create({
     color: '#A4C5E6',
   },
   categorySubUnselected: {},
+
+  // 4b. Weather Elements Chips
+  optionalHeaderBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  elementsChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  elementChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  elementChipSelected: {
+    backgroundColor: '#0A2540',
+    borderColor: '#0A2540',
+  },
+  elementChipIcon: {
+    fontSize: 14,
+  },
+  elementChipText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  elementChipTextSelected: {
+    color: '#FFFFFF',
+  },
 
   // 5. Precise Location
   addressCard: {
