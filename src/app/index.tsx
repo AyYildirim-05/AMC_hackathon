@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { IssueCard } from '@/components/layout/IssueCard';
 import { IssueDetailScreen } from '@/components/layout/IssueDetailScreen';
@@ -13,32 +13,41 @@ import { TabScreen } from '@/components/utils/tab-screen';
 import { ThemedText } from '@/components/utils/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
+import { useTheme } from '@/hooks/use-theme';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { fetchDistricts } from '@/lib/api/districts';
-import { fetchIssues, fetchMyVotes, onIssueCreated, toggleIssueVote } from '@/lib/api/issues';
+import {
+  fetchIssues,
+  fetchMyVotes,
+  onIssueCreated,
+  refetchAllIssueQueries,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import type { Issue } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function IssuesScreen() {
   const { t, i18n } = useTranslation();
+  const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
   const user = useCurrentUser();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const {
-    data: issues = [],
-    isRefetching,
-    refetch,
-  } = useQuery<Issue[]>({
+  const { data: issues = [], isRefetching } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: myVotes } = useQuery({
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const voteMutation = useMutation({
@@ -50,11 +59,18 @@ export default function IssuesScreen() {
       voteType: 'upvote' | 'confirm_resolved';
     }) => toggleIssueVote(issueId, voteType),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      void refetchAllIssueQueries(queryClient);
     },
   });
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchAllIssueQueries(queryClient);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient]);
 
   const { data: districts = [] } = useQuery<District[]>({
     queryKey: ['districts'],
@@ -144,10 +160,16 @@ export default function IssuesScreen() {
         }
         data={visibleIssues}
         keyExtractor={(issue) => issue.id}
-        refreshing={isRefetching}
-        onRefresh={() => {
-          void refetch();
-        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing || isRefetching}
+            onRefresh={() => {
+              void handleRefresh();
+            }}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
         renderItem={({ item }) => (
           <IssueCard
             issue={item}

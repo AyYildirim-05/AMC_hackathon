@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createContext,
   type ReactNode,
@@ -15,6 +16,7 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
@@ -29,6 +31,8 @@ import { ThemedText } from '@/components/utils/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
+import { refetchAllIssueQueries } from '@/lib/api/issues';
+import type { AuthUser } from '@/lib/auth/auth-api';
 import { useAuth } from '@/providers/auth-provider';
 
 /**
@@ -232,27 +236,58 @@ function ProfilePage({ onClose }: { onClose: () => void }) {
           {t('profile.title')}
         </ThemedText>
       </View>
-      {user ? (
-        <ScrollView contentContainerStyle={styles.content}>
-          <ProfileScreen user={user} />
-          <View style={styles.language}>
-            <ThemedText type="smallBold" accessibilityRole="header">
-              {t('profile.language')}
-            </ThemedText>
-            <LanguageSwitcher />
-          </View>
-          <ThemedButton
-            type="border"
-            tone="danger"
-            fullWidth
-            style={styles.signOut}
-            onPress={handleSignOut}
-          >
-            {t('auth.signOutButton')}
-          </ThemedButton>
-        </ScrollView>
-      ) : null}
+      {user ? <ProfileBody user={user} onSignOut={handleSignOut} /> : null}
     </SafeAreaView>
+  );
+}
+
+/** Scrollable profile body with pull-to-refresh; only mounted when a user is signed in. */
+function ProfileBody({ user, onSignOut }: { user: AuthUser; onSignOut: () => void }) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchAllIssueQueries(queryClient);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient]);
+
+  return (
+    <ScrollView
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={() => {
+            void handleRefresh();
+          }}
+          tintColor={theme.accent}
+          colors={[theme.accent]}
+        />
+      }
+    >
+      <ProfileScreen user={user} />
+      <View style={styles.language}>
+        <ThemedText type="smallBold" accessibilityRole="header">
+          {t('profile.language')}
+        </ThemedText>
+        <LanguageSwitcher />
+      </View>
+      <ThemedButton
+        type="border"
+        tone="danger"
+        fullWidth
+        style={styles.signOut}
+        onPress={onSignOut}
+      >
+        {t('auth.signOutButton')}
+      </ThemedButton>
+    </ScrollView>
   );
 }
 

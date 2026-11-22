@@ -43,7 +43,12 @@ import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage } from '@/i18n';
 import { fetchDistricts } from '@/lib/api/districts';
-import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
+import {
+  fetchIssues,
+  fetchMyVotes,
+  refetchAllIssueQueries,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import { fetchRoadworks, type RoadworkType, type RoadworkWhen } from '@/lib/api/roadworks';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
@@ -81,6 +86,8 @@ export default function CardScreen() {
   const { data: issues = [] } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: districts = [] } = useQuery<District[]>({
@@ -92,6 +99,8 @@ export default function CardScreen() {
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const voteMutation = useMutation({
@@ -103,9 +112,7 @@ export default function CardScreen() {
       voteType: 'upvote' | 'confirm_resolved';
     }) => toggleIssueVote(issueId, voteType),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      void refetchAllIssueQueries(queryClient);
     },
   });
 

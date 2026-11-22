@@ -591,6 +591,8 @@ export function installMockBackendApi(options?: {
     }
 
     if (method === 'post' && url === '/api/issues') {
+      const creator =
+        persons.find((p) => p.username === options?.currentUsername) ?? persons[0] ?? null;
       const created: Issue = {
         id: `64b7f0c2a1b2c3d4e5f6${String(issues.length + 1).padStart(4, '0')}`,
         title: String(body.title ?? ''),
@@ -603,8 +605,11 @@ export function installMockBackendApi(options?: {
         latitude: Number(body.latitude ?? 45.5),
         longitude: Number(body.longitude ?? -73.5),
         district_id: String(body.districtId ?? districts[0]?.id ?? ''),
-        created_by_id: persons[0]?.id ?? 'user-1',
-        author: { username: options?.currentUsername ?? 'camille_mtl', name: 'Camille Tremblay' },
+        created_by_id: creator?.id ?? 'user-1',
+        author: {
+          username: creator?.username ?? options?.currentUsername ?? 'camille_mtl',
+          name: creator?.display_name ?? 'Camille Tremblay',
+        },
         updated_by_id: null,
         official_response: null,
         upvote_count: 0,
