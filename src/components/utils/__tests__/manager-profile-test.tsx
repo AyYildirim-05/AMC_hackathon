@@ -81,3 +81,61 @@ it('disables the actions that have no backend yet', async () => {
     expect(screen.getByRole('button', { name })).toBeDisabled();
   }
 });
+
+it('highlights urgent high-severity issues at the top of the triage queue with their /10 score', async () => {
+  const base = camille();
+  const existing = base.issues[0];
+  const lowIssue = {
+    ...existing,
+    id: 'issue-low-1',
+    title: 'Minor bench graffiti',
+    status: 'not_started' as const,
+    severity_score: 2,
+    urgency: 'low' as const,
+    created_at: '2026-11-22T03:00:00.000Z',
+  };
+  const urgentIssue = {
+    ...existing,
+    id: 'issue-urgent-1',
+    title: 'Downed power wire on Rue Rachel',
+    status: 'not_started' as const,
+    severity_score: 10,
+    urgency: 'high' as const,
+    created_at: '2026-11-21T08:00:00.000Z',
+  };
+  const mediumIssue = {
+    ...existing,
+    id: 'issue-medium-1',
+    title: 'Deep pothole near Parc La Fontaine',
+    status: 'not_started' as const,
+    severity_score: 6,
+    urgency: 'medium' as const,
+    created_at: '2026-11-22T01:00:00.000Z',
+  };
+
+  await render(
+    <ManagerProfile
+      profile={{
+        ...base,
+        issues: [lowIssue, mediumIssue, urgentIssue],
+        reporterUsername: {
+          [lowIssue.id]: 'marc_velo',
+          [mediumIssue.id]: 'marc_velo',
+          [urgentIssue.id]: 'marc_velo',
+        },
+      }}
+    />,
+  );
+
+  expect(screen.getByText('🚨 High urgency • 10/10')).toBeOnTheScreen();
+  expect(screen.getByText('⚠️ Medium urgency • 6/10')).toBeOnTheScreen();
+  expect(screen.getByText('🟢 Low urgency • 2/10')).toBeOnTheScreen();
+
+  // Verify DOM order places the 10/10 urgent hazard before 6/10 and 2/10.
+  const badges = screen.getAllByTestId(/^triage-severity-badge-/);
+  expect(badges.map((b) => b.props.testID)).toEqual([
+    'triage-severity-badge-issue-urgent-1',
+    'triage-severity-badge-issue-medium-1',
+    'triage-severity-badge-issue-low-1',
+  ]);
+});

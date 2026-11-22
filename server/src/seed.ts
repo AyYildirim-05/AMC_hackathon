@@ -201,9 +201,18 @@ async function seed() {
     upvoteCount: number;
     resolutionConfirmations: number;
     external311Ref: string | null;
+    severityScore: number;
+    urgency: 'low' | 'medium' | 'high';
   }) => {
     const existing = await IssueModel.findOne({ title: spec.title });
-    if (existing) return existing;
+    if (existing) {
+      if (existing.severityScore == null) {
+        existing.severityScore = spec.severityScore;
+        existing.urgency = spec.urgency;
+        await existing.save();
+      }
+      return existing;
+    }
     return IssueModel.create(spec);
   };
 
@@ -225,6 +234,8 @@ async function seed() {
     upvoteCount: 2,
     resolutionConfirmations: 1,
     external311Ref: 'MTL-311-2026-88412',
+    severityScore: 9,
+    urgency: 'high',
   });
 
   const elevator = await ensureIssue({
@@ -243,6 +254,8 @@ async function seed() {
     upvoteCount: 1,
     resolutionConfirmations: 0,
     external311Ref: 'MTL-311-2026-89004',
+    severityScore: 7,
+    urgency: 'medium',
   });
 
   await ensureIssue({
@@ -262,6 +275,8 @@ async function seed() {
     upvoteCount: 0,
     resolutionConfirmations: 0,
     external311Ref: null,
+    severityScore: 6,
+    urgency: 'medium',
   });
 
   await ensureIssue({
@@ -280,6 +295,8 @@ async function seed() {
     upvoteCount: 0,
     resolutionConfirmations: 0,
     external311Ref: null,
+    severityScore: 5,
+    urgency: 'medium',
   });
 
   if ((await IssueCommentModel.countDocuments({ issueId: bikeLane._id })) === 0) {
