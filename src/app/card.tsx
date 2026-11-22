@@ -18,6 +18,8 @@ import { IssueCard } from '@/components/layout/IssueCard';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
 import { MontrealMapCanvas, type MontrealMapHandle } from '@/components/map/MontrealMapCanvas';
+import { RoadworkPreviewCard } from '@/components/map/RoadworkPreviewCard';
+import { RoadworksFilterBar } from '@/components/map/RoadworksFilterBar';
 import {
   BOROUGH_REGIONS,
   type CategoryFilter,
@@ -39,6 +41,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage } from '@/i18n';
 import { fetchDistricts } from '@/lib/api/districts';
 import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
+import { fetchRoadworks, type RoadworkType, type RoadworkWhen } from '@/lib/api/roadworks';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -108,6 +111,59 @@ export default function CardScreen() {
 
   // Map layer state
   const [layerMode, setLayerMode] = useState<MapLayerMode>('standard');
+
+  // City of Montréal roadworks layer (open data) and its own filters, shown when the map opens.
+  // Building sites and "other" permits are most of the data, so it starts with the street-network
+  // types only.
+  const [showRoadworks, setShowRoadworks] = useState(true);
+  const [roadworkTypes, setRoadworkTypes] = useState<RoadworkType[]>([
+    'roads',
+    'water',
+    'utilities',
+  ]);
+  const [roadworkWhen, setRoadworkWhen] = useState<RoadworkWhen>('active');
+  const [roadworkCityOnly, setRoadworkCityOnly] = useState(false);
+  const [selectedRoadworkId, setSelectedRoadworkId] = useState<string | null>(null);
+
+  // Works in the selected borough, or in every borough the app knows when "All boroughs" is on.
+  const roadworkBoroughs = useMemo(() => {
+    if (selectedDistrictId !== 'all') {
+      const district = districts.find((d) => d.id === selectedDistrictId);
+      return district ? [district.name_fr] : [];
+    }
+    return districts.map((d) => d.name_fr).filter(Boolean);
+  }, [districts, selectedDistrictId]);
+
+  const roadworksQuery = useQuery({
+    queryKey: ['roadworks', roadworkBoroughs, roadworkTypes, roadworkCityOnly, roadworkWhen],
+    queryFn: () =>
+      fetchRoadworks({
+        boroughs: roadworkBoroughs,
+        types: roadworkTypes,
+        cityOnly: roadworkCityOnly,
+        when: roadworkWhen,
+      }),
+    // Without known boroughs the server would return the whole city (~1,000 works).
+    enabled: showRoadworks && roadworkBoroughs.length > 0,
+    // The city refreshes the data daily and the server caches it for an hour.
+    staleTime: 10 * 60 * 1000,
+    placeholderData: (previous) => previous,
+  });
+  const roadworks = useMemo(
+    () => (showRoadworks ? (roadworksQuery.data?.works ?? []) : []),
+    [showRoadworks, roadworksQuery.data],
+  );
+  const selectedRoadwork = useMemo(
+    () => roadworks.find((work) => work.id === selectedRoadworkId) ?? null,
+    [roadworks, selectedRoadworkId],
+  );
+
+  const toggleRoadworkType = (type: RoadworkType) =>
+    setRoadworkTypes((current) => {
+      if (!current.includes(type)) return [...current, type];
+      // Keep at least one type: an empty list would mean "every type" to the server.
+      return current.length > 1 ? current.filter((item) => item !== type) : current;
+    });
 
   // Selection, modal, and local interaction state
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
@@ -275,7 +331,17 @@ export default function CardScreen() {
   const handleRecenter = () => mapRef.current?.recenter();
   const handleZoomIn = () => mapRef.current?.zoomIn();
   const handleZoomOut = () => mapRef.current?.zoomOut();
-  const handleCycleLayer = () => setLayerMode((mode) => nextLayerMode(mode));
+  const handleCycleLayer = () => {
+    const next = nextLayerMode(layerMode);
+    setLayerMode(next);
+    // The "Works & REV" layer is where the city's roadworks belong.
+    if (next === 'works') setShowRoadworks(true);
+  };
+
+  const handleToggleRoadworks = () => {
+    setShowRoadworks((prev) => !prev);
+    setSelectedRoadworkId(null);
+  };
 
   const headerBg = isDark ? '#1A231F' : '#EEF7F1';
   const headerBorder = isDark ? 'rgba(158, 206, 176, 0.14)' : 'rgba(42, 52, 47, 0.1)';
@@ -343,8 +409,14 @@ export default function CardScreen() {
             ref={mapRef}
             issues={filteredIssues}
             selectedIssueId={selectedIssue?.id ?? null}
-            onSelectIssue={(issue) => setSelectedIssueId(issue.id)}
+            onSelectIssue={(issue) => {
+              setSelectedIssueId(issue.id);
+              setSelectedRoadworkId(null);
+            }}
             layerMode={layerMode}
+            roadworks={roadworks}
+            selectedRoadworkId={selectedRoadwork?.id ?? null}
+            onSelectRoadwork={(work) => setSelectedRoadworkId(work.id)}
           />
 
           {/* Floating Top Controls: Search + Category Filter Pills */}
@@ -387,6 +459,25 @@ export default function CardScreen() {
                 ]}
               >
                 <MapIcon name="tune" size={18} color="#FFFFFF" />
+              </Pressable>
+
+              <Pressable
+                testID="map-roadworks-button"
+                accessibilityRole="button"
+                accessibilityLabel={t('map.roadworks.toggle')}
+                accessibilityState={{ selected: showRoadworks }}
+                onPress={handleToggleRoadworks}
+                style={({ pressed }) => [
+                  styles.tuneButton,
+                  showRoadworks ? styles.roadworksButtonActive : { backgroundColor: pillSurface },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <MapIcon
+                  name="roadwork"
+                  size={18}
+                  color={showRoadworks ? '#FFFFFF' : isDark ? '#FDBA74' : '#C2410C'}
+                />
               </Pressable>
             </View>
 
@@ -552,6 +643,27 @@ export default function CardScreen() {
               </ScrollView>
             ) : null}
 
+            {/* City of Montréal roadworks filters (second filter section) */}
+            {showRoadworks ? (
+              <RoadworksFilterBar
+                types={roadworkTypes}
+                typeCounts={roadworksQuery.data?.typeCounts}
+                onToggleType={toggleRoadworkType}
+                when={roadworkWhen}
+                onChangeWhen={setRoadworkWhen}
+                cityOnly={roadworkCityOnly}
+                onToggleCityOnly={() => setRoadworkCityOnly((prev) => !prev)}
+                shownCount={roadworks.length}
+                status={
+                  roadworksQuery.isError && !roadworksQuery.data
+                    ? 'error'
+                    : roadworksQuery.isPending && roadworkBoroughs.length > 0
+                      ? 'loading'
+                      : 'ready'
+                }
+              />
+            ) : null}
+
             {/* Active Layer Indicator Pill (when not standard) */}
             {layerMode !== 'standard' ? (
               <View style={styles.layerBadgeRow}>
@@ -629,17 +741,25 @@ export default function CardScreen() {
 
           {/* Bottom Sheet Incident Preview Card */}
           <View style={styles.bottomSheetDock}>
-            <IncidentPreviewSheet
-              issue={selectedIssue}
-              districtName={selectedIssueDistrictName}
-              isUpvoted={isSelectedUpvoted}
-              upvoteCount={selectedUpvoteCount}
-              justShared={justShared}
-              onToggleUpvote={() => selectedIssue && handleToggleUpvote(selectedIssue.id)}
-              onShare={() => void handleShareIssue()}
-              onOpenDetails={() => setDetailModalVisible(true)}
-              onResetFilters={handleResetFilters}
-            />
+            {selectedRoadwork ? (
+              <RoadworkPreviewCard
+                work={selectedRoadwork}
+                upcoming={roadworkWhen === 'upcoming'}
+                onClose={() => setSelectedRoadworkId(null)}
+              />
+            ) : (
+              <IncidentPreviewSheet
+                issue={selectedIssue}
+                districtName={selectedIssueDistrictName}
+                isUpvoted={isSelectedUpvoted}
+                upvoteCount={selectedUpvoteCount}
+                justShared={justShared}
+                onToggleUpvote={() => selectedIssue && handleToggleUpvote(selectedIssue.id)}
+                onShare={() => void handleShareIssue()}
+                onOpenDetails={() => setDetailModalVisible(true)}
+                onResetFilters={handleResetFilters}
+              />
+            )}
           </View>
         </View>
       </SafeAreaView>
@@ -925,6 +1045,9 @@ const styles = StyleSheet.create({
   },
   tuneButtonActive: {
     backgroundColor: '#14532D',
+  },
+  roadworksButtonActive: {
+    backgroundColor: '#C2410C',
   },
   chipsScrollContent: {
     paddingHorizontal: Spacing.three,

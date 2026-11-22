@@ -17,6 +17,7 @@ import {
   shortStreetLabel,
 } from '../utils/map-utils';
 import type { MontrealMapCanvasProps, MontrealMapHandle } from './MontrealMapCanvas';
+import { ROADWORK_STYLE } from './roadwork-style';
 
 const TILE_LAYERS: Record<MapLayerMode, { url: string; attribution: string }> = {
   standard: {
@@ -70,7 +71,18 @@ function getCategoryBorderColor(category: IssueCategory): string {
  * REV bike corridor polylines, user beacon, and custom interactive issue markers.
  */
 export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvasProps>(
-  function MontrealMapCanvas({ issues, selectedIssueId, onSelectIssue, layerMode }, ref) {
+  function MontrealMapCanvas(
+    {
+      issues,
+      selectedIssueId,
+      onSelectIssue,
+      layerMode,
+      roadworks = [],
+      selectedRoadworkId = null,
+      onSelectRoadwork,
+    },
+    ref,
+  ) {
     const { t } = useTranslation();
     const theme = useTheme();
     const isDark = theme.text !== '#1C211F';
@@ -80,13 +92,19 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
     const tileLayerRef = useRef<import('leaflet').TileLayer | null>(null);
     const markersLayerRef = useRef<import('leaflet').LayerGroup | null>(null);
     const revLayerRef = useRef<import('leaflet').LayerGroup | null>(null);
+    const roadworksLayerRef = useRef<import('leaflet').LayerGroup | null>(null);
     const leafletRef = useRef<typeof import('leaflet') | null>(null);
     const onSelectRef = useRef(onSelectIssue);
+    const onSelectRoadworkRef = useRef(onSelectRoadwork);
     const [mapReady, setMapReady] = useState(false);
 
     useEffect(() => {
       onSelectRef.current = onSelectIssue;
     }, [onSelectIssue]);
+
+    useEffect(() => {
+      onSelectRoadworkRef.current = onSelectRoadwork;
+    }, [onSelectRoadwork]);
 
     useImperativeHandle(ref, () => ({
       zoomIn: () => mapInstanceRef.current?.zoomIn(),
@@ -130,6 +148,8 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         }).addTo(map);
 
         revLayerRef.current = L.layerGroup().addTo(map);
+        // Below the report pins, so reports stay on top where they overlap.
+        roadworksLayerRef.current = L.layerGroup().addTo(map);
         markersLayerRef.current = L.layerGroup().addTo(map);
         mapInstanceRef.current = map;
 
@@ -154,6 +174,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         tileLayerRef.current = null;
         markersLayerRef.current = null;
         revLayerRef.current = null;
+        roadworksLayerRef.current = null;
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -193,6 +214,34 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         }
       }
     }, [mapReady, layerMode, isDark]);
+
+    // Sync City of Montréal roadwork markers (small squares, below the report pins)
+    useEffect(() => {
+      if (!mapReady) return;
+      const L = leafletRef.current;
+      const layer = roadworksLayerRef.current;
+      if (!L || !layer) return;
+
+      layer.clearLayers();
+      for (const work of roadworks) {
+        const isSelected = work.id === selectedRoadworkId;
+        const style = ROADWORK_STYLE[work.type];
+        const size = isSelected ? 32 : 22;
+        const icon = L.divIcon({
+          className: 'citypulse-roadwork',
+          html: `<div style="width:${size}px;height:${size}px;border-radius:${isSelected ? 8 : 6}px;background:${style.color};border:${isSelected ? 3 : 1.5}px solid #fff;display:flex;align-items:center;justify-content:center;font-size:${isSelected ? 15 : 11}px;box-shadow:0 1px 4px rgba(0,0,0,0.3);cursor:pointer;">${style.glyph}</div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        });
+        const marker = L.marker([work.latitude, work.longitude], {
+          icon,
+          zIndexOffset: isSelected ? 400 : 0,
+          title: work.location,
+        });
+        marker.on('click', () => onSelectRoadworkRef.current?.(work));
+        marker.addTo(layer);
+      }
+    }, [mapReady, roadworks, selectedRoadworkId]);
 
     // Sync issue markers whenever issues, selection, language, or mapReady changes
     useEffect(() => {
