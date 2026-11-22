@@ -1,4 +1,8 @@
-import { compareIssuesBySeverityDesc, getIssueUrgency } from '@/components/utils/issue-severity';
+import {
+  compareIssuesBySeverityDesc,
+  getIssueSeverity,
+  getIssueUrgency,
+} from '@/components/utils/issue-severity';
 import { normalizeIssue } from '@/components/utils/map-utils';
 import { severityScoreToUrgency, type Issue } from '@/models/Issue';
 
@@ -91,5 +95,30 @@ describe('issue severity helpers', () => {
       'low',
       'unrated',
     ]);
+  });
+
+  it('always resolves a 1-10 severity score for legacy unrated issues while preferring server scores', () => {
+    const serverScored = makeIssue({
+      title: 'Minor paint fade',
+      severity_score: 10,
+      urgency: 'high',
+    });
+    expect(getIssueSeverity(serverScored)).toEqual({ score: 10, urgency: 'high' });
+
+    const legacyBlockedLane = makeIssue({
+      title: 'Piste cyclable bloquée sur Rachel Est',
+      description: 'Clôtures bloquant la piste',
+      severity_score: null,
+      urgency: null,
+    });
+    expect(getIssueSeverity(legacyBlockedLane)).toEqual({ score: 8, urgency: 'high' });
+
+    const legacyPothole = makeIssue({
+      title: 'Pothole',
+      description: 'Deep pothole in lane',
+      severity_score: null,
+      urgency: null,
+    });
+    expect(getIssueSeverity(legacyPothole)).toEqual({ score: 6, urgency: 'medium' });
   });
 });

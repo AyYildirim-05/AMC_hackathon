@@ -37,11 +37,11 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#9ECEB0",
+          "backgroundColor": "#F3F2F2",
           "image": "./assets/images/montone-icon.png",
           "imageWidth": 120,
           "dark": {
-            "backgroundColor": "#2A342F",
+            "backgroundColor": "#181716",
             "image": "./assets/images/montone-icon.png"
           }
         }
