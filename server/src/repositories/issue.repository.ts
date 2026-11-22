@@ -4,7 +4,11 @@ import { type Issue, IssueModel, type IssueStatus } from '../models/index.js';
 export type NewIssue = Pick<
   Issue,
   'title' | 'description' | 'category' | 'images' | 'address' | 'latitude' | 'longitude'
-> & { districtId: string; createdById: string };
+> & {
+  districtId: string;
+  createdById: string;
+  external311Ref?: string | null;
+};
 
 /** Any subset of the editable fields, plus who made the change. */
 export type IssueChanges = Partial<Omit<NewIssue, 'createdById'> & { status: IssueStatus }> & {
@@ -23,6 +27,9 @@ export const districtHasIssues = async (districtId: string) =>
 
 export const findIssuesByDistrict = (districtId: string) =>
   IssueModel.find({ districtId }).sort({ createdAt: -1 });
+
+export const findIssuesByCreator = (createdById: string) =>
+  IssueModel.find({ createdById }).sort({ createdAt: -1 });
 
 /**
  * Returns the updated issue, or null when no issue has that id or, if `expectedStatus` is given,

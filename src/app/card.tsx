@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -31,8 +31,6 @@ import {
   type MapLayerMode,
   MONTREAL_DEFAULT_REGION,
   nextLayerMode,
-  normalizeDistrict,
-  normalizeIssue,
   type StatusFilter,
 } from '@/components/map/map-utils';
 import { ProfileSheet } from '@/components/profile-sheet';
@@ -42,8 +40,16 @@ import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/the
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage, setLanguage } from '@/i18n';
-import { apiClient } from '@/lib/api/client';
+import { fetchDistricts } from '@/lib/api/districts';
+import {
+  fetchIssues,
+  fetchMyVotes,
+  isLiveApiEnabled,
+  isServerObjectId,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
+import { useAuth } from '@/providers/auth-provider';
 
 const FALLBACK_ISSUES = dummyIssues.issues as Issue[];
 const FALLBACK_DISTRICTS = dummyDistricts.districts as District[];
@@ -67,42 +73,45 @@ export default function CardScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const user = useCurrentUser();
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const liveApi = isLiveApiEnabled();
   const isDark = theme.text !== '#1C211F';
   const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'fr';
 
   const mapRef = useRef<MontrealMapHandle>(null);
 
-  // Fetch issues from API when configured; normalize camelCase/snake_case and fall back to dummy_data.
-  const { data: issues = FALLBACK_ISSUES } = useQuery<Issue[]>({
-    queryKey: ['map-issues'],
-    queryFn: async () => {
-      if (!process.env.EXPO_PUBLIC_API_URL) return FALLBACK_ISSUES;
-      try {
-        const res = await apiClient.get<Record<string, unknown>[]>('/api/issues');
-        return Array.isArray(res.data) && res.data.length > 0
-          ? res.data.map(normalizeIssue)
-          : FALLBACK_ISSUES;
-      } catch {
-        return FALLBACK_ISSUES;
-      }
-    },
-    initialData: FALLBACK_ISSUES,
+  const { data: issues = liveApi ? [] : FALLBACK_ISSUES } = useQuery<Issue[]>({
+    queryKey: ['issues'],
+    queryFn: fetchIssues,
+    enabled: liveApi,
   });
 
-  const { data: districts = FALLBACK_DISTRICTS } = useQuery<District[]>({
-    queryKey: ['map-districts'],
-    queryFn: async () => {
-      if (!process.env.EXPO_PUBLIC_API_URL) return FALLBACK_DISTRICTS;
-      try {
-        const res = await apiClient.get<Record<string, unknown>[]>('/api/districts');
-        return Array.isArray(res.data) && res.data.length > 0
-          ? res.data.map(normalizeDistrict)
-          : FALLBACK_DISTRICTS;
-      } catch {
-        return FALLBACK_DISTRICTS;
-      }
+  const { data: districts = liveApi ? [] : FALLBACK_DISTRICTS } = useQuery<District[]>({
+    queryKey: ['districts'],
+    queryFn: fetchDistricts,
+    enabled: liveApi,
+  });
+
+  const { data: myVotes } = useQuery({
+    queryKey: ['votes', 'me'],
+    queryFn: fetchMyVotes,
+    enabled: liveApi && isAuthenticated,
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: ({
+      issueId,
+      voteType,
+    }: {
+      issueId: string;
+      voteType: 'upvote' | 'confirm_resolved';
+    }) => toggleIssueVote(issueId, voteType),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     },
-    initialData: FALLBACK_DISTRICTS,
   });
 
   // Search & filter state
@@ -117,7 +126,7 @@ export default function CardScreen() {
 
   // Selection, modal, and local interaction state
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(
-    FALLBACK_ISSUES[0]?.id ?? null,
+    liveApi ? null : (FALLBACK_ISSUES[0]?.id ?? null),
   );
   const [upvotedIds, setUpvotedIds] = useState<Record<string, boolean>>({});
   const [confirmedIds, setConfirmedIds] = useState<Record<string, boolean>>({});
@@ -126,7 +135,9 @@ export default function CardScreen() {
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [justShared, setJustShared] = useState(false);
   const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevFocusedIssueIdRef = useRef<string | null>(FALLBACK_ISSUES[0]?.id ?? null);
+  const prevFocusedIssueIdRef = useRef<string | null>(
+    liveApi ? null : (FALLBACK_ISSUES[0]?.id ?? null),
+  );
 
   useEffect(() => {
     return () => {
@@ -199,22 +210,54 @@ export default function CardScreen() {
     ? getDistrictName(selectedIssue.district_id, districts, currentLang)
     : null;
 
-  const isSelectedUpvoted = selectedIssue ? Boolean(upvotedIds[selectedIssue.id]) : false;
+  const serverUpvotedSet = useMemo(
+    () => new Set(myVotes?.upvotedIssueIds ?? []),
+    [myVotes?.upvotedIssueIds],
+  );
+  const serverConfirmedSet = useMemo(
+    () => new Set(myVotes?.confirmedIssueIds ?? []),
+    [myVotes?.confirmedIssueIds],
+  );
+
+  const isSelectedServerIssue = selectedIssue
+    ? liveApi && isServerObjectId(selectedIssue.id)
+    : false;
+  const isSelectedUpvoted = selectedIssue
+    ? isSelectedServerIssue
+      ? serverUpvotedSet.has(selectedIssue.id)
+      : Boolean(upvotedIds[selectedIssue.id])
+    : false;
   const selectedUpvoteCount = selectedIssue
-    ? selectedIssue.upvote_count + (isSelectedUpvoted ? 1 : 0)
+    ? isSelectedServerIssue
+      ? selectedIssue.upvote_count
+      : selectedIssue.upvote_count + (isSelectedUpvoted ? 1 : 0)
     : 0;
-  const isSelectedConfirmed = selectedIssue ? Boolean(confirmedIds[selectedIssue.id]) : false;
+  const isSelectedConfirmed = selectedIssue
+    ? isSelectedServerIssue
+      ? serverConfirmedSet.has(selectedIssue.id)
+      : Boolean(confirmedIds[selectedIssue.id])
+    : false;
   const selectedConfirmCount = selectedIssue
-    ? selectedIssue.resolution_confirmations + (isSelectedConfirmed ? 1 : 0)
+    ? isSelectedServerIssue
+      ? selectedIssue.resolution_confirmations
+      : selectedIssue.resolution_confirmations + (isSelectedConfirmed ? 1 : 0)
     : 0;
 
   const userInitials = computeInitials(user?.username ?? user?.email ?? 'Citoyen');
 
   const handleToggleUpvote = (issueId: string) => {
+    if (liveApi && isServerObjectId(issueId)) {
+      voteMutation.mutate({ issueId, voteType: 'upvote' });
+      return;
+    }
     setUpvotedIds((prev) => ({ ...prev, [issueId]: !prev[issueId] }));
   };
 
   const handleToggleConfirm = (issueId: string) => {
+    if (liveApi && isServerObjectId(issueId)) {
+      voteMutation.mutate({ issueId, voteType: 'confirm_resolved' });
+      return;
+    }
     setConfirmedIds((prev) => ({ ...prev, [issueId]: !prev[issueId] }));
   };
 

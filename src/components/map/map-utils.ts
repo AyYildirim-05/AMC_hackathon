@@ -12,7 +12,9 @@ export interface District {
   name_en: string;
   open_north_slug: string;
   district_type: string;
+  postal_code?: string | null;
   manager_id: string | null;
+  manager_username?: string | null;
   is_claimed: boolean;
   created_at: string;
 }
@@ -183,13 +185,17 @@ export function normalizeIssue(raw: Record<string, unknown>): Issue {
  */
 export function normalizeDistrict(raw: Record<string, unknown>): District {
   const managerRaw = raw.manager_id ?? raw.managerId ?? null;
+  const postalRaw = raw.postal_code ?? raw.postalCode ?? null;
+  const managerUsernameRaw = raw.manager_username ?? raw.managerUsername ?? null;
   return {
     id: String(raw.id ?? raw._id ?? ''),
     name_fr: String(raw.name_fr ?? raw.nameFr ?? ''),
     name_en: String(raw.name_en ?? raw.nameEn ?? raw.name_fr ?? raw.nameFr ?? ''),
     open_north_slug: String(raw.open_north_slug ?? raw.openNorthSlug ?? ''),
     district_type: String(raw.district_type ?? raw.districtType ?? 'borough'),
+    postal_code: postalRaw === null ? null : String(postalRaw),
     manager_id: managerRaw === null ? null : String(managerRaw),
+    manager_username: managerUsernameRaw === null ? null : String(managerUsernameRaw),
     is_claimed: Boolean(raw.is_claimed ?? raw.isClaimed ?? false),
     created_at: String(raw.created_at ?? raw.createdAt ?? ''),
   };

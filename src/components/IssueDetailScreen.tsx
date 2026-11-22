@@ -1,5 +1,6 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Linking,
@@ -19,12 +20,25 @@ import dummyDistricts from '../../dummy_data/districts.json';
 import dummyComments from '../../dummy_data/issue_comments.json';
 import dummyPersons from '../../dummy_data/person.json';
 
+import { type District } from '@/components/map/map-utils';
 import { ProfileButton } from '@/components/profile-button';
 import { ThemedText } from '@/components/themed-text';
 import { computeInitials } from '@/components/utils/formatter';
 import { Fonts, Spacing } from '@/constants/theme';
+import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
+import { fetchDistricts } from '@/lib/api/districts';
+import {
+  type ApiIssueComment,
+  createIssueComment,
+  fetchIssueComments,
+  fetchMyVotes,
+  isLiveApiEnabled,
+  isServerObjectId,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import { type Issue } from '@/models/Issue';
+import { useAuth } from '@/providers/auth-provider';
 
 export interface IssueCommentItem {
   id: string;
@@ -63,10 +77,28 @@ export interface IssueDetailScreenProps {
 }
 
 /** Looks up borough or district name. */
-export function getDistrictName(districtId?: string): string {
+export function getDistrictName(districtId?: string, districts?: readonly District[]): string {
   if (!districtId) return 'Montréal';
-  const match = dummyDistricts.districts.find((d) => d.id === districtId);
+  const source = districts ?? (dummyDistricts.districts as District[]);
+  const match = source.find((d) => d.id === districtId);
   return match?.name_fr || match?.name_en || 'Le Plateau-Mont-Royal';
+}
+
+function mapApiCommentToItem(c: ApiIssueComment): IssueCommentItem {
+  const username = c.author?.username || (c.isOfficialResponse ? 'city_official' : 'citoyen');
+  const isVerification = !c.isOfficialResponse && c.body.toLowerCase().includes('confirmed');
+  return {
+    id: c.id,
+    issue_id: c.issueId,
+    user_id: c.userId,
+    body: c.body,
+    is_official_response: c.isOfficialResponse,
+    created_at: c.createdAt,
+    username,
+    displayName: `@${username}`,
+    badge: c.isOfficialResponse ? undefined : isVerification ? 'Field Verification' : 'Resident',
+    isFieldVerification: isVerification,
+  };
 }
 
 /** Helper to format time strings like '08:15'. */
@@ -146,8 +178,8 @@ function getInitialComments(issue: Issue): IssueCommentItem[] {
 }
 
 /** Builds timeline steps reflecting municipal intervention. */
-function getTimelineSteps(issue: Issue): TimelineStepItem[] {
-  const district = getDistrictName(issue.district_id);
+function getTimelineSteps(issue: Issue, districtNameOverride?: string): TimelineStepItem[] {
+  const district = districtNameOverride ?? getDistrictName(issue.district_id);
   const districtShort = district.replace('Le ', '');
 
   if (issue.id === 'f47ac10b-58cc-4372-a567-0e02b2c3d479') {
@@ -236,34 +268,130 @@ export function IssueDetailScreen({
 }: IssueDetailScreenProps) {
   const theme = useTheme();
   const isDark = theme.text !== '#1C211F';
+  const user = useCurrentUser();
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const liveApi = isLiveApiEnabled();
+  const isServerIssue = liveApi && isServerObjectId(issue.id);
 
-  // Interactive state
-  const [upvoteCount, setUpvoteCount] = useState<number>(issue.upvote_count || 0);
-  const [isUpvoted, setIsUpvoted] = useState<boolean>(false);
-  const [confirmCount, setConfirmCount] = useState<number>(issue.resolution_confirmations || 0);
-  const [isConfirmed, setIsConfirmed] = useState<boolean>(false);
+  const { data: apiDistricts } = useQuery<District[]>({
+    queryKey: ['districts'],
+    queryFn: fetchDistricts,
+    enabled: liveApi,
+  });
 
-  // Comments state
-  const [comments, setComments] = useState<IssueCommentItem[]>(() => getInitialComments(issue));
+  const { data: apiComments } = useQuery<ApiIssueComment[]>({
+    queryKey: ['issues', issue.id, 'comments'],
+    queryFn: () => fetchIssueComments(issue.id),
+    enabled: visible && isServerIssue,
+  });
+
+  const { data: myVotes } = useQuery({
+    queryKey: ['votes', 'me'],
+    queryFn: fetchMyVotes,
+    enabled: visible && liveApi && isAuthenticated,
+  });
+
+  // Interactive state (derived from server data when backed by API; local overrides otherwise)
+  const [localVotes, setLocalVotes] = useState<{
+    issueId: string;
+    isUpvoted: boolean;
+    upvoteCount: number;
+    isConfirmed: boolean;
+    confirmCount: number;
+  } | null>(null);
+  const [addedLocalComments, setAddedLocalComments] = useState<Record<string, IssueCommentItem[]>>(
+    {},
+  );
   const [newCommentText, setNewCommentText] = useState<string>('');
 
+  const serverIsUpvoted = myVotes ? myVotes.upvotedIssueIds.includes(issue.id) : false;
+  const serverIsConfirmed = myVotes ? myVotes.confirmedIssueIds.includes(issue.id) : false;
+
+  const activeOverride = localVotes?.issueId === issue.id ? localVotes : null;
+  const isUpvoted = activeOverride ? activeOverride.isUpvoted : serverIsUpvoted;
+  const upvoteCount = activeOverride ? activeOverride.upvoteCount : issue.upvote_count || 0;
+  const isConfirmed = activeOverride ? activeOverride.isConfirmed : serverIsConfirmed;
+  const confirmCount = activeOverride
+    ? activeOverride.confirmCount
+    : issue.resolution_confirmations || 0;
+
+  const voteMutation = useMutation({
+    mutationFn: (voteType: 'upvote' | 'confirm_resolved') => toggleIssueVote(issue.id, voteType),
+    onSuccess: (res) => {
+      setLocalVotes({
+        issueId: issue.id,
+        isUpvoted: res.voteType === 'upvote' ? res.active : isUpvoted,
+        upvoteCount: res.upvoteCount,
+        isConfirmed: res.voteType === 'confirm_resolved' ? res.active : isConfirmed,
+        confirmCount: res.resolutionConfirmations,
+      });
+      if (res.voteType === 'upvote') {
+        onUpvote?.(issue.id, res.upvoteCount);
+      } else {
+        onConfirmResolution?.(issue.id, res.resolutionConfirmations);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    },
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: ({ body, isOfficial }: { body: string; isOfficial: boolean }) =>
+      createIssueComment(issue.id, body, isOfficial),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['issues', issue.id, 'comments'] });
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    },
+  });
+
+  const comments = useMemo<IssueCommentItem[]>(() => {
+    if (isServerIssue) {
+      return (apiComments ?? []).map(mapApiCommentToItem);
+    }
+    return [...getInitialComments(issue), ...(addedLocalComments[issue.id] ?? [])];
+  }, [isServerIssue, apiComments, issue, addedLocalComments]);
+
   const authorHandle = issue.author?.username || 'marc_velo';
-  const districtName = getDistrictName(issue.district_id);
-  const timelineSteps = getTimelineSteps(issue);
+  const matchedDistrict = apiDistricts?.find((d) => d.id === issue.district_id);
+  const districtName = liveApi
+    ? matchedDistrict?.name_fr || matchedDistrict?.name_en || 'Montréal'
+    : getDistrictName(issue.district_id);
+  const timelineSteps = getTimelineSteps(issue, districtName);
 
   const handleToggleUpvote = () => {
     const nextState = !isUpvoted;
     const nextCount = nextState ? upvoteCount + 1 : Math.max(0, upvoteCount - 1);
-    setIsUpvoted(nextState);
-    setUpvoteCount(nextCount);
+    setLocalVotes({
+      issueId: issue.id,
+      isUpvoted: nextState,
+      upvoteCount: nextCount,
+      isConfirmed,
+      confirmCount,
+    });
+    if (isServerIssue) {
+      voteMutation.mutate('upvote');
+      return;
+    }
     onUpvote?.(issue.id, nextCount);
   };
 
   const handleToggleConfirm = () => {
     const nextState = !isConfirmed;
     const nextCount = nextState ? confirmCount + 1 : Math.max(0, confirmCount - 1);
-    setIsConfirmed(nextState);
-    setConfirmCount(nextCount);
+    setLocalVotes({
+      issueId: issue.id,
+      isUpvoted,
+      upvoteCount,
+      isConfirmed: nextState,
+      confirmCount: nextCount,
+    });
+    if (isServerIssue) {
+      voteMutation.mutate('confirm_resolved');
+      return;
+    }
     onConfirmResolution?.(issue.id, nextCount);
   };
 
@@ -271,10 +399,20 @@ export function IssueDetailScreen({
     const trimmed = newCommentText.trim();
     if (!trimmed) return;
 
+    if (isServerIssue) {
+      const isDistrictManagerForIssue =
+        Boolean(user?.id) &&
+        ((matchedDistrict?.manager_id != null && matchedDistrict.manager_id === user?.id) ||
+          user?.role === 'admin');
+      setNewCommentText('');
+      commentMutation.mutate({ body: trimmed, isOfficial: isDistrictManagerForIssue });
+      return;
+    }
+
     const newComment: IssueCommentItem = {
       id: `comment-${Date.now()}`,
       issue_id: issue.id,
-      user_id: 'current-user',
+      user_id: user?.id ?? 'current-user',
       body: trimmed,
       is_official_response: false,
       created_at: new Date().toISOString(),
@@ -284,7 +422,10 @@ export function IssueDetailScreen({
       isFieldVerification: false,
     };
 
-    setComments((prev) => [...prev, newComment]);
+    setAddedLocalComments((prev) => ({
+      ...prev,
+      [issue.id]: [...(prev[issue.id] ?? []), newComment],
+    }));
     setNewCommentText('');
   };
 

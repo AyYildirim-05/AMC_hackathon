@@ -13,7 +13,11 @@ import {
   updateDistrictById,
 } from '../repositories/district.repository.js';
 import { districtHasIssues } from '../repositories/issue.repository.js';
-import { districtHasResidents, findPersonRole } from '../repositories/person.repository.js';
+import {
+  districtHasResidents,
+  findPersonRole,
+  findPersonsByIds,
+} from '../repositories/person.repository.js';
 
 export const districtIdParams = z.object({ id: objectId });
 export const districtNameParams = z.object({ name: z.string().trim().min(1).max(120) });
@@ -23,6 +27,7 @@ const districtFields = {
   nameEn: z.string().trim().min(1).max(120),
   openNorthSlug: z.string().trim().min(1).max(100),
   districtType: z.enum(DISTRICT_TYPES),
+  postalCode: z.string().trim().max(10).nullable().optional(),
 };
 /** A district_manager's id, or null for no manager. Only an admin may set it. */
 const managerId = objectId.nullable();
@@ -81,16 +86,48 @@ const assertAssignableManager = async (personId: string, districtId?: string) =>
   }
 };
 
-export const allDistricts = () => findAllDistricts();
+type SerializableDoc = { toJSON: () => Record<string, unknown> };
 
-export const districtById = async (id: string) => orNotFound(await findDistrictById(id));
+async function enrichDistricts(docs: readonly SerializableDoc[]) {
+  if (docs.length === 0) return [];
+  const rawDistricts = docs.map((doc) => doc.toJSON());
+  const managerIds = Array.from(
+    new Set(rawDistricts.map((d) => d.managerId).filter((id): id is string => Boolean(id))),
+  );
+  const managers = await findPersonsByIds(managerIds);
+  const usernameById = new Map(
+    managers.map((m) => {
+      const json = m.toJSON() as Record<string, unknown>;
+      return [String(json.id), String(json.username)] as const;
+    }),
+  );
 
-export const districtByName = async (name: string) => orNotFound(await findDistrictByName(name));
+  return rawDistricts.map((district) => ({
+    ...district,
+    managerUsername: district.managerId
+      ? (usernameById.get(String(district.managerId)) ?? null)
+      : null,
+  }));
+}
+
+async function enrichDistrict(doc: SerializableDoc) {
+  const [enriched] = await enrichDistricts([doc]);
+  return enriched;
+}
+
+export const allDistricts = async () => enrichDistricts(await findAllDistricts());
+
+export const districtById = async (id: string) =>
+  enrichDistrict(orNotFound(await findDistrictById(id)));
+
+export const districtByName = async (name: string) =>
+  enrichDistrict(orNotFound(await findDistrictByName(name)));
 
 export const createDistrict = async ({ actorId, ...fields }: CreateDistrictInput) => {
   await assertIsAdmin(actorId, 'create a district');
   if (fields.managerId) await assertAssignableManager(fields.managerId);
-  return insertDistrict({ ...fields, isClaimed: fields.managerId !== null });
+  const created = await insertDistrict({ ...fields, isClaimed: fields.managerId !== null });
+  return enrichDistrict(created);
 };
 
 /**
@@ -115,7 +152,7 @@ export const updateDistrict = async (id: string, { actorId, ...changes }: Update
   // Conditional on the manager we checked, so a concurrent reassignment cannot be overwritten.
   const updated = await updateDistrictById(id, withClaim, currentManagerId);
   if (!updated) throw new HttpError(409, 'District changed while saving; reload and retry');
-  return updated;
+  return enrichDistrict(updated);
 };
 
 /**

@@ -38,6 +38,31 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
   }
 };
 
+/**
+ * Populates `req.auth` when a `Bearer` token is present; lets unauthenticated requests through.
+ * Invalid or expired Bearer tokens still fail with 401 so clients can refresh.
+ */
+export const optionalAuth: RequestHandler = (req, _res, next) => {
+  const header = req.headers.authorization;
+  if (!header) {
+    return next();
+  }
+  if (!header.startsWith('Bearer ')) {
+    return next(new HttpError(401, 'Missing or invalid Authorization header'));
+  }
+  const token = header.slice('Bearer '.length).trim();
+  if (!token) {
+    return next(new HttpError(401, 'Missing access token'));
+  }
+  try {
+    const payload = verifyToken(token, 'access');
+    req.auth = { userId: payload.sub, role: payload.role };
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
 /** Restricts a route to specific roles. Must be used after `requireAuth`. */
 export function requireRole(...allowedRoles: PersonRole[]): RequestHandler {
   return (req, _res, next) => {

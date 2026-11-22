@@ -9,6 +9,7 @@ const districtSchema = new Schema(
     nameEn: { type: String, required: true, trim: true, maxlength: 120 },
     openNorthSlug: { type: String, required: true, trim: true, maxlength: 100 },
     districtType: { type: String, required: true, enum: DISTRICT_TYPES },
+    postalCode: { type: String, trim: true, maxlength: 10, default: null },
     managerId: { type: Schema.Types.ObjectId, ref: 'Person', default: null },
     isClaimed: { type: Boolean, required: true, default: false },
   },
@@ -20,6 +21,8 @@ const districtSchema = new Schema(
       transform: (_doc, ret: Record<string, unknown>) => {
         ret.id = String(ret._id);
         delete ret._id;
+        ret.managerId = ret.managerId ? String(ret.managerId) : null;
+        ret.postalCode = ret.postalCode ?? null;
         return ret;
       },
     },

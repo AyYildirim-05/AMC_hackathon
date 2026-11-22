@@ -14,6 +14,7 @@ export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 export const ISSUE_STATUSES = [
   'not_started',
   'in_progress',
+  'resolved',
   'postponed',
   'completed',
   'cancelled',
@@ -45,6 +46,10 @@ const issueSchema = new Schema(
       transform: (_doc, ret: Record<string, unknown>) => {
         ret.id = String(ret._id);
         delete ret._id;
+        ret.districtId = ret.districtId ? String(ret.districtId) : ret.districtId;
+        ret.createdById = ret.createdById ? String(ret.createdById) : ret.createdById;
+        ret.updatedById = ret.updatedById ? String(ret.updatedById) : null;
+        ret.external311Ref = ret.external311Ref ?? null;
         return ret;
       },
     },

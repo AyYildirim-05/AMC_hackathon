@@ -24,6 +24,7 @@ const registerSchema = z.object({
     .min(3, 'Username must be at least 3 characters')
     .max(50, 'Username must be at most 50 characters')
     .regex(/^[a-zA-Z0-9_.-]+$/, 'Username may only contain letters, numbers, _, ., and -'),
+  displayName: z.string().trim().max(100).optional(),
   email: z.email('Please enter a valid email address').trim().toLowerCase().max(255),
   password: z.string().min(8, 'Password must be at least 8 characters').max(128),
   postalCode: postalCodeSchema,
@@ -86,6 +87,7 @@ authRouter.post('/register', validateBody(registerSchema), async (req, res, next
     const passwordHash = await hashPassword(body.password);
     const person = await PersonModel.create({
       username: body.username,
+      displayName: body.displayName || body.username,
       email: body.email,
       passwordHash,
       postalCode: body.postalCode,

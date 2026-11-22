@@ -4,6 +4,7 @@ import helmet from 'helmet';
 
 import { districtRouter } from './controllers/district.controller.js';
 import { issueRouter } from './controllers/issue.controller.js';
+import { profileRouter } from './controllers/profile.controller.js';
 import { errorHandler, notFound } from './middleware/error-handler.js';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
@@ -28,6 +29,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/issues', issueRouter);
   app.use('/api/districts', districtRouter);
+  app.use('/api/profile', profileRouter);
 
   app.use(notFound);
   app.use(errorHandler);
