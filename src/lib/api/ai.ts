@@ -35,7 +35,16 @@ type EncodedInlineImage = {
   base64: string;
 };
 
-const DATA_URL_RE = /^data:([^;]+);base64,(.+)$/i;
+const DATA_URL_RE = /^data:([^;]*);base64,([\s\S]+)$/i;
+
+/** Detects the true image MIME type from base64 magic bytes (e.g. iOS HEIC re-encoded as JPEG). */
+export function detectMimeTypeFromBase64(base64: string): SupportedImageMimeType | null {
+  const cleaned = base64.trim();
+  if (cleaned.startsWith('/9j/')) return 'image/jpeg';
+  if (cleaned.startsWith('iVBORw0KGgo')) return 'image/png';
+  if (cleaned.startsWith('UklGR')) return 'image/webp';
+  return null;
+}
 
 export function normalizeImageMimeType(
   mimeType?: string | null,
@@ -105,22 +114,31 @@ export async function prepareInlineImage(source: AiImageSource): Promise<Encoded
   if (source.base64 && source.base64.trim().length > 0) {
     const dataMatch = source.base64.trim().match(DATA_URL_RE);
     if (dataMatch) {
+      const cleanedBase64 = stripDataUrlPrefix(dataMatch[2]);
       return {
-        mimeType: normalizeImageMimeType(dataMatch[1], source.fileName ?? source.uri),
-        base64: stripDataUrlPrefix(dataMatch[2]),
+        mimeType:
+          detectMimeTypeFromBase64(cleanedBase64) ??
+          normalizeImageMimeType(dataMatch[1], source.fileName ?? source.uri),
+        base64: cleanedBase64,
       };
     }
+    const cleanedBase64 = stripDataUrlPrefix(source.base64);
     return {
-      mimeType: normalizeImageMimeType(source.mimeType, source.fileName ?? source.uri),
-      base64: stripDataUrlPrefix(source.base64),
+      mimeType:
+        detectMimeTypeFromBase64(cleanedBase64) ??
+        normalizeImageMimeType(source.mimeType, source.fileName ?? source.uri),
+      base64: cleanedBase64,
     };
   }
 
   const uriMatch = source.uri.trim().match(DATA_URL_RE);
   if (uriMatch) {
+    const cleanedBase64 = stripDataUrlPrefix(uriMatch[2]);
     return {
-      mimeType: normalizeImageMimeType(uriMatch[1], source.fileName),
-      base64: stripDataUrlPrefix(uriMatch[2]),
+      mimeType:
+        detectMimeTypeFromBase64(cleanedBase64) ??
+        normalizeImageMimeType(uriMatch[1], source.fileName),
+      base64: cleanedBase64,
     };
   }
 
@@ -135,12 +153,15 @@ export async function prepareInlineImage(source: AiImageSource): Promise<Encoded
     throw new Error('Could not encode image as base64');
   }
 
+  const cleanedBase64 = stripDataUrlPrefix(parsed[2]);
   return {
-    mimeType: normalizeImageMimeType(
-      blob.type || source.mimeType || parsed[1],
-      source.fileName ?? source.uri,
-    ),
-    base64: stripDataUrlPrefix(parsed[2]),
+    mimeType:
+      detectMimeTypeFromBase64(cleanedBase64) ??
+      normalizeImageMimeType(
+        blob.type || source.mimeType || parsed[1],
+        source.fileName ?? source.uri,
+      ),
+    base64: cleanedBase64,
   };
 }
 

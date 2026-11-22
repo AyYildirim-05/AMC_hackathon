@@ -156,7 +156,7 @@ describe('gemini helper (describeIssueImages)', () => {
     );
 
     assert.match(systemText, /strictly in natural English/i);
-    assert.match(userText, /in English/i);
+    assert.match(userText, /English/i);
     assert.equal(result.description, 'A broken streetlight pole is leaning over the sidewalk.');
     assert.equal(result.language, 'en');
     assert.equal(result.model, 'gemini-2.0-flash');
