@@ -19,16 +19,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
 import { type District } from '@/components/utils/map-utils';
 import { ProfileButton } from '@/components/utils/profile-button';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
-import { createIssue } from '@/lib/api/issues';
+import { createIssue, fetchIssuesByDistrict } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
 import { detectDeviceLocation } from '@/lib/location';
+import { ISSUE_STATUSES } from '@/models/Issue';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
+
+import { ReportLocationMap } from './ReportLocationMap';
 import { type Issue } from '@/models/Issue';
 
 export type CivicCategoryKey =
@@ -199,6 +203,20 @@ export function DistrictScreen({
     place: 'Parc La Fontaine',
   });
   const [isAdjustingPin, setIsAdjustingPin] = useState(false);
+
+  // Other issues in the report's district, shown on the map by status.
+  const { data: districtIssues } = useQuery({
+    queryKey: ['issues', 'district', selectedDistrict.id],
+    queryFn: () => fetchIssuesByDistrict(selectedDistrict.id),
+    enabled: Boolean(selectedDistrict.id),
+  });
+  const mappableIssues = useMemo(
+    () =>
+      (districtIssues ?? []).filter(
+        (i) => Number.isFinite(i.latitude) && Number.isFinite(i.longitude),
+      ),
+    [districtIssues],
+  );
 
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -790,43 +808,8 @@ export function DistrictScreen({
                 },
               ]}
             >
-              {/* Stylized Street Grid Background */}
-              <View style={styles.mapGridPattern}>
-                <View style={[styles.mapRoadH, { top: 35 }]} />
-                <View style={[styles.mapRoadH, { top: 90 }]} />
-                <View style={[styles.mapRoadH, { top: 145 }]} />
-                <View style={[styles.mapRoadV, { left: '25%' }]} />
-                <View style={[styles.mapRoadV, { left: '60%' }]} />
-                <View style={[styles.mapRoadV, { left: '85%' }]} />
-
-                {/* Montreal Neighborhood labels */}
-                <Text style={[styles.mapLabel, { top: 12, left: 16 }]}>AHUNTSIC</Text>
-                <Text style={[styles.mapLabel, { top: 12, left: '38%' }]}>SAINT-MICHEL</Text>
-                <Text style={[styles.mapLabel, { top: 36, left: '62%' }]}>
-                  ROSEMONT LA PETITE-PATRIE
-                </Text>
-                <Text style={[styles.mapLabel, { top: 58, left: 24 }]}>Jean-Talon Market</Text>
-                <Text style={[styles.mapLabel, { top: 98, left: 12 }]}>PARC EXTENSION</Text>
-                <Text style={[styles.mapLabel, { top: 125, left: 16 }]}>CHU Sainte-Justine</Text>
-                <Text style={[styles.mapLabelBold, { top: 155, left: '38%' }]}>Montréal</Text>
-                <Text style={[styles.mapLabel, { top: 165, left: '72%' }]}>Saint-Lambert</Text>
-
-                {/* Park green zone */}
-                <View style={styles.mapParkArea}>
-                  <Text style={styles.mapParkText}>Parc La Fontaine</Text>
-                </View>
-              </View>
-
-              {/* Center Bike Marker Pin */}
-              <View style={styles.centerPinContainer}>
-                <View style={styles.mapPinHead}>
-                  <Text style={styles.mapPinIcon}>
-                    {CIVIC_CATEGORIES.find((c) => c.key === selectedCategory)?.icon || '🚲'}
-                  </Text>
-                </View>
-                <View style={styles.mapPinStem} />
-                <View style={styles.mapPinBaseDot} />
-              </View>
+              {/* Real map: the report point and the district's other issues by status */}
+              <ReportLocationMap point={coordinates} issues={mappableIssues} />
 
               {/* Coordinates Pill Badge under Pin */}
               <View style={styles.coordinatesPill}>
@@ -849,6 +832,47 @@ export function DistrictScreen({
                     : tText('districtScreen.adjustPin', "Ajuster l'épingle")}
                 </Text>
               </Pressable>
+            </View>
+
+            {/* Status legend for the map's issue markers */}
+            <View testID="report-map-legend" style={styles.mapLegend}>
+              <Text style={[styles.mapLegendTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+                {tText(
+                  'reportMap.legendTitle',
+                  `Autres signalements dans ${selectedDistrict.name}`,
+                  {
+                    district: selectedDistrict.name,
+                  },
+                )}
+              </Text>
+              {mappableIssues.length === 0 ? (
+                <Text style={[styles.mapLegendText, { color: isDark ? '#A6C2B2' : '#434844' }]}>
+                  {tText(
+                    'reportMap.noIssues',
+                    'Aucun autre signalement dans cet arrondissement pour le moment.',
+                  )}
+                </Text>
+              ) : (
+                <View style={styles.mapLegendRow}>
+                  {ISSUE_STATUSES.map((status) => (
+                    <View key={status} style={styles.mapLegendItem}>
+                      <View
+                        style={[
+                          styles.mapLegendDot,
+                          { backgroundColor: ISSUE_STATUS_COLORS[status] },
+                        ]}
+                      />
+                      <Text
+                        style={[styles.mapLegendText, { color: isDark ? '#A6C2B2' : '#434844' }]}
+                      >
+                        {`${tText(`issue.status.${status}`, status)} (${
+                          mappableIssues.filter((i) => i.status === status).length
+                        })`}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
 
@@ -1650,6 +1674,12 @@ const styles = StyleSheet.create({
   },
 
   // Map
+  mapLegend: { marginTop: 10, gap: 6 },
+  mapLegendTitle: { fontSize: 13, fontWeight: '700' },
+  mapLegendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  mapLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  mapLegendDot: { width: 10, height: 10, borderRadius: 5 },
+  mapLegendText: { fontSize: 12 },
   mapContainer: {
     height: 195,
     borderRadius: 16,
@@ -1659,87 +1689,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  mapGridPattern: {
-    ...StyleSheet.absoluteFill,
-  },
-  mapRoadH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 6,
-    backgroundColor: 'rgba(215, 225, 220, 0.7)',
-  },
-  mapRoadV: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 6,
-    backgroundColor: 'rgba(215, 225, 220, 0.7)',
-  },
-  mapLabel: {
-    position: 'absolute',
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#65776C',
-  },
-  mapLabelBold: {
-    position: 'absolute',
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#283B31',
-  },
-  mapParkArea: {
-    position: 'absolute',
-    right: 28,
-    top: 70,
-    width: 100,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: 'rgba(167, 243, 208, 0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mapParkText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#065F46',
-  },
 
   // Pin on map
-  centerPinContainer: {
-    alignItems: 'center',
-    zIndex: 10,
-    marginTop: -20,
-  },
-  mapPinHead: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#0A2540',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  mapPinIcon: {
-    fontSize: 18,
-  },
-  mapPinStem: {
-    width: 2,
-    height: 8,
-    backgroundColor: '#0A2540',
-  },
-  mapPinBaseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#0A2540',
-  },
   coordinatesPill: {
     position: 'absolute',
     bottom: 44,

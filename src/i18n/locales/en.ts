@@ -316,6 +316,12 @@ const en = {
     profileLabel: 'Citizen profile',
     coordinates: 'Coordinates',
   },
+  reportMap: {
+    reportPoint: 'Your report',
+    issueMarker: '{{title}}, {{status}}',
+    legendTitle: 'Other issues in {{district}}',
+    noIssues: 'No other issues reported in this district yet.',
+  },
 };
 
 export default en;

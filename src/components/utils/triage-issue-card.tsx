@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/utils/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type OfficialReply, TRIAGE_STATUSES } from '@/lib/profile';
+import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
 import type { Issue, IssueStatus } from '@/models/Issue';
 
 export type TriageIssueCardProps = {
@@ -93,7 +94,7 @@ export function TriageIssueCard({
             { borderColor: theme.border, backgroundColor: theme.backgroundElement },
           ]}
         >
-          <View style={[styles.dot, { backgroundColor: STATUS_DOT_COLORS[issue.status] }]} />
+          <View style={[styles.dot, { backgroundColor: ISSUE_STATUS_COLORS[issue.status] }]} />
           <ThemedText type="smallBold" style={styles.flex}>
             {statusLabel}
           </ThemedText>
@@ -112,7 +113,7 @@ export function TriageIssueCard({
                 onPress={() => chooseStatus(status)}
                 style={styles.option}
               >
-                <View style={[styles.dot, { backgroundColor: STATUS_DOT_COLORS[status] }]} />
+                <View style={[styles.dot, { backgroundColor: ISSUE_STATUS_COLORS[status] }]} />
                 <ThemedText type={status === issue.status ? 'smallBold' : 'small'}>
                   {t(`profile.triage.status.${status}`)}
                 </ThemedText>
@@ -157,13 +158,6 @@ export function TriageIssueCard({
     </ThemedCard>
   );
 }
-
-/** Same dot colors as the status badge in IssueCard's getStatusConfig. */
-const STATUS_DOT_COLORS: Record<IssueStatus, string> = {
-  not_started: '#64748B',
-  in_progress: '#D97706',
-  resolved: '#16A34A',
-};
 
 /** Day and time of a reply in the reader's locale and time zone, e.g. "18 nov., 06 h 42". */
 const formatReplyTime = (iso: string, locale: string) => {
