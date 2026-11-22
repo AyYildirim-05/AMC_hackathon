@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
@@ -148,5 +148,21 @@ describe('DistrictScreen report map', () => {
     expect(legend).toHaveTextContent(/Other issues in Rosemont/);
     expect(legend).toHaveTextContent(/To do \(2\)/);
     expect(legend).toHaveTextContent(/In progress \(0\)/);
+  });
+
+  it('adds the newly published issue to the map as a to-do dot at the report point', async () => {
+    await renderScreen();
+    await waitFor(() => expect(screen.getAllByTestId(/^report-map-issue-/)).toHaveLength(2));
+
+    await fireEvent.press(screen.getByTestId('publish-report-button'));
+
+    // Publishing invalidates the issue queries, so the district's list is fetched again.
+    await waitFor(() => expect(screen.getAllByTestId(/^report-map-issue-/)).toHaveLength(3));
+    const known = new Set(TEST_ISSUES.map((i) => `report-map-issue-${i.id}`));
+    const added = screen
+      .getAllByTestId(/^report-map-issue-/)
+      .find((m) => !known.has(m.props.testID));
+    expect(added?.props.coordinate).toEqual({ latitude: GPS.latitude, longitude: GPS.longitude });
+    expect(screen.getByTestId('report-map-legend')).toHaveTextContent(/To do \(3\)/);
   });
 });
