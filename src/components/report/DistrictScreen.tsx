@@ -20,20 +20,28 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
-import { type District } from '@/components/utils/map-utils';
+import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
 import { ProfileButton } from '@/components/utils/profile-button';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
-import { createIssue, fetchIssuesByDistrict } from '@/lib/api/issues';
+import {
+  createIssue,
+  fetchIssuesByDistrict,
+  fetchMyVotes,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
 import { detectDeviceLocation } from '@/lib/location';
 import { ISSUE_STATUSES } from '@/models/Issue';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 
 import { ReportLocationMap } from './ReportLocationMap';
-import { type Issue } from '@/models/Issue';
+import { type Issue, type IssueCategory } from '@/models/Issue';
+
+/** A new report this close to an open issue is probably a duplicate of it. */
+const DUPLICATE_RADIUS_METERS = 50;
 
 export type CivicCategoryKey =
   'traffic_safety' | 'roads_potholes' | 'streetlights_utilities' | 'parks_cleanliness';
@@ -115,7 +123,9 @@ export interface DistrictScreenProps {
   /** Initial selected borough ID. */
   initialDistrictId?: string;
   /** Initial selected category. */
-  initialCategory?: CivicCategoryKey;
+  initialCategory?: CivicCategoryKey | null;
+  /** Initial report address. */
+  initialAddress?: string;
   /** Initial report title. */
   initialTitle?: string;
   /** Initial report description. */
@@ -128,17 +138,21 @@ export interface DistrictScreenProps {
   testID?: string;
 }
 
-const DEFAULT_PHOTO =
-  'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80';
+const DEFAULT_COORDINATES = {
+  latitude: 45.529841,
+  longitude: -73.575124,
+  place: 'Parc La Fontaine',
+};
 
 export function DistrictScreen({
   onBack,
   onSubmitSuccess,
   initialDistrictId = '11111111-1111-4111-8111-111111111101',
-  initialCategory = 'traffic_safety',
-  initialTitle = 'Piste cyclable bloquée sur Rachel Est',
-  initialDescription = 'Clôtures de chantier obstruant complètement le REV/piste cyclable sans signalisation de détour. Oblige les cyclistes à bifurquer vers les voies',
-  initialPhotos = [DEFAULT_PHOTO],
+  initialCategory = null,
+  initialAddress = '',
+  initialTitle = '',
+  initialDescription = '',
+  initialPhotos = [],
   initialMtl311 = true,
   testID = 'district-screen',
 }: DistrictScreenProps) {
@@ -177,17 +191,20 @@ export function DistrictScreen({
   }, [districtOptions, user, initialDistrictId]);
 
   // Helper with safe fallbacks
-  const tText = (key: string, fallback: string, options?: Record<string, unknown>): string => {
-    try {
-      const res = (t as unknown as (k: string, opt?: Record<string, unknown>) => string)(
-        key,
-        options,
-      );
-      return res && res !== key ? res : fallback;
-    } catch {
-      return fallback;
-    }
-  };
+  const tText = useCallback(
+    (key: string, fallback: string, options?: Record<string, unknown>): string => {
+      try {
+        const res = (t as unknown as (k: string, opt?: Record<string, unknown>) => string)(
+          key,
+          options,
+        );
+        return res && res !== key ? res : fallback;
+      } catch {
+        return fallback;
+      }
+    },
+    [t],
+  );
 
   // State
   const [pickedDistrict, setPickedDistrict] = useState<DistrictItem | null>(null);
@@ -195,14 +212,20 @@ export function DistrictScreen({
   const [districtTab, setDistrictTab] = useState<'my' | 'other'>('my');
   const [isBoroughModalVisible, setIsBoroughModalVisible] = useState(false);
 
-  const [selectedCategory, setSelectedCategory] = useState<CivicCategoryKey>(initialCategory);
-  const [address, setAddress] = useState('1250 Rue Rachel Est, Montréal, QC H2J 2J9');
-  const [coordinates, setCoordinates] = useState({
-    latitude: 45.529841,
-    longitude: -73.575124,
-    place: 'Parc La Fontaine',
-  });
+  const [selectedCategory, setSelectedCategory] = useState<CivicCategoryKey | null>(
+    initialCategory,
+  );
+  // The server has no parks category, so parks reports are saved as traffic_safety.
+  const issueCategory: IssueCategory | null =
+    selectedCategory === null
+      ? null
+      : selectedCategory === 'parks_cleanliness'
+        ? 'traffic_safety'
+        : selectedCategory;
+  const [address, setAddress] = useState(initialAddress);
+  const [coordinates, setCoordinates] = useState(DEFAULT_COORDINATES);
   const [isAdjustingPin, setIsAdjustingPin] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Other issues in the report's district, shown on the map by status.
   const { data: districtIssues } = useQuery({
@@ -223,13 +246,21 @@ export function DistrictScreen({
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [mtl311Enabled, setMtl311Enabled] = useState(initialMtl311);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [duplicate, setDuplicate] = useState<{ issue: Issue; meters: number } | null>(null);
 
-  // Status feedback modals/toasts
+  // Status feedback toast
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
-  const [publishedTicket, setPublishedTicket] = useState<{
-    ticketRef: string;
-    borough: string;
-  } | null>(null);
+
+  const isFormValid = Boolean(
+    selectedDistrict.id &&
+    selectedCategory &&
+    address.trim().length > 0 &&
+    Number.isFinite(coordinates.latitude) &&
+    Number.isFinite(coordinates.longitude) &&
+    title.trim().length > 0 &&
+    description.trim().length > 0,
+  );
+  const canPublish = isFormValid && !isPublishing;
 
   const handleSelectDistrict = (item: DistrictItem) => {
     setPickedDistrict(item);
@@ -240,7 +271,43 @@ export function DistrictScreen({
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddPhoto = async () => {
+  const handleTakePhoto = async () => {
+    if (photos.length >= 3) {
+      Alert.alert(
+        tText('districtScreen.photosTitle', 'Photos justificatives (max. 3)', { max: 3 }),
+        tText('photos.limitReached', 'Vous pouvez ajouter jusqu’à 3 photos.', { max: 3 }),
+      );
+      return;
+    }
+
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          tText('common.error', 'Erreur'),
+          tText(
+            'photos.cameraDenied',
+            "L'accès à l'appareil photo est désactivé. Autorisez-le dans les Réglages pour prendre des photos.",
+          ),
+        );
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.7,
+      });
+      if (!res.canceled && res.assets?.[0]?.uri) {
+        setPhotos((prev) => [...prev, res.assets[0].uri].slice(0, 3));
+      }
+    } catch {
+      Alert.alert(
+        tText('common.error', 'Erreur'),
+        tText('photos.unavailable', "Impossible d'ouvrir l'appareil photo ou la photothèque."),
+      );
+    }
+  };
+
+  const handlePickFromGallery = async () => {
     if (photos.length >= 3) {
       Alert.alert(
         tText('districtScreen.photosTitle', 'Photos justificatives (max. 3)', { max: 3 }),
@@ -258,10 +325,10 @@ export function DistrictScreen({
         setPhotos((prev) => [...prev, res.assets[0].uri].slice(0, 3));
       }
     } catch {
-      // If photo picker is unavailable or cancelled, add another sample photo for demo
-      const backupSample =
-        'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=1200&q=80';
-      setPhotos((prev) => (prev.length < 3 ? [...prev, backupSample] : prev));
+      Alert.alert(
+        tText('common.error', 'Erreur'),
+        tText('photos.unavailable', "Impossible d'ouvrir l'appareil photo ou la photothèque."),
+      );
     }
   };
 
@@ -288,7 +355,12 @@ export function DistrictScreen({
       const detected = await detectDeviceLocation();
       if (!detected) {
         if (options?.notifyOnFallback) {
-          showToast('Recherche de localisation activée');
+          showToast(
+            tText(
+              'districtScreen.locationUnavailable',
+              "Impossible d'obtenir votre position actuelle. Vérifiez les autorisations de localisation.",
+            ),
+          );
         }
         return false;
       }
@@ -298,9 +370,7 @@ export function DistrictScreen({
         longitude: detected.longitude,
         place: detected.place ?? prev.place,
       }));
-      if (detected.address) {
-        setAddress(detected.address);
-      }
+      setAddress(detected.address ?? `${detected.latitude}, ${detected.longitude}`);
 
       try {
         const { district } = await locateDistrictByCoordinates(
@@ -323,13 +393,23 @@ export function DistrictScreen({
         return true;
       } catch {
         if (options?.notifyOnFallback) {
-          showToast('Position GPS détectée');
+          showToast(tText('districtScreen.locationDetected', 'Position actuelle détectée'));
         }
-        return false;
+        return true;
       }
     },
-    [queryClient, showToast],
+    [queryClient, showToast, tText],
   );
+
+  const handleUseCurrentLocation = async () => {
+    if (isLocating) return;
+    setIsLocating(true);
+    try {
+      await locateAndResolveDistrict({ notifyOnFallback: true });
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   // Automatically localize via device GPS + OpenNorth when opening the report screen.
   useEffect(() => {
@@ -343,9 +423,7 @@ export function DistrictScreen({
         longitude: detected.longitude,
         place: detected.place ?? prev.place,
       }));
-      if (detected.address) {
-        setAddress(detected.address);
-      }
+      setAddress(detected.address ?? `${detected.latitude}, ${detected.longitude}`);
 
       try {
         const { district } = await locateDistrictByCoordinates(
@@ -390,19 +468,78 @@ export function DistrictScreen({
     setFeedbackToast(tText('districtScreen.draftSavedToast', 'Brouillon enregistré avec succès.'));
   };
 
-  const handlePublish = async () => {
-    if (isPublishing) return;
-    if (!title.trim()) {
+  const resetForm = () => {
+    setSelectedCategory(null);
+    setAddress('');
+    setTitle('');
+    setDescription('');
+    setPhotos([]);
+    setIsAdjustingPin(false);
+    setMtl311Enabled(initialMtl311);
+    if (districtTab === 'other') {
+      setDistrictTab('my');
+      setPickedDistrict(null);
+    }
+    setFeedbackToast(null);
+  };
+
+  const handlePublish = () => {
+    if (!canPublish || isPublishing || !issueCategory) return;
+    // Only open issues of the same category count: a problem that comes back is a new report.
+    // Only the selected district's issues are loaded, so a duplicate just across a district
+    // boundary is missed; a server-side distance query would cover that.
+    if (user?.role === 'resident') {
+      const nearby = nearestIssueWithin(
+        mappableIssues.filter((i) => i.status !== 'resolved' && i.category === issueCategory),
+        coordinates,
+        DUPLICATE_RADIUS_METERS,
+      );
+      if (nearby) {
+        setDuplicate(nearby);
+        return;
+      }
+    }
+    void publishIssue();
+  };
+
+  const handlePublishAnyway = () => {
+    setDuplicate(null);
+    void publishIssue();
+  };
+
+  const handleUpvoteDuplicate = async () => {
+    if (!duplicate || isPublishing) return;
+    const { issue } = duplicate;
+    setDuplicate(null);
+    setIsPublishing(true);
+    try {
+      // The vote endpoint toggles, so voting on an issue already upvoted would remove the vote.
+      const myVotes = await queryClient.fetchQuery({
+        queryKey: ['votes', 'me'],
+        queryFn: fetchMyVotes,
+      });
+      if (myVotes.upvotedIssueIds.includes(issue.id)) {
+        showToast(t('districtScreen.duplicate.alreadyUpvoted'));
+        return;
+      }
+      await toggleIssueVote(issue.id, 'upvote');
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      showToast(t('districtScreen.duplicate.upvoted'));
+    } catch (err) {
       Alert.alert(
         tText('common.error', 'Erreur'),
-        tText('auth.errors.requiredFields', 'Veuillez saisir un titre pour le signalement.'),
+        getApiErrorMessage(err, "Impossible d'ajouter le vote."),
       );
-      return;
+    } finally {
+      setIsPublishing(false);
     }
+  };
 
+  const publishIssue = async () => {
+    if (!issueCategory) return;
     const ticketNumber = `MTL-311-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-    const normalizedCategory =
-      selectedCategory === 'parks_cleanliness' ? 'traffic_safety' : selectedCategory;
 
     setIsPublishing(true);
     try {
@@ -418,8 +555,8 @@ export function DistrictScreen({
 
       const created = await createIssue({
         title: title.trim(),
-        description: description.trim() || title.trim(),
-        category: normalizedCategory,
+        description: description.trim(),
+        category: issueCategory,
         address: address.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
@@ -428,14 +565,25 @@ export function DistrictScreen({
         external311Ref: mtl311Enabled ? ticketNumber : null,
       });
 
+      // Immediately reflect the new issue on the Issues feed, the Carte map, and the report map.
+      queryClient.setQueryData<Issue[]>(['issues'], (prev) => {
+        if (!prev) return [created];
+        if (prev.some((item) => item.id === created.id)) return prev;
+        return [created, ...prev];
+      });
+      if (selectedDistrict.id) {
+        queryClient.setQueryData<Issue[]>(['issues', 'district', selectedDistrict.id], (prev) => {
+          if (!prev) return [created];
+          if (prev.some((item) => item.id === created.id)) return prev;
+          return [created, ...prev];
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: ['issues'] });
       void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
 
-      setPublishedTicket({
-        ticketRef: created.external_311_ref ?? ticketNumber,
-        borough: selectedDistrict.name,
-      });
+      resetForm();
       onSubmitSuccess?.(created);
+      router.navigate('/');
     } catch (err) {
       Alert.alert(
         tText('common.error', 'Erreur'),
@@ -481,37 +629,6 @@ export function DistrictScreen({
 
           {/* User Profile Avatar */}
           <ProfileButton testID="district-screen-profile-button" />
-        </View>
-
-        {/* ─── 2. Stepper / Progress Bar ─── */}
-        <View
-          style={[
-            styles.stepperContainer,
-            {
-              backgroundColor: isDark ? '#18241E' : '#FFFFFF',
-              borderBottomColor: isDark ? '#23332A' : '#EAEFEA',
-            },
-          ]}
-        >
-          <View style={styles.stepperRow}>
-            <View style={styles.stepActiveTab}>
-              <Text style={[styles.stepActiveText, { color: isDark ? '#8CD3AC' : '#0D3B66' }]}>
-                {tText('districtScreen.stepIndicator', '• ÉTAPE 1 SUR 2')}
-              </Text>
-              <View
-                style={[
-                  styles.stepIndicatorLine,
-                  { backgroundColor: isDark ? '#8CD3AC' : '#0D3B66' },
-                ]}
-              />
-            </View>
-
-            <View style={styles.stepInactiveTab}>
-              <Text style={[styles.stepInactiveText, { color: isDark ? '#7E9689' : '#5E7368' }]}>
-                {tText('districtScreen.stepDetails', 'Détails & Localisation')}
-              </Text>
-            </View>
-          </View>
         </View>
 
         {/* ─── Toast Feedback Notice ─── */}
@@ -737,14 +854,12 @@ export function DistrictScreen({
 
           {/* ─── 5. Localisation précise ─── */}
           <View style={styles.sectionBlock}>
-            <Text
-              style={[
-                styles.sectionTitle,
-                { color: isDark ? '#E5F2EA' : '#141E18', marginBottom: Spacing.two },
-              ]}
-            >
-              {tText('districtScreen.locationTitle', 'Localisation précise')}
-            </Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+                {tText('districtScreen.locationTitle', 'Localisation précise')}
+              </Text>
+              <Text style={styles.requiredBadge}>{tText('districtScreen.required', 'Requis')}</Text>
+            </View>
 
             {/* Address Banner Card */}
             <View
@@ -786,7 +901,7 @@ export function DistrictScreen({
                 accessibilityRole="button"
                 accessibilityLabel="Rechercher adresse"
                 onPress={() => {
-                  void locateAndResolveDistrict({ notifyOnFallback: true });
+                  void handleUseCurrentLocation();
                 }}
                 style={({ pressed }) => [
                   styles.searchIconButton,
@@ -797,6 +912,34 @@ export function DistrictScreen({
                 <Text style={styles.searchIconText}>🔍</Text>
               </Pressable>
             </View>
+
+            {/* Explicit button to use the user's current geolocation */}
+            <Pressable
+              testID="use-current-location-button"
+              accessibilityRole="button"
+              disabled={isLocating}
+              onPress={() => {
+                void handleUseCurrentLocation();
+              }}
+              style={({ pressed }) => [
+                styles.useCurrentLocationBtn,
+                {
+                  backgroundColor: isDark ? '#1C3326' : '#E8F5EE',
+                  borderColor: isDark ? '#2A4D3B' : '#BDE3CC',
+                },
+                pressed && styles.pressedOpacity,
+                isLocating && styles.disabledOpacity,
+              ]}
+            >
+              <Text style={styles.useCurrentLocationIcon}>⌖</Text>
+              <Text
+                style={[styles.useCurrentLocationText, { color: isDark ? '#A3E3BE' : '#065F46' }]}
+              >
+                {isLocating
+                  ? tText('districtScreen.locating', 'Localisation en cours...')
+                  : tText('districtScreen.useCurrentLocation', 'Utiliser ma position actuelle')}
+              </Text>
+            </Pressable>
 
             {/* Map Preview Container */}
             <View
@@ -952,7 +1095,7 @@ export function DistrictScreen({
 
             {/* Photo Slots Row */}
             <View style={styles.photoSlotsRow}>
-              {/* Slot 1: Attached photo with badges */}
+              {/* Slot 1: Attached photo or Camera action */}
               {photos.length > 0 ? (
                 <View style={styles.photoSlot}>
                   <Image source={{ uri: photos[0] }} style={styles.photoImage} contentFit="cover" />
@@ -977,7 +1120,7 @@ export function DistrictScreen({
                 <Pressable
                   testID="photo-slot-empty-1"
                   accessibilityRole="button"
-                  onPress={handleAddPhoto}
+                  onPress={handleTakePhoto}
                   style={[
                     styles.photoSlot,
                     styles.photoAddSlot,
@@ -991,12 +1134,12 @@ export function DistrictScreen({
                     <Text style={styles.photoCameraIcon}>📷</Text>
                   </View>
                   <Text style={[styles.photoAddLabel, { color: isDark ? '#A2C2B1' : '#2D4B66' }]}>
-                    {tText('districtScreen.addPhoto', 'Ajouter photo')}
+                    {tText('districtScreen.takePhoto', 'Prendre photo')}
                   </Text>
                 </Pressable>
               )}
 
-              {/* Slot 2: Add Photo Action */}
+              {/* Slot 2: Gallery when Slot 1 is Camera; Camera when Slot 1 already holds a photo */}
               {photos.length >= 2 ? (
                 <View style={styles.photoSlot}>
                   <Image source={{ uri: photos[1] }} style={styles.photoImage} contentFit="cover" />
@@ -1013,7 +1156,7 @@ export function DistrictScreen({
                 <Pressable
                   testID="add-photo-button"
                   accessibilityRole="button"
-                  onPress={handleAddPhoto}
+                  onPress={photos.length === 1 ? handleTakePhoto : handlePickFromGallery}
                   style={[
                     styles.photoSlot,
                     styles.photoAddSlot,
@@ -1024,15 +1167,17 @@ export function DistrictScreen({
                   ]}
                 >
                   <View style={styles.photoCameraCircle}>
-                    <Text style={styles.photoCameraIcon}>📷</Text>
+                    <Text style={styles.photoCameraIcon}>{photos.length === 1 ? '📷' : '🖼'}</Text>
                   </View>
                   <Text style={[styles.photoAddLabel, { color: isDark ? '#A2C2B1' : '#2D4B66' }]}>
-                    {tText('districtScreen.addPhoto', 'Ajouter photo')}
+                    {photos.length === 1
+                      ? tText('districtScreen.takePhoto', 'Prendre photo')
+                      : tText('districtScreen.chooseFromGallery', 'Galerie')}
                   </Text>
                 </Pressable>
               )}
 
-              {/* Slot 3: Optional slot */}
+              {/* Slot 3: Optional gallery slot */}
               {photos.length >= 3 ? (
                 <View style={styles.photoSlot}>
                   <Image source={{ uri: photos[2] }} style={styles.photoImage} contentFit="cover" />
@@ -1049,7 +1194,7 @@ export function DistrictScreen({
                 <Pressable
                   testID="photo-slot-optional"
                   accessibilityRole="button"
-                  onPress={handleAddPhoto}
+                  onPress={handlePickFromGallery}
                   style={[
                     styles.photoSlot,
                     styles.photoOptionalSlot,
@@ -1063,7 +1208,9 @@ export function DistrictScreen({
                   <Text
                     style={[styles.photoOptionalLabel, { color: isDark ? '#7E9689' : '#728593' }]}
                   >
-                    {tText('districtScreen.optional', 'Optionnel')}
+                    {photos.length === 1
+                      ? tText('districtScreen.chooseFromGallery', 'Galerie')
+                      : tText('districtScreen.optional', 'Optionnel')}
                   </Text>
                 </Pressable>
               )}
@@ -1142,8 +1289,14 @@ export function DistrictScreen({
             <Pressable
               testID="publish-report-button"
               accessibilityRole="button"
+              accessibilityState={{ disabled: !canPublish }}
+              disabled={!canPublish}
               onPress={handlePublish}
-              style={({ pressed }) => [styles.primaryPublishBtn, pressed && styles.pressedOpacity]}
+              style={({ pressed }) => [
+                styles.primaryPublishBtn,
+                !canPublish && styles.primaryPublishBtnDisabled,
+                pressed && canPublish && styles.pressedOpacity,
+              ]}
             >
               <Text style={styles.primaryPublishIcon}>➤</Text>
               <Text style={styles.primaryPublishText}>
@@ -1250,71 +1403,63 @@ export function DistrictScreen({
           </View>
         </Pressable>
       </Modal>
-
-      {/* ─── Publication Success Modal ─── */}
+      {/* ─── Duplicate Report Prompt ─── */}
       <Modal
-        visible={Boolean(publishedTicket)}
+        visible={Boolean(duplicate)}
         transparent
         animationType="fade"
-        onRequestClose={() => setPublishedTicket(null)}
+        onRequestClose={() => setDuplicate(null)}
       >
         <View style={styles.modalOverlay}>
           <View
-            style={[
-              styles.successDialog,
-              {
-                backgroundColor: isDark ? '#1C2922' : '#FFFFFF',
-              },
-            ]}
+            testID="duplicate-issue-prompt"
+            style={[styles.successDialog, { backgroundColor: isDark ? '#1C2922' : '#FFFFFF' }]}
           >
-            <View style={styles.successIconBadge}>
-              <Text style={styles.successCheckIcon}>✓</Text>
-            </View>
-
-            <Text style={[styles.successTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
-              {tText('districtScreen.publishedSuccessTitle', 'Signalement publié avec succès !')}
-            </Text>
-
-            <Text style={[styles.successMessage, { color: isDark ? '#98B2A4' : '#4C5F54' }]}>
-              {tText(
-                'districtScreen.publishedSuccessMessage',
-                'Votre signalement a été transmis à la Ville de Montréal avec le numéro de référence officiel.',
-              )}
-            </Text>
-
-            {publishedTicket && (
-              <View
-                style={[
-                  styles.ticketRefBox,
-                  {
-                    backgroundColor: isDark ? '#26382F' : '#EFF6FF',
-                    borderColor: isDark ? '#364F42' : '#BFDBFE',
-                  },
-                ]}
-              >
-                <Text style={[styles.ticketRefLabel, { color: isDark ? '#8CB39F' : '#1E40AF' }]}>
-                  RÉFÉRENCE OFFICIELLE 311
-                </Text>
+            {duplicate && (
+              <>
                 <Text
-                  testID="published-ticket-ref"
-                  style={[styles.ticketRefValue, { color: isDark ? '#E5F2EA' : '#1E3A8A' }]}
+                  accessibilityRole="header"
+                  style={[styles.successTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}
                 >
-                  {publishedTicket.ticketRef}
+                  {t('districtScreen.duplicate.prompt', {
+                    distance: `${Math.round(duplicate.meters)} m`,
+                  })}
                 </Text>
-                <Text style={[styles.ticketBoroughText, { color: isDark ? '#98B2A4' : '#3B82F6' }]}>
-                  {publishedTicket.borough}
+                <Text style={[styles.successMessage, { color: isDark ? '#98B2A4' : '#4C5F54' }]}>
+                  {duplicate.issue.title}
                 </Text>
-              </View>
+              </>
             )}
-
             <Pressable
-              testID="close-success-modal-button"
+              testID="duplicate-upvote-button"
               accessibilityRole="button"
-              onPress={() => setPublishedTicket(null)}
+              onPress={handleUpvoteDuplicate}
               style={styles.successCloseBtn}
             >
-              <Text style={styles.successCloseBtnText}>
-                {tText('districtScreen.close', 'Fermer')}
+              <Text style={styles.successCloseBtnText}>{t('districtScreen.duplicate.upvote')}</Text>
+            </Pressable>
+            <Pressable
+              testID="duplicate-publish-anyway-button"
+              accessibilityRole="button"
+              onPress={handlePublishAnyway}
+              style={styles.duplicateSecondaryBtn}
+            >
+              <Text
+                style={[styles.duplicateSecondaryText, { color: isDark ? '#E5F2EA' : '#0A2540' }]}
+              >
+                {t('districtScreen.duplicate.publishAnyway')}
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="duplicate-cancel-button"
+              accessibilityRole="button"
+              onPress={() => setDuplicate(null)}
+              style={styles.duplicateSecondaryBtn}
+            >
+              <Text
+                style={[styles.duplicateSecondaryText, { color: isDark ? '#98B2A4' : '#4C5F54' }]}
+              >
+                {t('districtScreen.duplicate.cancel')}
               </Text>
             </Pressable>
           </View>
@@ -1376,42 +1521,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     fontFamily: Fonts.sans,
-  },
-
-  // 2. Stepper
-  stepperContainer: {
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
-    borderBottomWidth: 1,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepActiveTab: {
-    paddingBottom: Spacing.two,
-    position: 'relative',
-    marginRight: Spacing.four,
-  },
-  stepActiveText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  stepIndicatorLine: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2.5,
-    borderRadius: 1.5,
-  },
-  stepInactiveTab: {
-    paddingBottom: Spacing.two,
-  },
-  stepInactiveText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 
   // Toast
@@ -1671,6 +1780,28 @@ const styles = StyleSheet.create({
   },
   searchIconText: {
     fontSize: 16,
+  },
+  useCurrentLocationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    paddingHorizontal: Spacing.three,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  useCurrentLocationIcon: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: '700',
+  },
+  useCurrentLocationText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  disabledOpacity: {
+    opacity: 0.55,
   },
 
   // Map
@@ -1936,6 +2067,11 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
+  primaryPublishBtnDisabled: {
+    opacity: 0.45,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
   primaryPublishIcon: {
     fontSize: 16,
     color: '#FFFFFF',
@@ -2098,5 +2234,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  duplicateSecondaryBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+  },
+  duplicateSecondaryText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

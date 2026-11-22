@@ -116,8 +116,6 @@ const fr: Translations = {
   },
   districtScreen: {
     headerTitle: 'Municipalité',
-    stepIndicator: '• ÉTAPE 1 SUR 2',
-    stepDetails: 'Détails & Localisation',
     openNorthPipeline: 'OPENNORTH PIPELINE • En direct',
     electoralSector: 'Secteur électoral {{postal}} • Arrondissement validé',
     myDistrict: 'Mon arrondissement',
@@ -137,12 +135,19 @@ const fr: Translations = {
     },
     locationTitle: 'Localisation précise',
     detectedAddress: 'ADRESSE DÉTECTÉE',
+    useCurrentLocation: 'Utiliser ma position actuelle',
+    locating: 'Localisation en cours...',
+    locationUnavailable:
+      "Impossible d'obtenir votre position actuelle. Vérifiez les autorisations de localisation.",
+    locationDetected: 'Position actuelle détectée',
     adjustPin: "Ajuster l'épingle",
     reportTitle: 'Titre du signalement',
     detailedDesc: 'Description détaillée',
     detourRequired: 'Détour requis',
     photosTitle: 'Photos justificatives (max. {{max}})',
     photoAttached: 'Photo jointe',
+    takePhoto: 'Prendre photo',
+    chooseFromGallery: 'Galerie',
     addPhoto: 'Ajouter photo',
     optional: 'Optionnel',
     photoAddedSingle: '1 ajoutée',
@@ -162,6 +167,15 @@ const fr: Translations = {
     draftSavedToast: 'Brouillon enregistré avec succès.',
     selectBorough: 'Sélectionner un arrondissement',
     close: 'Fermer',
+    duplicate: {
+      prompt:
+        'Déjà signalé à {{distance}} - ajouter votre vote (+1) plutôt que de créer un doublon ?',
+      upvote: 'Ajouter mon vote (+1)',
+      publishAnyway: 'Publier quand même',
+      cancel: 'Annuler',
+      upvoted: 'Votre vote a été ajouté au signalement existant.',
+      alreadyUpvoted: 'Vous avez déjà voté pour le signalement existant.',
+    },
   },
   districtFeed: {
     sync: 'OpenNorth Sync',
@@ -342,7 +356,7 @@ const fr: Translations = {
   },
   reportMap: {
     reportPoint: 'Votre signalement',
-    issueMarker: '{{title}}, {{status}}',
+    issueMarker: '{{title}}, {{category}}, {{status}}',
     legendTitle: 'Autres signalements dans {{district}}',
     noIssues: 'Aucun autre signalement dans cet arrondissement pour le moment.',
   },

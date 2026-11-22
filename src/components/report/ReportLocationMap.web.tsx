@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { CATEGORY_ICONS, mapIconGlyph } from '@/components/map/MapIcon';
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
 import { deltaToLeafletZoom, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 
@@ -58,23 +59,27 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
     layer.clearLayers();
     for (const issue of issues) {
       const status = t(`issue.status.${issue.status}`);
-      L.circleMarker([issue.latitude, issue.longitude], {
-        radius: 8,
-        color: '#FFFFFF',
-        weight: 2,
-        fillColor: ISSUE_STATUS_COLORS[issue.status],
-        fillOpacity: 1,
-      })
-        .bindTooltip(`${issue.title} — ${status}`)
-        .addTo(layer);
+      const category = t(`issue.category.${issue.category}`);
+      // Same look as the native marker: the category glyph on a dot colored by status.
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:24px;height:24px;box-sizing:border-box;border-radius:50%;border:2px solid #fff;background:${ISSUE_STATUS_COLORS[issue.status]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;">${mapIconGlyph(CATEGORY_ICONS[issue.category])}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      // bindTooltip renders text as HTML; escape the user-written title.
+      const tooltip = document.createElement('span');
+      tooltip.textContent = `${issue.title} — ${category} • ${status}`;
+      L.marker([issue.latitude, issue.longitude], { icon }).bindTooltip(tooltip).addTo(layer);
     }
-    L.circleMarker([point.latitude, point.longitude], {
-      radius: 10,
-      color: '#FFFFFF',
-      weight: 3,
-      fillColor: '#39473F',
-      fillOpacity: 1,
-    })
+    // A marker too (not a circleMarker, which sits in a lower pane), so it can stay on top.
+    const pointIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:22px;height:22px;box-sizing:border-box;border-radius:50%;border:3px solid #fff;background:#39473F;box-shadow:0 0 0 4px rgba(57,71,63,0.25);"></div>',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+    });
+    L.marker([point.latitude, point.longitude], { icon: pointIcon, zIndexOffset: 1000 })
       .bindTooltip(t('reportMap.reportPoint'))
       .addTo(layer);
 

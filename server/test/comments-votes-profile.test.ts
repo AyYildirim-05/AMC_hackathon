@@ -23,13 +23,36 @@ describe('comments, votes, and profile routes: validation & auth guards', () => 
     assert.equal(res.status, 401);
   });
 
-  it('rejects empty comment body with 400', async () => {
+  it('rejects empty comment body without images with 400', async () => {
     const res = await request(app)
       .post(`/api/issues/${validId}/comments`)
       .set('Authorization', authHeader())
       .send({ body: '   ' });
     assert.equal(res.status, 400);
     assert.ok(res.body.details.fieldErrors.body);
+  });
+
+  it('rejects comment images not uploaded through /api/uploads/signature', async () => {
+    const res = await request(app)
+      .post(`/api/issues/${validId}/comments`)
+      .set('Authorization', authHeader())
+      .send({ body: 'Photo update', images: ['https://example.com/photo.jpg'] });
+    assert.equal(res.status, 400);
+    assert.ok(res.body.details.fieldErrors.images);
+  });
+
+  it('rejects more than 3 images on a comment', async () => {
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME ?? 'demo-cloud';
+    const images = Array.from(
+      { length: 4 },
+      (_, i) => `https://res.cloudinary.com/${cloud}/image/upload/v1/issues/${i}.jpg`,
+    );
+    const res = await request(app)
+      .post(`/api/issues/${validId}/comments`)
+      .set('Authorization', authHeader())
+      .send({ body: 'Too many photos', images });
+    assert.equal(res.status, 400);
+    assert.ok(res.body.details.fieldErrors.images);
   });
 
   it('requires auth for GET /api/issues/votes/me', async () => {

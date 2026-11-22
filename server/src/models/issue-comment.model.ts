@@ -4,7 +4,8 @@ const issueCommentSchema = new Schema(
   {
     issueId: { type: Schema.Types.ObjectId, ref: 'Issue', required: true },
     userId: { type: Schema.Types.ObjectId, ref: 'Person', required: true },
-    body: { type: String, required: true, trim: true },
+    body: { type: String, trim: true, default: '' },
+    images: { type: [String], required: true, default: [] },
     isOfficialResponse: { type: Boolean, required: true, default: false },
   },
   {
@@ -17,6 +18,7 @@ const issueCommentSchema = new Schema(
         delete ret._id;
         ret.issueId = ret.issueId ? String(ret.issueId) : ret.issueId;
         ret.userId = ret.userId ? String(ret.userId) : ret.userId;
+        ret.images = Array.isArray(ret.images) ? ret.images : [];
         return ret;
       },
     },

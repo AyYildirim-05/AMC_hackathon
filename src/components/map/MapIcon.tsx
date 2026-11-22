@@ -1,6 +1,8 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Text } from 'react-native';
 
+import type { IssueCategory } from '@/models/Issue';
+
 export type MapIconName =
   | 'city'
   | 'search'
@@ -135,6 +137,16 @@ const ICON_MAP: Record<MapIconName, SymbolSpec> = {
     fallback: '⚠',
   },
 };
+
+/** The icon that stands for each issue category on the maps. */
+export const CATEGORY_ICONS: Record<IssueCategory, MapIconName> = {
+  traffic_safety: 'bike',
+  roads_potholes: 'pothole',
+  streetlights_utilities: 'lightbulb',
+};
+
+/** Text version of an icon, for HTML markers (Leaflet) that cannot render a symbol view. */
+export const mapIconGlyph = (name: MapIconName): string => ICON_MAP[name].fallback;
 
 export interface MapIconProps {
   name: MapIconName;
