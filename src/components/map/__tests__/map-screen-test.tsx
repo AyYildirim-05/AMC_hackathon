@@ -271,7 +271,7 @@ describe('CardScreen (Map page) — all interactive controls', () => {
   it('renders header, real map view, markers, and default selected incident preview in French', async () => {
     await renderCardScreen();
 
-    expect(screen.getByText('CityPulse MTL')).toBeOnTheScreen();
+    expect(screen.getByText('Montone')).toBeOnTheScreen();
     expect(screen.getByText('Tous les arrondissements ▾')).toBeOnTheScreen();
     expect(screen.getByTestId('montreal-map-canvas')).toBeOnTheScreen();
     expect(screen.getByTestId('map-preview-sheet')).toBeOnTheScreen();

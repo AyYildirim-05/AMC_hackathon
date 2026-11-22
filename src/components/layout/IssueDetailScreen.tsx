@@ -148,7 +148,7 @@ function getTimelineSteps(issue: Issue, districtNameOverride?: string): Timeline
       {
         id: 'step-1',
         title: 'Signalé par le citoyen',
-        subtitle: 'Ticket créé et géolocalisé via CityPulse MTL',
+        subtitle: 'Ticket créé et géolocalisé via Montone',
         time: '08:00',
         status: 'completed',
       },
@@ -185,7 +185,7 @@ function getTimelineSteps(issue: Issue, districtNameOverride?: string): Timeline
     {
       id: 'step-1',
       title: 'Signalé par le citoyen',
-      subtitle: 'Ticket créé et géolocalisé via CityPulse MTL',
+      subtitle: 'Ticket créé et géolocalisé via Montone',
       time: createdTime,
       status: 'completed',
     },

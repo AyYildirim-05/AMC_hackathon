@@ -112,7 +112,7 @@ async function seed() {
     {
       username: 'admin_mtl',
       displayName: 'Admin MTL',
-      email: 'admin@citypulse-mtl.example.ca',
+      email: 'admin@montone.example.ca',
       postalCode: 'H2S2A9',
       homeDistrictSlug: 'rosemont-la-petite-patrie',
       role: 'admin' as const,

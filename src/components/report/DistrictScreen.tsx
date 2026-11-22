@@ -1407,7 +1407,7 @@ export function DistrictScreen({
             <Text style={[styles.footerText, { color: isDark ? '#7E988A' : '#687B70' }]}>
               {tText(
                 'districtScreen.charterFooter',
-                'Charte citoyenne CityPulse MTL • Données ouvertes OpenNorth',
+                'Charte citoyenne Montone • Données ouvertes OpenNorth',
               )}
             </Text>
           </View>

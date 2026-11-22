@@ -114,7 +114,7 @@ export const TEST_PERSONS: Person[] = [
     username: 'admin_mtl',
     display_name: 'Admin MTL',
     avatar_url: null,
-    email: 'admin@citypulse-mtl.example.ca',
+    email: 'admin@montone.example.ca',
     postal_code: 'H2S2A9',
     home_district_id: '11111111-1111-4111-8111-111111111103',
     role: 'admin',
