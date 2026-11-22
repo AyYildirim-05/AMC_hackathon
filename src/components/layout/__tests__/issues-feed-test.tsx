@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import IssuesScreen from '@/app/index';
 import { setLanguage } from '@/i18n';
+import { emitIssueCreated } from '@/lib/api/issues';
 import type { AuthUser } from '@/lib/auth/auth-api';
 
-import { installMockBackendApi } from '../../../../test/fixtures';
+import { installMockBackendApi, TEST_ISSUES } from '../../../../test/fixtures';
 
 // A resident of Le Plateau-Mont-Royal (district …101 in the fixtures).
 const mockUser: AuthUser = {
@@ -160,4 +161,17 @@ it('searches across boroughs, and resets from the empty state', async () => {
   await fireEvent.press(screen.getByTestId('feed-reset-filters'));
   expect(screen.getByTestId('feed-search-input').props.value).toBe('');
   expect(screen.getByTestId('feed-results-count')).toHaveTextContent('5 reports');
+});
+
+it('switches borough filter automatically when the user publishes an issue in another borough', async () => {
+  await renderFeed();
+  // Starts on Plateau (home borough); Ville-Marie issue is hidden.
+  expect(screen.queryByText(VILLE_MARIE)).toBeNull();
+
+  // Publishing a new issue in Ville-Marie switches the feed so it becomes visible right away.
+  await act(async () => {
+    emitIssueCreated(TEST_ISSUES[1]);
+  });
+
+  expect(await screen.findByText(VILLE_MARIE)).toBeOnTheScreen();
 });

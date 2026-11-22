@@ -45,6 +45,21 @@ export type ToggleVoteResponse = {
   resolutionConfirmations: number;
 };
 
+type IssueCreatedListener = (issue: Issue) => void;
+const issueCreatedListeners = new Set<IssueCreatedListener>();
+
+/** Notifies feed screens when the signed-in user publishes a new issue so it is shown immediately. */
+export function emitIssueCreated(issue: Issue): void {
+  for (const listener of issueCreatedListeners) listener(issue);
+}
+
+export function onIssueCreated(listener: IssueCreatedListener): () => void {
+  issueCreatedListeners.add(listener);
+  return () => {
+    issueCreatedListeners.delete(listener);
+  };
+}
+
 export async function fetchIssues(): Promise<Issue[]> {
   const { data } = await apiClient.get<Record<string, unknown>[]>('/api/issues');
   return Array.isArray(data) ? data.map(normalizeIssue) : [];

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -15,7 +15,7 @@ import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { fetchDistricts } from '@/lib/api/districts';
-import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
+import { fetchIssues, fetchMyVotes, onIssueCreated, toggleIssueVote } from '@/lib/api/issues';
 import type { Issue } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -26,7 +26,11 @@ export default function IssuesScreen() {
   const { isAuthenticated } = useAuth();
   const user = useCurrentUser();
 
-  const { data: issues = [] } = useQuery<Issue[]>({
+  const {
+    data: issues = [],
+    isRefetching,
+    refetch,
+  } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
   });
@@ -86,6 +90,20 @@ export default function IssuesScreen() {
     setBorough('all');
   };
 
+  // When the user publishes a new report (potentially in a GPS-detected borough other than their
+  // home borough), clear restrictive filters and switch to its borough so it shows up immediately.
+  useEffect(
+    () =>
+      onIssueCreated((created) => {
+        setQuery('');
+        setStatus('all');
+        if (created.district_id && districtId !== 'all' && created.district_id !== districtId) {
+          setBorough(created.district_id === homeDistrictId ? 'home' : created.district_id);
+        }
+      }),
+    [districtId, homeDistrictId],
+  );
+
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const selectedIssue = selectedIssueId
     ? (issues.find((i) => i.id === selectedIssueId) ?? null)
@@ -126,6 +144,10 @@ export default function IssuesScreen() {
         }
         data={visibleIssues}
         keyExtractor={(issue) => issue.id}
+        refreshing={isRefetching}
+        onRefresh={() => {
+          void refetch();
+        }}
         renderItem={({ item }) => (
           <IssueCard
             issue={item}
