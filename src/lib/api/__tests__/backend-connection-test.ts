@@ -213,6 +213,7 @@ describe('backend API client connections', () => {
               issueId: '64b7f0c2a1b2c3d4e5f60701',
               userId: '64b7f0c2a1b2c3d4e5f60703',
               body: 'Still there',
+              images: ['https://res.cloudinary.com/demo/image/upload/v1/issues/still-there.jpg'],
               isOfficialResponse: false,
               createdAt: '2026-11-21T10:05:00.000Z',
               updatedAt: '2026-11-21T10:05:00.000Z',
@@ -227,14 +228,16 @@ describe('backend API client connections', () => {
         };
       }
       if (config.method === 'post' && config.url?.endsWith('/comments')) {
+        const parsed = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
         return {
           status: 201,
           data: {
             id: '64b7f0c2a1b2c3d4e5f60711',
             issueId: '64b7f0c2a1b2c3d4e5f60701',
             userId: '64b7f0c2a1b2c3d4e5f60704',
-            body: 'Fixed today',
-            isOfficialResponse: true,
+            body: parsed.body,
+            images: parsed.images ?? [],
+            isOfficialResponse: parsed.isOfficialResponse ?? false,
             createdAt: '2026-11-21T12:00:00.000Z',
             updatedAt: '2026-11-21T12:00:00.000Z',
             author: {
@@ -333,9 +336,17 @@ describe('backend API client connections', () => {
 
     const comments = await fetchIssueComments('64b7f0c2a1b2c3d4e5f60701');
     expect(comments[0]?.body).toBe('Still there');
+    expect(comments[0]?.images).toEqual([
+      'https://res.cloudinary.com/demo/image/upload/v1/issues/still-there.jpg',
+    ]);
 
-    const added = await createIssueComment('64b7f0c2a1b2c3d4e5f60701', 'Fixed today', true);
+    const added = await createIssueComment('64b7f0c2a1b2c3d4e5f60701', 'Fixed today', true, [
+      'https://res.cloudinary.com/demo/image/upload/v1/issues/fixed.jpg',
+    ]);
     expect(added.isOfficialResponse).toBe(true);
+    expect(added.images).toEqual([
+      'https://res.cloudinary.com/demo/image/upload/v1/issues/fixed.jpg',
+    ]);
 
     const votes = await fetchMyVotes();
     expect(votes.upvotedIssueIds).toEqual(['64b7f0c2a1b2c3d4e5f60701']);

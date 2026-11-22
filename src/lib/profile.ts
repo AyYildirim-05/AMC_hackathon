@@ -41,6 +41,7 @@ export interface IssueComment {
   issue_id: Id;
   user_id: Id;
   body: string;
+  images?: string[];
   is_official_response: boolean;
   created_at: IsoDateString;
 }

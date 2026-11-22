@@ -1,5 +1,6 @@
 import '@/i18n';
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 import { installMockBackendApi, TEST_ISSUES } from '../../../../test/fixtures';
 import { IssueDetailScreen } from '@/components/layout/IssueDetailScreen';
@@ -8,6 +9,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
 import type { AuthUser } from '@/lib/auth/auth-api';
+import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
+
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
+}));
+
+jest.mock('@/lib/uploads/cloudinary', () => ({
+  uploadIssuePhotos: jest.fn(),
+}));
 
 // The header's profile button reads the signed-in user and opens the profile sheet.
 const mockUser: AuthUser = {
@@ -55,6 +65,7 @@ describe('IssueDetailScreen', () => {
   let restoreApi: (() => void) | undefined;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     restoreApi = installMockBackendApi({ currentUsername: mockUser.username });
   });
 
@@ -168,6 +179,53 @@ describe('IssueDetailScreen', () => {
     expect(await screen.findByText('Inspected again this afternoon, clear now!')).toBeOnTheScreen();
     expect(await screen.findByText('4 updates')).toBeOnTheScreen();
   });
+
+  it('allows attaching, removing, uploading, and rendering photos in a comment', async () => {
+    const mockLaunchLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    const mockUploadPhotos = uploadIssuePhotos as jest.Mock;
+    const uploadedUrl =
+      'https://res.cloudinary.com/demo/image/upload/v1700000000/issues/comment-photo.jpg';
+
+    mockLaunchLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///tmp/comment-photo.jpg' }],
+    });
+    mockUploadPhotos.mockResolvedValue([uploadedUrl]);
+
+    await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);
+    await screen.findByText('3 updates');
+
+    // Attach a photo and verify the preview strip appears
+    await fireEvent.press(screen.getByTestId('comment-attach-photo-button'));
+    expect(await screen.findByTestId('pending-comment-photo-0')).toBeOnTheScreen();
+
+    // Remove the photo and verify the strip disappears
+    await fireEvent.press(screen.getByTestId('remove-comment-photo-0'));
+    expect(screen.queryByTestId('pending-comment-photos-strip')).toBeNull();
+
+    // Re-attach and submit with comment text
+    await fireEvent.press(screen.getByTestId('comment-attach-photo-button'));
+    expect(await screen.findByTestId('pending-comment-photo-0')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByTestId('comment-input'), 'Photo proof from Rachel Est');
+    await fireEvent.press(screen.getByTestId('comment-send-button'));
+
+    expect(await screen.findByText('Photo proof from Rachel Est')).toBeOnTheScreen();
+    expect(await screen.findByText('4 updates')).toBeOnTheScreen();
+    expect(mockUploadPhotos).toHaveBeenCalledWith(['file:///tmp/comment-photo.jpg']);
+    expect(screen.queryByTestId('pending-comment-photos-strip')).toBeNull();
+
+    // The uploaded image is rendered inside the new comment card
+    const renderedCommentImages = screen.getAllByLabelText('View comment photo');
+    expect(renderedCommentImages.length).toBeGreaterThanOrEqual(1);
+
+    // Tapping opens the full-screen preview overlay and tapping it closes it
+    await fireEvent.press(renderedCommentImages[0]);
+    expect(screen.getByTestId('comment-image-lightbox')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('comment-image-lightbox'));
+    expect(screen.queryByTestId('comment-image-lightbox')).toBeNull();
+  });
+
   it("opens the signed-in user's profile from the header", async () => {
     await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);
 
