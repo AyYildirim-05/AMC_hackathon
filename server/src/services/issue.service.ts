@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isIssuePhotoUrl } from '../lib/cloudinary.js';
+import { analyzeIssueSeverity } from '../lib/gemini.js';
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
 import {
@@ -204,7 +205,19 @@ export const reportIssue = async (input: ReportIssueInput) => {
     assertDistrictExists(input.districtId),
     assertPersonExists(input.createdById),
   ]);
-  const created = await createIssue(input);
+  const severity = await analyzeIssueSeverity({
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    elements: input.elements,
+    address: input.address,
+    imageUrls: input.images,
+  });
+  const created = await createIssue({
+    ...input,
+    severityScore: severity.severityScore,
+    urgency: severity.urgency,
+  });
   return enrichIssue(created);
 };
 

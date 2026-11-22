@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
 import { computeInitials } from '@/components/utils/formatter';
 import { Pill } from '@/components/utils/pill';
 import { ThemedCard } from '@/components/utils/themed-card';
@@ -130,17 +131,35 @@ export function StatGrid({ children }: { children: ReactNode }) {
   return <View style={styles.grid}>{children}</View>;
 }
 
-export function StatTile({ value, label, tag }: { value: string; label: string; tag?: string }) {
+export type StatTileProps = {
+  value: string;
+  label: string;
+  /** Short qualifier shown next to the value, e.g. "311" or "Target < 8h". */
+  tag?: string;
+  icon: MapIconName;
+};
+
+/** A compact stat: an icon, the value with its optional tag, and the label under it. */
+export function StatTile({ value, label, tag, icon }: StatTileProps) {
+  const theme = useTheme();
   return (
-    <ThemedCard variant="outlined" padding="medium" style={styles.tile}>
-      {/* The tag row keeps its height without a tag, so values line up across tiles. */}
-      <View style={styles.tileTagRow}>
-        {tag ? <Pill style={styles.tileTag}>{tag}</Pill> : null}
+    <ThemedCard variant="outlined" padding="small" style={styles.tile}>
+      <View style={styles.tileRow}>
+        <View style={[styles.tileIcon, { backgroundColor: theme.backgroundSelected }]}>
+          <MapIcon name={icon} size={16} color={theme.text} />
+        </View>
+        <View style={styles.tileText}>
+          <View style={styles.tileValueRow}>
+            <ThemedText type="h3" numberOfLines={1} style={styles.shrink}>
+              {value}
+            </ThemedText>
+            {tag ? <Pill>{tag}</Pill> : null}
+          </View>
+          <ThemedText type="small" tone="secondary" numberOfLines={2}>
+            {label}
+          </ThemedText>
+        </View>
       </View>
-      <ThemedText type="h2">{value}</ThemedText>
-      <ThemedText type="small" tone="secondary">
-        {label}
-      </ThemedText>
     </ThemedCard>
   );
 }
@@ -171,6 +190,14 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   // Two columns: each tile takes just under half the row, leaving room for the gap.
   tile: { flexBasis: '47%', flexGrow: 1 },
-  tileTagRow: { minHeight: 24 },
-  tileTag: { alignSelf: 'flex-end' },
+  tileRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  tileIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileText: { flex: 1, minWidth: 0 },
+  tileValueRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
 });

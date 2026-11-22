@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
-import { ProfileSheet } from '@/components/utils/profile-sheet';
+import { useProfilePanel } from '@/components/layout/profile-panel';
 import { ThemedText } from '@/components/utils/themed-text';
 import { computeInitials } from '@/components/utils/formatter';
 import { useCurrentUser } from '@/hooks/use-current-user';
@@ -14,37 +13,32 @@ export type ProfileButtonProps = {
 };
 
 /**
- * The signed-in user's avatar (initials). Pressing it opens their profile sheet. Renders nothing
- * while no user is known, so screens can always include it.
+ * The signed-in user's avatar (initials). Pressing it slides their profile in from the right (see
+ * `ProfilePanelProvider`). Renders nothing while no user is known, so screens can always include it.
  */
 export function ProfileButton({ style, testID = 'profile-button' }: ProfileButtonProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const user = useCurrentUser();
-  const [open, setOpen] = useState(false);
+  const profilePanel = useProfilePanel();
 
+  if (!user) return null;
   return (
-    <>
-      {user ? (
-        <Pressable
-          testID={testID}
-          accessibilityRole="button"
-          accessibilityLabel={t('profile.open', { username: user.username })}
-          onPress={() => setOpen(true)}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.avatar,
-            { backgroundColor: theme.backgroundSelected },
-            pressed && styles.pressed,
-            style,
-          ]}
-        >
-          <ThemedText type="smallBold">{computeInitials(user.username)}</ThemedText>
-        </Pressable>
-      ) : null}
-      {/* Mounted even before the user loads, so it shares the in-flight /me request. */}
-      <ProfileSheet visible={open} onClose={() => setOpen(false)} />
-    </>
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      accessibilityLabel={t('profile.open', { username: user.username })}
+      onPress={profilePanel.open}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.avatar,
+        { backgroundColor: theme.backgroundSelected },
+        pressed && styles.pressed,
+        style,
+      ]}
+    >
+      <ThemedText type="smallBold">{computeInitials(user.username)}</ThemedText>
+    </Pressable>
   );
 }
 

@@ -8,21 +8,6 @@ import { ProfileScreen } from '@/components/utils/profile-screen';
 import type { AuthUser } from '@/lib/auth/auth-api';
 import type { ProfileData } from '@/lib/profile';
 
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'en', languageTag: 'en-US' }],
 }));

@@ -24,6 +24,12 @@ export type MapIconName =
   | 'park'
   | 'cluster'
   | 'roadwork'
+  | 'truck'
+  | 'report'
+  | 'comment'
+  | 'percent'
+  | 'clock'
+  | 'flag'
   | 'road'
   | 'water'
   | 'bolt'
@@ -111,6 +117,30 @@ const ICON_MAP: Record<MapIconName, SymbolSpec> = {
   cluster: {
     name: { ios: 'circle.grid.2x2.fill', android: 'density_medium', web: 'density_medium' },
     fallback: '◈',
+  },
+  report: {
+    name: { ios: 'doc.text.fill', android: 'description', web: 'description' },
+    fallback: '📄',
+  },
+  comment: {
+    name: { ios: 'bubble.left.fill', android: 'chat_bubble', web: 'chat_bubble' },
+    fallback: '💬',
+  },
+  percent: {
+    name: { ios: 'percent', android: 'percent', web: 'percent' },
+    fallback: '%',
+  },
+  clock: {
+    name: { ios: 'clock.fill', android: 'schedule', web: 'schedule' },
+    fallback: '🕒',
+  },
+  flag: {
+    name: { ios: 'flag.fill', android: 'flag', web: 'flag' },
+    fallback: '⚑',
+  },
+  truck: {
+    name: { ios: 'truck.box.fill', android: 'local_shipping', web: 'local_shipping' },
+    fallback: '🚚',
   },
   roadwork: {
     name: { ios: 'wrench.and.screwdriver.fill', android: 'construction', web: 'construction' },

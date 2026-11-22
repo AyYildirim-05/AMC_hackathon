@@ -17,7 +17,12 @@ const TILES = {
 };
 
 /** Web version of the report map, drawn with Leaflet like the Map tab. */
-export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
+export function ReportLocationMap({
+  point,
+  issues,
+  pinMode = false,
+  onPickPoint,
+}: ReportLocationMapProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const statusColors = useIssueStatusColors();
@@ -26,6 +31,13 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
   const layerRef = useRef<import('leaflet').LayerGroup | null>(null);
   const leafletRef = useRef<typeof import('leaflet') | null>(null);
   const [ready, setReady] = useState(false);
+  // Read by the map's click handler, which is registered once.
+  const pinModeRef = useRef(pinMode);
+  const onPickPointRef = useRef(onPickPoint);
+  useEffect(() => {
+    pinModeRef.current = pinMode;
+    onPickPointRef.current = onPickPoint;
+  }, [pinMode, onPickPoint]);
   const region = useMemo(
     () => reserveBottom(regionForPoints([point, ...issues]), OVERLAY_FRACTION),
     [point, issues],
@@ -41,6 +53,11 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
       const map = L.map(containerRef.current, { zoomControl: false, attributionControl: true });
       L.tileLayer(TILES.url, { attribution: TILES.attribution, maxZoom: 19 }).addTo(map);
       layerRef.current = L.layerGroup().addTo(map);
+      // Pin mode: a click on the map picks the new report point.
+      map.on('click', (event) => {
+        if (!pinModeRef.current) return;
+        onPickPointRef.current?.({ latitude: event.latlng.lat, longitude: event.latlng.lng });
+      });
       mapRef.current = map;
       setReady(true);
     });
@@ -82,12 +99,23 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
       iconSize: [22, 22],
       iconAnchor: [11, 11],
     });
-    L.marker([point.latitude, point.longitude], { icon: pointIcon, zIndexOffset: 1000 })
+    const pointMarker = L.marker([point.latitude, point.longitude], {
+      icon: pointIcon,
+      zIndexOffset: 1000,
+      draggable: pinMode,
+    })
       .bindTooltip(t('reportMap.reportPoint'))
       .addTo(layer);
+    pointMarker.on('dragend', () => {
+      const { lat, lng } = pointMarker.getLatLng();
+      onPickPointRef.current?.({ latitude: lat, longitude: lng });
+    });
 
-    map.setView([region.latitude, region.longitude], deltaToLeafletZoom(region.latitudeDelta));
-  }, [ready, issues, point, region, t, theme, statusColors]);
+    // Re-frame, except while the user is placing the pin (the map would jump under the cursor).
+    if (!pinMode) {
+      map.setView([region.latitude, region.longitude], deltaToLeafletZoom(region.latitudeDelta));
+    }
+  }, [ready, issues, point, region, t, theme, statusColors, pinMode]);
 
   return (
     <View testID="report-location-map" style={StyleSheet.absoluteFill}>

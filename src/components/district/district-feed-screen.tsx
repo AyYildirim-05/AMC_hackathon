@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { IssueCard } from '@/components/layout/IssueCard';
 import { IssueDetailScreen } from '@/components/layout/IssueDetailScreen';
+import { BoroughPickerSheet } from '@/components/utils/borough-picker-sheet';
 import { type District } from '@/components/utils/map-utils';
 import { TabScreen } from '@/components/utils/tab-screen';
 import { ThemedText } from '@/components/utils/themed-text';
@@ -27,11 +29,13 @@ const CATEGORY_ICONS: Record<IssueCategory, string> = {
   streetlights_utilities: '💡',
 };
 
-/** Amber "works alert" colors from the mockup, readable in both modes. */
-const ALERT_COLORS = {
-  light: { background: '#FFF4E0', border: '#F5C77A', title: '#3A2400', label: '#855300' },
-  dark: { background: '#3A2814', border: '#6B4515', title: '#FDE68A', label: '#FFB95F' },
-};
+/** "Works alert" colors from the theme; the shade numbers keep their role in both modes. */
+const alertColorsFor = (theme: Theme) => ({
+  background: theme.neutral100,
+  border: theme.accent300,
+  title: theme.text,
+  label: theme.accent700,
+});
 
 /**
  * The borough feed (District tab): live sync strip, category filters, the current works alert,
@@ -40,7 +44,7 @@ const ALERT_COLORS = {
 export function DistrictFeedScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const user = useCurrentUser();
   const { isAuthenticated } = useAuth();
@@ -140,7 +144,7 @@ export function DistrictFeedScreen() {
     voteMutation.mutate(id);
   };
 
-  const alertColors = ALERT_COLORS[isDark ? 'dark' : 'light'];
+  const alertColors = alertColorsFor(theme);
   const chipStyle = (selected: boolean) => [
     styles.chip,
     selected
@@ -353,7 +357,8 @@ export function DistrictFeedScreen() {
                 issue={item}
                 isUpvoted={isUpvoted}
                 onUpvote={() => toggleUpvote(item.id)}
-                onPress={() => setSelectedIssueId(item.id)}
+                // Tapping unfolds the card; the comments button and the photo open the details.
+                collapsible
                 onCommentsPress={() => setSelectedIssueId(item.id)}
                 onImagePress={() => setSelectedIssueId(item.id)}
                 style={outside ? styles.attachedCard : undefined}
@@ -364,43 +369,23 @@ export function DistrictFeedScreen() {
       />
 
       {/* District picker */}
-      <Modal
+      <BoroughPickerSheet
         visible={pickerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPickerOpen(false)}
-      >
-        <Pressable style={styles.backdrop} onPress={() => setPickerOpen(false)}>
-          <View style={[styles.sheet, { backgroundColor: theme.background }]}>
-            <ThemedText type="smallBold" accessibilityRole="header">
-              {t('districtFeed.chooseDistrict')}
-            </ThemedText>
-            {districts.map((d) => {
-              const selected = d.id === district.id;
-              return (
-                <Pressable
-                  key={d.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    setPickedDistrictId(d.id);
-                    setPickerOpen(false);
-                  }}
-                  style={[
-                    styles.sheetRow,
-                    selected && { backgroundColor: theme.backgroundSelected },
-                  ]}
-                >
-                  <ThemedText weight={selected ? 'bold' : 'regular'}>{districtName(d)}</ThemedText>
-                  <ThemedText type="code" tone="secondary">
-                    {d.open_north_slug}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Pressable>
-      </Modal>
+        title={t('districtFeed.chooseDistrict')}
+        testID="district-feed-picker-sheet"
+        options={districts.map((d) => ({
+          key: d.id,
+          label: districtName(d),
+          detail: d.open_north_slug,
+          selected: d.id === district.id,
+          testID: `district-feed-option-${d.open_north_slug}`,
+        }))}
+        onSelect={(id) => {
+          setPickedDistrictId(id);
+          setPickerOpen(false);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
 
       {selectedIssue ? (
         <IssueDetailScreen issue={selectedIssue} visible onClose={() => setSelectedIssueId(null)} />
@@ -409,101 +394,87 @@ export function DistrictFeedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  list: { gap: Spacing.three, paddingHorizontal: Spacing.three, paddingBottom: Spacing.four },
-  headerStack: { gap: Spacing.three },
-  flex: { flex: 1 },
-  shrink: { flexShrink: 1 },
-  pressed: { opacity: 0.8 },
-  syncRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  syncChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 999,
-  },
-  liveDot: { width: 8, height: 8, borderRadius: 4 },
-  filterButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  chips: { gap: Spacing.two },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  countBadge: {
-    minWidth: 20,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.one,
-    borderRadius: 10,
-  },
-  alert: { gap: Spacing.two, padding: Spacing.three, borderRadius: 16, borderWidth: 1 },
-  alertTop: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
-  alertIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FEA619',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alertIconText: { color: '#3A2400', fontSize: 18, fontWeight: '700' },
-  datePill: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.half,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  alertBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  feedHeader: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
-  ribbon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
-  attachedCard: { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
-  empty: { textAlign: 'center', paddingVertical: Spacing.four },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    padding: Spacing.three,
-    borderRadius: 16,
-  },
-  ctaButton: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderRadius: 999 },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    gap: Spacing.one,
-    padding: Spacing.three,
-    paddingBottom: Spacing.five,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  sheetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.three,
-    borderRadius: 12,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    list: { gap: Spacing.three, paddingHorizontal: Spacing.three, paddingBottom: Spacing.four },
+    headerStack: { gap: Spacing.three },
+    flex: { flex: 1 },
+    shrink: { flexShrink: 1 },
+    pressed: { opacity: 0.8 },
+    syncRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+    syncChip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.two,
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      borderRadius: 999,
+    },
+    liveDot: { width: 8, height: 8, borderRadius: 4 },
+    filterButton: {
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    chips: { gap: Spacing.two },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.two,
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    countBadge: {
+      minWidth: 20,
+      alignItems: 'center',
+      paddingHorizontal: Spacing.one,
+      borderRadius: 10,
+    },
+    alert: { gap: Spacing.two, padding: Spacing.three, borderRadius: 16, borderWidth: 1 },
+    alertTop: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.two },
+    alertIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: theme.accent400,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    alertIconText: { color: theme.neutral900, fontSize: 18, fontWeight: '700' },
+    datePill: {
+      paddingHorizontal: Spacing.two,
+      paddingVertical: Spacing.half,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    alertBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    feedHeader: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
+    ribbon: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.two,
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+    },
+    attachedCard: { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+    empty: { textAlign: 'center', paddingVertical: Spacing.four },
+    cta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.three,
+      padding: Spacing.three,
+      borderRadius: 16,
+    },
+    ctaButton: {
+      paddingHorizontal: Spacing.three,
+      paddingVertical: Spacing.two,
+      borderRadius: 999,
+    },
+  });

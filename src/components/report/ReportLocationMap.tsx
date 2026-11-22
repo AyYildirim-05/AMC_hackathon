@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { CATEGORY_ICONS, MapIcon } from '@/components/map/MapIcon';
+import { MapUnavailable, nativeMapsAvailable } from '@/components/map/map-availability';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { type LatLng, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -20,10 +21,21 @@ export type ReportLocationMapProps = {
   point: LatLng;
   /** Other issues in the same district: a category icon on a dot colored by status. */
   issues: readonly Issue[];
+  /**
+   * Pin mode: tapping the map, or dragging the report marker, picks a new report point. The map
+   * also stops re-framing itself, so it stays put while the user places the pin.
+   */
+  pinMode?: boolean;
+  onPickPoint?: (point: LatLng) => void;
 };
 
 /** Real map for the report form: the report point plus the district's existing issues. */
-export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
+export function ReportLocationMap({
+  point,
+  issues,
+  pinMode = false,
+  onPickPoint,
+}: ReportLocationMapProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const statusColors = useIssueStatusColors();
@@ -33,10 +45,15 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
     [point, issues],
   );
 
-  // Re-frame when the detected location or the district's issues change.
+  // Re-frame when the detected location or the district's issues change, except while the user is
+  // placing the pin (the map would jump under their finger).
   useEffect(() => {
+    if (pinMode) return;
     mapRef.current?.animateToRegion(region, 300);
-  }, [region]);
+  }, [region, pinMode]);
+
+  // Android without a Google Maps key: a note instead of a map that would crash the app.
+  if (!nativeMapsAvailable) return <MapUnavailable testID="report-location-map" />;
 
   return (
     <MapView
@@ -46,6 +63,15 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
       initialRegion={region}
       showsPointsOfInterests={false}
       toolbarEnabled={false}
+      onPress={
+        pinMode
+          ? (event) => {
+              // A tap on an issue marker is not a new pin position.
+              if (event.nativeEvent.action === 'marker-press') return;
+              onPickPoint?.(event.nativeEvent.coordinate);
+            }
+          : undefined
+      }
     >
       {issues.map((issue) => {
         const status = t(`issue.status.${issue.status}`);
@@ -82,6 +108,8 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
         title={t('reportMap.reportPoint')}
         zIndex={50}
         tracksViewChanges={false}
+        draggable={pinMode}
+        onDragEnd={(event) => onPickPoint?.(event.nativeEvent.coordinate)}
       >
         <View
           accessibilityLabel={t('reportMap.reportPoint')}

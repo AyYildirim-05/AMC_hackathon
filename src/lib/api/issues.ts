@@ -65,7 +65,9 @@ export async function fetchIssueById(id: string): Promise<Issue> {
 }
 
 export async function createIssue(payload: CreateIssuePayload): Promise<Issue> {
-  const { data } = await apiClient.post<Record<string, unknown>>('/api/issues', payload);
+  const { data } = await apiClient.post<Record<string, unknown>>('/api/issues', payload, {
+    timeout: 25_000,
+  });
   return normalizeIssue(data);
 }
 

@@ -56,7 +56,8 @@ function getButtonColors(type: ButtonVariant, tone: ButtonTone, theme: Palette) 
         background: base,
         border: base,
         text: filledText,
-        ripple: 'rgba(255,255,255,0.3)',
+        // The text color on filled buttons, at 30% opacity.
+        ripple: `${theme.buttonText}4C`,
       };
     case 'secondary':
       return {

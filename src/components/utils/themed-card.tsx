@@ -28,6 +28,17 @@ export type ThemedCardProps = Omit<PressableProps, 'children' | 'style'> & {
   style?: StyleProp<ViewStyle>;
 };
 
+/**
+ * The soft shadow behind every card in the app (color: the theme's `shadow`). Cards that are not a
+ * ThemedCard spread this in, so all cards cast the same shadow.
+ */
+export const CARD_SHADOW = {
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.18,
+  shadowRadius: 6,
+  elevation: 3,
+} as const;
+
 const paddingSizes: Record<CardPadding, number> = {
   none: 0,
   small: Spacing.two,
@@ -51,12 +62,18 @@ export function ThemedCard({
   const pressable = Boolean(onPress);
   const inset = paddingSizes[padding];
 
-  const variantStyle: ViewStyle =
+  const backgroundColor = variant === 'outlined' ? theme.background : theme.cardBackground;
+  // Every card casts a shadow; elevated cards a stronger one. The shadow sits on an outer frame,
+  // because the inner layer clips content to the rounded corners and would clip the shadow too.
+  const frameStyle: ViewStyle = {
+    ...(variant === 'elevated' ? styles.elevated : styles.shadow),
+    backgroundColor,
+    shadowColor: theme.shadow,
+  };
+  const clipStyle: ViewStyle =
     variant === 'outlined'
-      ? { backgroundColor: theme.background, borderColor: theme.border, borderWidth: 1 }
-      : variant === 'elevated'
-        ? { ...styles.elevated, backgroundColor: theme.cardBackground, shadowColor: theme.shadow }
-        : { backgroundColor: theme.cardBackground };
+      ? { backgroundColor, borderColor: theme.border, borderWidth: 1 }
+      : { backgroundColor };
 
   const body = (
     <View style={[styles.body, { padding: inset }]}>
@@ -80,17 +97,17 @@ export function ThemedCard({
   );
 
   const content = (
-    <>
+    <View style={[styles.clip, clipStyle]}>
       {media ? <View style={styles.media}>{media}</View> : null}
       {body}
-    </>
+    </View>
   );
 
   // A static card is a plain View: a disabled Pressable would be one accessibility element that
   // reports itself (and so every button inside it) as disabled.
   if (!pressable) {
     return (
-      <View style={[styles.base, variantStyle, style]} {...rest}>
+      <View style={[styles.frame, frameStyle, style]} {...rest}>
         {content}
       </View>
     );
@@ -100,7 +117,7 @@ export function ThemedCard({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.base, variantStyle, pressed && styles.pressed, style]}
+      style={({ pressed }) => [styles.frame, frameStyle, pressed && styles.pressed, style]}
       {...rest}
     >
       {content}
@@ -109,17 +126,24 @@ export function ThemedCard({
 }
 
 const styles = StyleSheet.create({
-  base: {
+  // Outer frame: size, rounded shape and shadow. Not clipped, so the shadow shows.
+  frame: {
     alignSelf: 'stretch',
+    borderRadius: Spacing.three,
+  },
+  // Inner layer: clips content (and the media's corners) to the rounded shape.
+  clip: {
+    flexGrow: 1,
     borderRadius: Spacing.three,
     overflow: 'hidden',
   },
+  // Soft shadow behind every card.
+  shadow: CARD_SHADOW,
   elevated: {
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 6,
-    overflow: 'visible',
   },
   pressed: {
     opacity: 0.85,

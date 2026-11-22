@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 import { TEST_PROFILE_DATA } from '../../../../test/fixtures';
 
+import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import i18n, { setLanguage } from '@/i18n';
 import { AppHeader } from '@/components/utils/app-header';
 import { apiClient } from '@/lib/api/client';
@@ -15,21 +16,6 @@ jest.mock('@/providers/auth-provider', () => ({
   useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: mockSignOut }),
 }));
 jest.mock('expo-symbols', () => ({ SymbolView: () => null }));
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'en', languageTag: 'en-US' }],
 }));
@@ -115,7 +101,9 @@ const renderHeader = (user: AuthUser | null) => {
   });
   return render(
     <QueryClientProvider client={client}>
-      <AppHeader />
+      <ProfilePanelProvider>
+        <AppHeader />
+      </ProfilePanelProvider>
     </QueryClientProvider>,
   );
 };
@@ -175,7 +163,9 @@ it("opens the user's profile from the avatar and closes it again", async () => {
   expect(screen.getByText('Triage queue')).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
-  expect(screen.queryByText('Camille Tremblay')).toBeNull();
+  // The profile slides out to the right, then unmounts.
+  await waitFor(() => expect(screen.queryByText('Camille Tremblay')).toBeNull());
+  expect(screen.getByText('The Plateau')).toBeOnTheScreen();
 });
 
 it('signs out from the profile and closes it', async () => {
@@ -187,5 +177,5 @@ it('signs out from the profile and closes it', async () => {
   await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
 
   expect(mockSignOut).toHaveBeenCalledTimes(1);
-  expect(screen.queryByText('Camille Tremblay')).toBeNull();
+  await waitFor(() => expect(screen.queryByText('Camille Tremblay')).toBeNull());
 });

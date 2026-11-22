@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { compareIssuesBySeverityDesc } from '@/components/utils/issue-severity';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedCard } from '@/components/utils/themed-card';
 import {
@@ -37,7 +38,10 @@ export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps)
   const [triageTab, setTriageTab] = useState<IssueStatus>(firstWithIssues ?? 'not_started');
 
   const districtName = nameOf(profile.district, i18n.language);
-  const queue = issues.filter((i) => i.status === triageTab);
+  const queue = useMemo(
+    () => issues.filter((i) => i.status === triageTab).sort(compareIssuesBySeverityDesc),
+    [issues, triageTab],
+  );
 
   return (
     <View style={styles.page}>
@@ -67,15 +71,18 @@ export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps)
       <Section title={t('profile.stats.title')} aside={`● ${t('profile.stats.live')}`}>
         <StatGrid>
           <StatTile
+            icon="warning"
             value={String(stats.activeIssues)}
             label={t('profile.stats.activeIssues', { count: stats.activeIssues })}
           />
           <StatTile
+            icon="percent"
             value={stats.responseRate311 === null ? '—' : `${stats.responseRate311}%`}
             label={t('profile.stats.responseRate')}
             tag="311"
           />
           <StatTile
+            icon="clock"
             value={
               stats.avgFirstResponseHours === null
                 ? '—'
@@ -85,6 +92,7 @@ export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps)
             tag={t('profile.stats.target')}
           />
           <StatTile
+            icon="verified"
             value={String(stats.confirmedResolutions)}
             label={t('profile.stats.confirmed', { count: stats.confirmedResolutions })}
             tag={t('profile.stats.citizens')}

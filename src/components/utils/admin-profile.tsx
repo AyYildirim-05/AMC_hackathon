@@ -18,18 +18,22 @@ export function AdminProfile({ profile }: { profile: Profile }) {
       <Section title={t('profile.admin.overview')}>
         <StatGrid>
           <StatTile
+            icon="city"
             value={String(totals.districts)}
             label={t('profile.admin.districts', { count: totals.districts })}
           />
           <StatTile
+            icon="flag"
             value={String(totals.unclaimedDistricts)}
             label={t('profile.admin.unclaimedDistricts', { count: totals.unclaimedDistricts })}
           />
           <StatTile
+            icon="warning"
             value={String(totals.openIssues)}
             label={t('profile.admin.openIssues', { count: totals.openIssues })}
           />
           <StatTile
+            icon="percent"
             value={stats.responseRate311 === null ? '—' : `${stats.responseRate311}%`}
             label={t('profile.stats.responseRate')}
             tag="311"
