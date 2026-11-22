@@ -337,6 +337,11 @@ describe('DistrictScreen', () => {
     await screen.findByTestId(`report-map-issue-${TEST_ISSUES[0].id}`);
 
     await fillRequiredFields();
+    await fireEvent.press(screen.getByTestId('weather-element-chip-snow_ice'));
+    await fireEvent.press(screen.getByTestId('weather-element-chip-high_wind'));
+    expect(
+      screen.getByTestId('weather-element-chip-snow_ice').props.accessibilityState.selected,
+    ).toBe(true);
     expect(screen.getByTestId('publish-report-button')).not.toBeDisabled();
 
     await fireEvent.press(screen.getByTestId('publish-report-button'));
@@ -346,6 +351,11 @@ describe('DistrictScreen', () => {
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalledTimes(1);
     });
+    expect(handleSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        elements: ['snow_ice', 'high_wind'],
+      }),
+    );
 
     // All fields reset to empty and publish button disabled again
     expect(screen.getByTestId('report-title-input').props.value).toBe('');
@@ -353,6 +363,12 @@ describe('DistrictScreen', () => {
     expect(screen.getByTestId('location-address-input').props.value).toBe('');
     expect(
       screen.getByTestId('category-card-traffic_safety').props.accessibilityState.selected,
+    ).toBe(false);
+    expect(
+      screen.getByTestId('weather-element-chip-snow_ice').props.accessibilityState.selected,
+    ).toBe(false);
+    expect(
+      screen.getByTestId('weather-element-chip-high_wind').props.accessibilityState.selected,
     ).toBe(false);
     expect(screen.getByText('0 ajoutées')).toBeOnTheScreen();
     expect(screen.getByTestId('publish-report-button')).toBeDisabled();

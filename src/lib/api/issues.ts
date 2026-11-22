@@ -1,11 +1,12 @@
 import { normalizeIssue } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
-import type { Issue, IssueCategory, IssueStatus } from '@/models/Issue';
+import type { Issue, IssueCategory, IssueStatus, WeatherElement } from '@/models/Issue';
 
 export type CreateIssuePayload = {
   title: string;
   description: string;
   category: IssueCategory;
+  elements?: WeatherElement[];
   address: string;
   latitude: number;
   longitude: number;

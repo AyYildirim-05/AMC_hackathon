@@ -154,6 +154,18 @@ describe('IssueCard', () => {
     await fireEvent.press(screen.getByTestId('issue-photo-button'));
     expect(onImagePress).toHaveBeenCalledWith(0);
   });
+
+  it('displays weather element pills when the issue has weather elements', async () => {
+    const weatherIssue: Issue = {
+      ...TEST_ISSUES[0],
+      elements: ['snow_ice', 'freezing_rain'],
+    };
+
+    await render(<IssueCard issue={weatherIssue} />);
+
+    expect(screen.getByTestId('issue-element-pill-snow_ice')).toBeOnTheScreen();
+    expect(screen.getByTestId('issue-element-pill-freezing_rain')).toBeOnTheScreen();
+  });
 });
 
 describe('IssueCard Helpers', () => {

@@ -3,7 +3,12 @@ import { z } from 'zod';
 import { isIssuePhotoUrl } from '../lib/cloudinary.js';
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
-import { ISSUE_CATEGORIES, ISSUE_STATUSES, type IssueStatus } from '../models/index.js';
+import {
+  ISSUE_CATEGORIES,
+  ISSUE_STATUSES,
+  WEATHER_ELEMENTS,
+  type IssueStatus,
+} from '../models/index.js';
 import { getIssueCommentSummaries } from '../repositories/comment.repository.js';
 import { districtExists, findDistrictManagerId } from '../repositories/district.repository.js';
 import {
@@ -27,6 +32,10 @@ const issueFields = {
   title: z.string().trim().min(1).max(150),
   description: z.string().trim().min(1),
   category: z.enum(ISSUE_CATEGORIES),
+  elements: z
+    .array(z.enum(WEATHER_ELEMENTS))
+    .max(WEATHER_ELEMENTS.length)
+    .transform((items) => [...new Set(items)]),
   // Only photos uploaded through POST /api/uploads/signature; the app allows 5 per issue.
   images: z
     .array(
@@ -48,6 +57,7 @@ const issueFields = {
  */
 export const reportIssueInput = z.object({
   ...issueFields,
+  elements: issueFields.elements.default([]),
   images: issueFields.images.default([]),
   createdById: objectId,
 });

@@ -7,6 +7,7 @@ import { Pill } from '@/components/utils/pill';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedCard } from '@/components/utils/themed-card';
 import { ThemedText } from '@/components/utils/themed-text';
+import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type OfficialReply, TRIAGE_STATUSES } from '@/lib/profile';
@@ -56,6 +57,14 @@ export function TriageIssueCard({
             {issue.external_311_ref}
           </Pill>
         )}
+        {(issue.elements ?? []).map((el) => {
+          const meta = WEATHER_ELEMENT_META[el];
+          return (
+            <Pill key={el} tone="outline">
+              {`${meta.icon} ${t(`issue.elements.${el}`, { defaultValue: meta.fallbackLabel })}`}
+            </Pill>
+          );
+        })}
       </View>
 
       <View style={styles.section}>

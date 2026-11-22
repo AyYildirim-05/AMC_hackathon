@@ -21,12 +21,22 @@ export const ISSUE_STATUSES = [
 ] as const;
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 
+export const WEATHER_ELEMENTS = [
+  'snow_ice',
+  'rain_flooding',
+  'high_wind',
+  'freezing_rain',
+  'extreme_heat',
+] as const;
+export type WeatherElement = (typeof WEATHER_ELEMENTS)[number];
+
 const issueSchema = new Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 150 },
     description: { type: String, required: true, trim: true },
     category: { type: String, required: true, enum: ISSUE_CATEGORIES },
     status: { type: String, required: true, enum: ISSUE_STATUSES, default: 'not_started' },
+    elements: { type: [String], enum: WEATHER_ELEMENTS, required: true, default: [] },
     images: { type: [String], required: true, default: [] },
     address: { type: String, required: true, trim: true, maxlength: 255 },
     latitude: { type: Number, required: true, min: -90, max: 90 },
@@ -50,6 +60,7 @@ const issueSchema = new Schema(
         ret.createdById = ret.createdById ? String(ret.createdById) : ret.createdById;
         ret.updatedById = ret.updatedById ? String(ret.updatedById) : null;
         ret.external311Ref = ret.external311Ref ?? null;
+        ret.elements = Array.isArray(ret.elements) ? ret.elements : [];
         return ret;
       },
     },
