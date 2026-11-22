@@ -22,7 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks/use-theme';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
-import { getIssueUrgency, getSeverityBadgePalette } from '@/components/utils/issue-severity';
+import { getIssueSeverity, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { type District } from '@/components/utils/map-utils';
 import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { ProfileButton } from '@/components/utils/profile-button';
@@ -610,18 +610,16 @@ export function IssueDetailScreen({
                     );
                   })}
                   {(() => {
-                    const urgency = getIssueUrgency(issue);
-                    if (!urgency) return null;
-                    const palette = getSeverityBadgePalette(urgency, theme);
-                    const urgencyLabel = t(`issue.urgency.${urgency}`, { defaultValue: urgency });
-                    const label =
-                      issue.severity_score != null
-                        ? t('issue.severityBadge', {
-                            urgency: urgencyLabel,
-                            score: issue.severity_score,
-                            defaultValue: `${urgencyLabel} • ${issue.severity_score}/10`,
-                          })
-                        : urgencyLabel;
+                    const severity = getIssueSeverity(issue);
+                    const palette = getSeverityBadgePalette(severity.urgency, theme);
+                    const urgencyLabel = t(`issue.urgency.${severity.urgency}`, {
+                      defaultValue: severity.urgency,
+                    });
+                    const label = t('issue.severityBadge', {
+                      urgency: urgencyLabel,
+                      score: severity.score,
+                      defaultValue: `${urgencyLabel} • ${severity.score}/10`,
+                    });
                     return (
                       <View
                         testID="detail-severity-badge"
