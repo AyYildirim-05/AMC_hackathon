@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import type { ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
+import CardScreen from '@/app/card';
 import { setLanguage } from '@/i18n';
 import { DistrictScreen } from '@/components/report/DistrictScreen';
 import { OVERLAY_FRACTION, ReportLocationMap } from '@/components/report/ReportLocationMap';
@@ -12,6 +13,11 @@ import type { AuthUser } from '@/lib/auth/auth-api';
 import type { Issue } from '@/models/Issue';
 
 import { installMockBackendApi, TEST_ISSUES } from '../../../../test/fixtures';
+
+const mockNavigate = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ navigate: mockNavigate }),
+}));
 
 const mockUser: AuthUser = {
   id: '64b7f0c2a1b2c3d4e5f60719',
@@ -150,13 +156,30 @@ describe('DistrictScreen report map', () => {
     expect(legend).toHaveTextContent(/In progress \(0\)/);
   });
 
-  it('adds the newly published issue to the map as a to-do dot at the report point', async () => {
-    await renderScreen();
+  it('adds the newly published issue to the report map and displays it on the Carte map tab', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    let createdIssue: Partial<Issue> | undefined;
+    await render(<DistrictScreen onSubmitSuccess={(issueData) => (createdIssue = issueData)} />, {
+      wrapper,
+    });
     await waitFor(() => expect(screen.getAllByTestId(/^report-map-issue-/)).toHaveLength(2));
+
+    // Fill the required fields (GPS already filled the address & coordinates)
+    await fireEvent.press(screen.getByTestId('category-card-roads_potholes'));
+    await fireEvent.changeText(screen.getByTestId('report-title-input'), 'Pothole on Masson');
+    await fireEvent.changeText(
+      screen.getByTestId('report-description-input'),
+      'Deep pothole near the crosswalk.',
+    );
 
     await fireEvent.press(screen.getByTestId('publish-report-button'));
 
-    // Publishing invalidates the issue queries, so the district's list is fetched again.
+    // Publishing updates & invalidates the issue queries, so the district's list includes the new dot.
     await waitFor(() => expect(screen.getAllByTestId(/^report-map-issue-/)).toHaveLength(3));
     const known = new Set(TEST_ISSUES.map((i) => `report-map-issue-${i.id}`));
     const added = screen
@@ -164,5 +187,14 @@ describe('DistrictScreen report map', () => {
       .find((m) => !known.has(m.props.testID));
     expect(added?.props.coordinate).toEqual({ latitude: GPS.latitude, longitude: GPS.longitude });
     expect(screen.getByTestId('report-map-legend')).toHaveTextContent(/To do \(3\)/);
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+    expect(createdIssue?.id).toBeTruthy();
+
+    // Switching to the Carte (Map) tab displays the newly created issue pin on the Montreal map.
+    await render(<CardScreen />, { wrapper });
+    const pin = await screen.findByTestId(`map-pin-${createdIssue!.id}`);
+    expect(pin).toBeOnTheScreen();
+    expect(pin.props.coordinate).toEqual({ latitude: GPS.latitude, longitude: GPS.longitude });
+    expect(screen.getByText('Pothole on Masson')).toBeOnTheScreen();
   });
 });
