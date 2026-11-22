@@ -144,3 +144,35 @@ export async function lookupBoundaryByCoordinates(
 export function clearOpenNorthCache() {
   cache.clear();
 }
+
+const BOROUGHS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // borough boundaries almost never change
+let boroughsCache: { value: OpenNorthBoundary[]; expiresAt: number } | null = null;
+
+/**
+ * All 19 boroughs of the City of Montréal from the OpenNorth Represent `montreal-boroughs`
+ * boundary set, cached for a day. Demerged island municipalities (Westmount, Mont-Royal, …) are
+ * not part of this set; they are still added on demand by `lookupBoundaryByCoordinates`.
+ */
+export async function listMontrealBoroughs(options?: {
+  fetchImpl?: typeof fetch;
+  bypassCache?: boolean;
+}): Promise<OpenNorthBoundary[]> {
+  if (!options?.bypassCache && boroughsCache && boroughsCache.expiresAt > Date.now()) {
+    return boroughsCache.value;
+  }
+  const res = await fetchOpenNorthJson(
+    `${OPENNORTH_BASE}/boundaries/montreal-boroughs/?limit=100`,
+    options?.fetchImpl ?? fetch,
+  );
+  const boroughs = (res.objects ?? [])
+    .map((obj) => toBoundary(obj, 'borough', 'montreal-boroughs'))
+    .filter((b): b is OpenNorthBoundary => b !== null);
+  if (!options?.bypassCache) {
+    boroughsCache = { value: boroughs, expiresAt: Date.now() + BOROUGHS_CACHE_TTL_MS };
+  }
+  return boroughs;
+}
+
+export function clearMontrealBoroughsCache() {
+  boroughsCache = null;
+}

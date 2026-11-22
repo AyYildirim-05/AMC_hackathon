@@ -2,14 +2,14 @@ import type { RoadworkType } from '@/lib/api/roadworks';
 
 import type { MapIconName } from './MapIcon';
 
-/** Color, icon and web glyph for each roadwork type, shared by the map pins and the filter chips. */
-export const ROADWORK_STYLE: Record<
-  RoadworkType,
-  { color: string; icon: MapIconName; glyph: string }
-> = {
-  roads: { color: '#C2410C', icon: 'road', glyph: '🛣' },
-  water: { color: '#1D4ED8', icon: 'water', glyph: '💧' },
-  utilities: { color: '#7E22CE', icon: 'bolt', glyph: '⚡' },
-  building: { color: '#A16207', icon: 'hammer', glyph: '🏗' },
-  other: { color: '#475569', icon: 'warning', glyph: '🚧' },
+/**
+ * Icon and web glyph per roadwork type. Roadwork markers all use the theme's text color (theme
+ * colors only on markers), so the type is told apart by its icon.
+ */
+export const ROADWORK_STYLE: Record<RoadworkType, { icon: MapIconName; glyph: string }> = {
+  roads: { icon: 'road', glyph: '🛣' },
+  water: { icon: 'water', glyph: '💧' },
+  utilities: { icon: 'bolt', glyph: '⚡' },
+  building: { icon: 'hammer', glyph: '🏗' },
+  other: { icon: 'warning', glyph: '🚧' },
 };

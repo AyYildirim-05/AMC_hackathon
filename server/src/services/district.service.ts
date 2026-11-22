@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
-import { lookupBoundaryByCoordinates } from '../lib/opennorth.js';
+import {
+  listMontrealBoroughs,
+  lookupBoundaryByCoordinates,
+  type OpenNorthBoundary,
+} from '../lib/opennorth.js';
 import { DISTRICT_TYPES } from '../models/index.js';
 import {
   createDistrict as insertDistrict,
@@ -129,6 +133,41 @@ export const districtById = async (id: string) =>
 export const districtByName = async (name: string) =>
   enrichDistrict(orNotFound(await findDistrictByName(name)));
 
+/** The district matching an OpenNorth boundary, created (unclaimed) when it does not exist yet. */
+const findOrCreateFromBoundary = async (boundary: OpenNorthBoundary) => {
+  const existing = await findDistrictBySlugOrName(boundary.slug, boundary.name);
+  if (existing) return existing;
+  try {
+    return await insertDistrict({
+      nameFr: boundary.name,
+      nameEn: boundary.name,
+      openNorthSlug: boundary.slug,
+      districtType: boundary.districtType,
+      managerId: null,
+      isClaimed: false,
+    });
+  } catch (err) {
+    // Handle concurrent auto-creation on the unique openNorthSlug index.
+    if ((err as { code?: number })?.code === 11000) {
+      return findDistrictBySlugOrName(boundary.slug, boundary.name);
+    }
+    throw err;
+  }
+};
+
+/**
+ * Every district, after making sure all 19 City of Montréal boroughs exist: boroughs missing from
+ * the database are created unclaimed from OpenNorth, so a report can be filed in any of them.
+ * Districts added before (seeded, or found by GPS such as Westmount) are kept.
+ */
+export const allMontrealDistricts = async () => {
+  const boroughs = await listMontrealBoroughs();
+  for (const boundary of boroughs) {
+    await findOrCreateFromBoundary(boundary);
+  }
+  return allDistricts();
+};
+
 /**
  * Resolves the district containing `(lat, lng)` via OpenNorth Represent API.
  * Matches an existing district in MongoDB or auto-creates an unclaimed one so any valid Montreal
@@ -140,27 +179,7 @@ export const locateDistrictByCoordinates = async (lat: number, lng: number) => {
     throw new HttpError(404, 'No district found for these coordinates');
   }
 
-  let doc = await findDistrictBySlugOrName(boundary.slug, boundary.name);
-  if (!doc) {
-    try {
-      doc = await insertDistrict({
-        nameFr: boundary.name,
-        nameEn: boundary.name,
-        openNorthSlug: boundary.slug,
-        districtType: boundary.districtType,
-        managerId: null,
-        isClaimed: false,
-      });
-    } catch (err) {
-      // Handle concurrent auto-creation on the unique openNorthSlug index.
-      if ((err as { code?: number })?.code === 11000) {
-        doc = await findDistrictBySlugOrName(boundary.slug, boundary.name);
-      } else {
-        throw err;
-      }
-    }
-  }
-
+  const doc = await findOrCreateFromBoundary(boundary);
   if (!doc) {
     throw new HttpError(404, 'District could not be resolved');
   }

@@ -13,6 +13,8 @@ export interface RoadworkPreviewCardProps {
   /** True when the map shows works starting soon, false for works under way. */
   upcoming: boolean;
   onClose: () => void;
+  /** Room for the tab bar floating over the bottom of the map. */
+  bottomInset?: number;
 }
 
 function formatDay(iso: string, language: string): string {
@@ -26,15 +28,21 @@ function formatDay(iso: string, language: string): string {
 }
 
 /** Bottom card for a City of Montréal roadwork picked on the map. */
-export function RoadworkPreviewCard({ work, upcoming, onClose }: RoadworkPreviewCardProps) {
+export function RoadworkPreviewCard({
+  work,
+  upcoming,
+  onClose,
+  bottomInset = 0,
+}: RoadworkPreviewCardProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
   const style = ROADWORK_STYLE[work.type];
 
-  const surfaceBg = isDark ? '#212A25' : '#FFFFFF';
-  const primaryText = isDark ? '#ECF4EF' : '#181D1B';
-  const secondaryText = isDark ? '#9ECEB0' : '#434844';
+  // Same colors as the page and the tab bar above it (theme only), so the floating iOS tab bar
+  // looks the same on the map as on every other tab.
+  const surfaceBg = theme.background;
+  const primaryText = theme.text;
+  const secondaryText = theme.textSecondary;
   const dates = upcoming
     ? t('map.roadworks.starts', { date: formatDay(work.startDate, i18n.language) })
     : t('map.roadworks.until', { date: formatDay(work.endDate, i18n.language) });
@@ -42,12 +50,21 @@ export function RoadworkPreviewCard({ work, upcoming, onClose }: RoadworkPreview
   return (
     <View
       testID="map-roadwork-card"
-      style={[styles.sheet, { backgroundColor: surfaceBg, shadowColor: theme.shadow }]}
+      style={[
+        styles.sheet,
+        {
+          backgroundColor: surfaceBg,
+          shadowColor: theme.shadow,
+          paddingBottom: Spacing.three + bottomInset,
+        },
+      ]}
     >
       <View style={styles.headerRow}>
-        <View style={[styles.typeBadge, { backgroundColor: style.color }]}>
-          <MapIcon name={style.icon} size={13} color="#FFFFFF" />
-          <Text style={styles.typeBadgeText}>{t(`map.roadworks.types.${work.type}`)}</Text>
+        <View style={[styles.typeBadge, { backgroundColor: theme.text }]}>
+          <MapIcon name={style.icon} size={13} color={theme.background} />
+          <Text style={[styles.typeBadgeText, { color: theme.background }]}>
+            {t(`map.roadworks.types.${work.type}`)}
+          </Text>
         </View>
         {work.isCityProject ? (
           <View style={[styles.cityBadge, { borderColor: secondaryText }]}>
@@ -63,7 +80,7 @@ export function RoadworkPreviewCard({ work, upcoming, onClose }: RoadworkPreview
           accessibilityLabel={t('map.closeModal')}
           onPress={onClose}
           hitSlop={10}
-          style={[styles.closeBtn, { backgroundColor: isDark ? '#2F3D35' : '#EAEFEB' }]}
+          style={[styles.closeBtn, { backgroundColor: theme.backgroundElement }]}
         >
           <MapIcon name="close" size={13} color={secondaryText} />
         </Pressable>
@@ -119,7 +136,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
-  typeBadgeText: { color: '#FFFFFF', fontSize: 11.5, fontWeight: '700' },
+  typeBadgeText: { fontSize: 11.5, fontWeight: '700' },
   cityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
   cityBadgeText: { fontSize: 11, fontWeight: '600' },
   closeBtn: {

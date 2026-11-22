@@ -5,6 +5,8 @@ import { Share } from 'react-native';
 import { installMockBackendApi, TEST_DISTRICTS, TEST_ISSUES } from '../../../../test/fixtures';
 
 import CardScreen from '@/app/card';
+import { issueStatusColors } from '@/components/utils/issue-status';
+import { Colors } from '@/constants/theme';
 import {
   BOROUGH_REGIONS,
   deltaToLeafletZoom,
@@ -268,22 +270,72 @@ describe('CardScreen (Map page) — all interactive controls', () => {
     restoreApi?.();
   });
 
-  it('renders header, real map view, markers, and default selected incident preview in French', async () => {
+  it('renders header, map, markers, and lists every report until one is selected (French)', async () => {
     await renderCardScreen();
 
     expect(screen.getByText('Montone')).toBeOnTheScreen();
     expect(screen.getByText('Tous les arrondissements ▾')).toBeOnTheScreen();
     expect(screen.getByTestId('montreal-map-canvas')).toBeOnTheScreen();
-    expect(screen.getByTestId('map-preview-sheet')).toBeOnTheScreen();
 
-    expect(screen.getByText('Blocked bike lane on Rue Rachel Est')).toBeOnTheScreen();
+    // Nothing selected: the bottom sheet lists every report on the map.
+    expect(screen.getByTestId('map-issue-list')).toBeOnTheScreen();
+    expect(screen.queryByTestId('map-preview-sheet')).toBeNull();
+    expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
+      `${issues.length} signalements sur la carte`,
+    );
+    for (const issue of issues) {
+      expect(screen.getByTestId(`map-pin-${issue.id}`)).toBeOnTheScreen();
+      expect(screen.getByTestId(`map-list-row-${issue.id}`)).toBeOnTheScreen();
+    }
+  });
+
+  it("shows a report's details from its list row, focuses the map on it, and goes back to the list", async () => {
+    await renderCardScreen();
+
+    await fireEvent.press(screen.getByTestId(`map-list-row-${issues[0].id}`));
+
+    expect(screen.getByTestId('map-preview-sheet')).toBeOnTheScreen();
+    expect(screen.queryByTestId('map-issue-list')).toBeNull();
     expect(screen.getByText('#MTL-311-2026-88412')).toBeOnTheScreen();
     expect(screen.getByText('Équipe notifiée')).toBeOnTheScreen();
     expect(screen.getByText('Consulter le dossier')).toBeOnTheScreen();
+    expect(mockAnimateToRegion).toHaveBeenCalledWith(
+      expect.objectContaining({ latitude: issues[0].latitude, longitude: issues[0].longitude }),
+      320,
+    );
+
+    await fireEvent.press(screen.getByTestId('map-back-to-list'));
+
+    expect(screen.getByTestId('map-issue-list')).toBeOnTheScreen();
+    expect(screen.queryByTestId('map-preview-sheet')).toBeNull();
+  });
+
+  it('colors each marker by its status with theme colors only, also when selected', async () => {
+    await renderCardScreen();
+    const colors = issueStatusColors(Colors.light);
 
     for (const issue of issues) {
-      expect(screen.getByTestId(`map-pin-${issue.id}`)).toBeOnTheScreen();
+      expect(screen.getByTestId(`map-pin-dot-${issue.id}`)).toHaveStyle({
+        backgroundColor: colors[issue.status],
+        borderColor: Colors.light.background,
+      });
     }
+
+    await fireEvent.press(screen.getByTestId(`map-pin-${issues[0].id}`));
+    expect(screen.getByTestId(`map-pin-dot-${issues[0].id}`)).toHaveStyle({
+      backgroundColor: colors[issues[0].status],
+    });
+  });
+
+  it('goes back to the list when the selected report is filtered out', async () => {
+    await renderCardScreen();
+    await fireEvent.press(screen.getByTestId(`map-pin-${issues[0].id}`));
+    expect(screen.getByTestId('map-preview-sheet')).toBeOnTheScreen();
+
+    await fireEvent.changeText(screen.getByTestId('map-search-input'), 'Berri-UQAM');
+
+    expect(screen.queryByTestId('map-preview-sheet')).toBeNull();
+    expect(screen.getByTestId('map-list-row-' + issues[1].id)).toBeOnTheScreen();
   });
 
   it('supports search bar typing (#311, borough), clear button, and empty-state reset', async () => {
@@ -309,17 +361,14 @@ describe('CardScreen (Map page) — all interactive controls', () => {
   it('supports category filter chips and advanced status filter bar', async () => {
     await renderCardScreen();
 
-    // Category filter: Chaussée -> selects Beaubien pothole and pans map
+    // Category filter: Chaussée -> the list and the map keep only the Beaubien pothole
     await fireEvent.press(screen.getByTestId('map-filter-roads_potholes'));
+    expect(screen.getByTestId(`map-list-row-${issues[2].id}`)).toBeOnTheScreen();
     expect(screen.getByText('Deep pothole near Beaubien and Saint-Denis')).toBeOnTheScreen();
     expect(screen.queryByTestId(`map-pin-${issues[0].id}`)).toBeNull();
-    expect(mockAnimateToRegion).toHaveBeenCalledWith(
-      expect.objectContaining({
-        latitude: issues[2].latitude,
-        longitude: issues[2].longitude,
-      }),
-      320,
-    );
+    expect(screen.queryByTestId(`map-list-row-${issues[0].id}`)).toBeNull();
+    // Nothing is selected by filtering, so the map does not jump.
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
 
     // Back to All categories
     await fireEvent.press(screen.getByTestId('map-filter-all'));
@@ -401,6 +450,7 @@ describe('CardScreen (Map page) — all interactive controls', () => {
       .mockResolvedValue({ action: Share.sharedAction } as never);
 
     await renderCardScreen();
+    await fireEvent.press(screen.getByTestId(`map-list-row-${issues[0].id}`));
 
     // Collapse & expand preview sheet via drag handle
     expect(screen.getByText(/Inspection team notified/i)).toBeOnTheScreen();
@@ -448,11 +498,15 @@ describe('CardScreen (Map page) — all interactive controls', () => {
 
     await fireEvent.press(screen.getByTestId('map-profile-button'));
     await fireEvent.press(screen.getByRole('button', { name: 'Anglais' }));
-    expect(screen.getByText('View record')).toBeOnTheScreen();
+    expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
+      `${issues.length} reports on the map`,
+    );
     expect(screen.getByText('All boroughs ▾')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'French' }));
-    expect(screen.getByText('Consulter le dossier')).toBeOnTheScreen();
+    expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
+      `${issues.length} signalements sur la carte`,
+    );
   });
 
   describe('City of Montréal roadworks layer', () => {
@@ -522,6 +576,7 @@ describe('CardScreen (Map page) — all interactive controls', () => {
 
       await fireEvent.press(screen.getByTestId('map-roadwork-close'));
       expect(screen.queryByTestId('map-roadwork-card')).toBeNull();
+      expect(screen.getByTestId('map-issue-list')).toBeOnTheScreen();
     });
 
     it('comes back on with the "Works & REV" map layer', async () => {

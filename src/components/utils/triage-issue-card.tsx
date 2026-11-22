@@ -11,7 +11,7 @@ import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type OfficialReply, TRIAGE_STATUSES } from '@/lib/profile';
-import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
+import { useIssueStatusColors } from '@/components/utils/issue-status';
 import type { Issue, IssueStatus } from '@/models/Issue';
 
 export type TriageIssueCardProps = {
@@ -40,6 +40,7 @@ export function TriageIssueCard({
 }: TriageIssueCardProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
+  const statusColors = useIssueStatusColors();
   const [statusOpen, setStatusOpen] = useState(false);
   const statusLabel = t(`profile.triage.status.${issue.status}`);
 
@@ -103,7 +104,7 @@ export function TriageIssueCard({
             { borderColor: theme.border, backgroundColor: theme.backgroundElement },
           ]}
         >
-          <View style={[styles.dot, { backgroundColor: ISSUE_STATUS_COLORS[issue.status] }]} />
+          <View style={[styles.dot, { backgroundColor: statusColors[issue.status] }]} />
           <ThemedText type="smallBold" style={styles.flex}>
             {statusLabel}
           </ThemedText>
@@ -122,7 +123,7 @@ export function TriageIssueCard({
                 onPress={() => chooseStatus(status)}
                 style={styles.option}
               >
-                <View style={[styles.dot, { backgroundColor: ISSUE_STATUS_COLORS[status] }]} />
+                <View style={[styles.dot, { backgroundColor: statusColors[status] }]} />
                 <ThemedText type={status === issue.status ? 'smallBold' : 'small'}>
                   {t(`profile.triage.status.${status}`)}
                 </ThemedText>
