@@ -1,5 +1,4 @@
-import { Platform } from 'react-native';
-
+import { detectMimeTypeFromBase64 } from '@/lib/api/ai';
 import { apiClient } from '@/lib/api/client';
 
 export type UploadFolder = 'issues' | 'avatars';
@@ -21,6 +20,7 @@ export type UploadableImage =
       uri: string;
       mimeType?: string | null;
       fileName?: string | null;
+      base64?: string | null;
     };
 
 export type UploadedImage = {
@@ -44,7 +44,8 @@ function normalizeImage(input: UploadableImage) {
   const fileName = (typeof input === 'string' ? undefined : input.fileName) || fallbackName;
   const mimeType =
     (typeof input === 'string' ? undefined : input.mimeType) || guessMimeType(fileName);
-  return { uri, fileName, mimeType };
+  const base64 = typeof input === 'string' ? undefined : input.base64;
+  return { uri, fileName, mimeType, base64 };
 }
 
 function guessMimeType(fileName: string): string {
@@ -53,6 +54,14 @@ function guessMimeType(fileName: string): string {
   if (lower.endsWith('.webp')) return 'image/webp';
   if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
   return 'image/jpeg';
+}
+
+function toBase64DataUri(rawBase64: string, fallbackMimeType: string): string {
+  const trimmed = rawBase64.trim();
+  if (/^data:[^;]*;base64,/i.test(trimmed)) return trimmed;
+  const cleaned = trimmed.replace(/\s+/g, '');
+  const detectedMime = detectMimeTypeFromBase64(cleaned) ?? fallbackMimeType;
+  return `data:${detectedMime};base64,${cleaned}`;
 }
 
 /** Requests a short-lived Cloudinary upload signature from the Express backend. */
@@ -67,22 +76,27 @@ export async function requestUploadSignature(folder?: UploadFolder): Promise<Upl
 /**
  * Uploads a single local image (e.g. from `expo-image-picker`) directly to Cloudinary
  * using a server-signed upload payload, and returns its HTTPS `url` (`secure_url`).
+ *
+ * Uses a base64 data URI string when available (or reads the URI into a standard `Blob`
+ * otherwise) so Expo SDK 58's WinterCG `fetch` never fails with
+ * `Unsupported FormDataPart implementation` on iOS/Android.
  */
 export async function uploadImageToCloudinary(
   image: UploadableImage,
   options?: { folder?: UploadFolder },
 ): Promise<UploadedImage> {
   const sig = await requestUploadSignature(options?.folder);
-  const { uri, fileName, mimeType } = normalizeImage(image);
+  const { uri, fileName, mimeType, base64 } = normalizeImage(image);
 
   const formData = new FormData();
-  if (Platform.OS === 'web') {
+  if (base64 && base64.trim().length > 0) {
+    formData.append('file', toBase64DataUri(base64, mimeType));
+  } else if (/^data:/i.test(uri.trim())) {
+    formData.append('file', uri.trim());
+  } else {
     const fileRes = await fetch(uri);
     const blob = await fileRes.blob();
     formData.append('file', blob, fileName);
-  } else {
-    // React Native's FormData accepts `{ uri, name, type }` file descriptors.
-    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
   }
   formData.append('api_key', sig.apiKey);
   formData.append('timestamp', String(sig.timestamp));

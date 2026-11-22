@@ -728,7 +728,9 @@ export function DistrictScreen({
       );
       let uploadedUrls: string[] = [];
       if (localUris.length > 0) {
-        uploadedUrls = await uploadIssuePhotos(localUris);
+        uploadedUrls = await uploadIssuePhotos(
+          localUris.map((uri) => ({ uri, ...photoMetaRef.current[uri] })),
+        );
       }
       const issueImages = [...existingCloudinaryUrls, ...uploadedUrls];
 
