@@ -20,20 +20,28 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
-import { type District } from '@/components/utils/map-utils';
+import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
 import { ProfileButton } from '@/components/utils/profile-button';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
-import { createIssue, fetchIssuesByDistrict } from '@/lib/api/issues';
+import {
+  createIssue,
+  fetchIssuesByDistrict,
+  fetchMyVotes,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
 import { detectDeviceLocation } from '@/lib/location';
 import { ISSUE_STATUSES } from '@/models/Issue';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 
 import { ReportLocationMap } from './ReportLocationMap';
-import { type Issue } from '@/models/Issue';
+import { type Issue, type IssueCategory } from '@/models/Issue';
+
+/** A new report this close to an open issue is probably a duplicate of it. */
+const DUPLICATE_RADIUS_METERS = 50;
 
 export type CivicCategoryKey =
   'traffic_safety' | 'roads_potholes' | 'streetlights_utilities' | 'parks_cleanliness';
@@ -196,6 +204,9 @@ export function DistrictScreen({
   const [isBoroughModalVisible, setIsBoroughModalVisible] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState<CivicCategoryKey>(initialCategory);
+  // The server has no parks category, so parks reports are saved as traffic_safety.
+  const issueCategory: IssueCategory =
+    selectedCategory === 'parks_cleanliness' ? 'traffic_safety' : selectedCategory;
   const [address, setAddress] = useState('1250 Rue Rachel Est, Montréal, QC H2J 2J9');
   const [coordinates, setCoordinates] = useState({
     latitude: 45.529841,
@@ -223,6 +234,7 @@ export function DistrictScreen({
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
   const [mtl311Enabled, setMtl311Enabled] = useState(initialMtl311);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [duplicate, setDuplicate] = useState<{ issue: Issue; meters: number } | null>(null);
 
   // Status feedback modals/toasts
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
@@ -390,7 +402,7 @@ export function DistrictScreen({
     setFeedbackToast(tText('districtScreen.draftSavedToast', 'Brouillon enregistré avec succès.'));
   };
 
-  const handlePublish = async () => {
+  const handlePublish = () => {
     if (isPublishing) return;
     if (!title.trim()) {
       Alert.alert(
@@ -399,10 +411,60 @@ export function DistrictScreen({
       );
       return;
     }
+    // Only open issues of the same category count: a problem that comes back is a new report.
+    // Only the selected district's issues are loaded, so a duplicate just across a district
+    // boundary is missed; a server-side distance query would cover that.
+    if (user?.role === 'resident') {
+      const nearby = nearestIssueWithin(
+        mappableIssues.filter((i) => i.status !== 'resolved' && i.category === issueCategory),
+        coordinates,
+        DUPLICATE_RADIUS_METERS,
+      );
+      if (nearby) {
+        setDuplicate(nearby);
+        return;
+      }
+    }
+    void publishIssue();
+  };
 
+  const handlePublishAnyway = () => {
+    setDuplicate(null);
+    void publishIssue();
+  };
+
+  const handleUpvoteDuplicate = async () => {
+    if (!duplicate || isPublishing) return;
+    const { issue } = duplicate;
+    setDuplicate(null);
+    setIsPublishing(true);
+    try {
+      // The vote endpoint toggles, so voting on an issue already upvoted would remove the vote.
+      const myVotes = await queryClient.fetchQuery({
+        queryKey: ['votes', 'me'],
+        queryFn: fetchMyVotes,
+      });
+      if (myVotes.upvotedIssueIds.includes(issue.id)) {
+        showToast(t('districtScreen.duplicate.alreadyUpvoted'));
+        return;
+      }
+      await toggleIssueVote(issue.id, 'upvote');
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      showToast(t('districtScreen.duplicate.upvoted'));
+    } catch (err) {
+      Alert.alert(
+        tText('common.error', 'Erreur'),
+        getApiErrorMessage(err, "Impossible d'ajouter le vote."),
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const publishIssue = async () => {
     const ticketNumber = `MTL-311-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-    const normalizedCategory =
-      selectedCategory === 'parks_cleanliness' ? 'traffic_safety' : selectedCategory;
 
     setIsPublishing(true);
     try {
@@ -419,7 +481,7 @@ export function DistrictScreen({
       const created = await createIssue({
         title: title.trim(),
         description: description.trim() || title.trim(),
-        category: normalizedCategory,
+        category: issueCategory,
         address: address.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
@@ -1249,6 +1311,69 @@ export function DistrictScreen({
             </Pressable>
           </View>
         </Pressable>
+      </Modal>
+
+      {/* ─── Duplicate Report Prompt ─── */}
+      <Modal
+        visible={Boolean(duplicate)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDuplicate(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            testID="duplicate-issue-prompt"
+            style={[styles.successDialog, { backgroundColor: isDark ? '#1C2922' : '#FFFFFF' }]}
+          >
+            {duplicate && (
+              <>
+                <Text
+                  accessibilityRole="header"
+                  style={[styles.successTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}
+                >
+                  {t('districtScreen.duplicate.prompt', {
+                    distance: `${Math.round(duplicate.meters)} m`,
+                  })}
+                </Text>
+                <Text style={[styles.successMessage, { color: isDark ? '#98B2A4' : '#4C5F54' }]}>
+                  {duplicate.issue.title}
+                </Text>
+              </>
+            )}
+            <Pressable
+              testID="duplicate-upvote-button"
+              accessibilityRole="button"
+              onPress={handleUpvoteDuplicate}
+              style={styles.successCloseBtn}
+            >
+              <Text style={styles.successCloseBtnText}>{t('districtScreen.duplicate.upvote')}</Text>
+            </Pressable>
+            <Pressable
+              testID="duplicate-publish-anyway-button"
+              accessibilityRole="button"
+              onPress={handlePublishAnyway}
+              style={styles.duplicateSecondaryBtn}
+            >
+              <Text
+                style={[styles.duplicateSecondaryText, { color: isDark ? '#E5F2EA' : '#0A2540' }]}
+              >
+                {t('districtScreen.duplicate.publishAnyway')}
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="duplicate-cancel-button"
+              accessibilityRole="button"
+              onPress={() => setDuplicate(null)}
+              style={styles.duplicateSecondaryBtn}
+            >
+              <Text
+                style={[styles.duplicateSecondaryText, { color: isDark ? '#98B2A4' : '#4C5F54' }]}
+              >
+                {t('districtScreen.duplicate.cancel')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* ─── Publication Success Modal ─── */}
@@ -2098,5 +2223,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  duplicateSecondaryBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+  },
+  duplicateSecondaryText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

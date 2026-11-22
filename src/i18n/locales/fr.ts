@@ -162,6 +162,15 @@ const fr: Translations = {
     draftSavedToast: 'Brouillon enregistré avec succès.',
     selectBorough: 'Sélectionner un arrondissement',
     close: 'Fermer',
+    duplicate: {
+      prompt:
+        'Déjà signalé à {{distance}} - ajouter votre vote (+1) plutôt que de créer un doublon ?',
+      upvote: 'Ajouter mon vote (+1)',
+      publishAnyway: 'Publier quand même',
+      cancel: 'Annuler',
+      upvoted: 'Votre vote a été ajouté au signalement existant.',
+      alreadyUpvoted: 'Vous avez déjà voté pour le signalement existant.',
+    },
   },
   districtFeed: {
     sync: 'OpenNorth Sync',
