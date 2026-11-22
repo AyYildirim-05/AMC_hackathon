@@ -22,6 +22,16 @@ export const WEATHER_ELEMENTS = [
 ] as const;
 export type WeatherElement = (typeof WEATHER_ELEMENTS)[number];
 
+export const ISSUE_URGENCIES = ['low', 'medium', 'high'] as const;
+export type IssueUrgency = (typeof ISSUE_URGENCIES)[number];
+
+/** Maps a 1–10 severity score to a low / medium / high safety hazard urgency level. */
+export function severityScoreToUrgency(score: number): IssueUrgency {
+  if (score >= 8) return 'high';
+  if (score >= 4) return 'medium';
+  return 'low';
+}
+
 /** UUID string. */
 export type Id = string;
 /** ISO 8601 timestamp, e.g. `2026-11-18T08:00:00.000Z`. */
@@ -70,6 +80,10 @@ export interface Issue {
   comments_count?: number;
   /** Reference number in Montréal's 311 system, when the issue was forwarded there. */
   external_311_ref: string | null;
+  /** AI-assigned hazard severity score from 1 (least severe) to 10 (most severe). */
+  severity_score?: number | null;
+  /** Derived urgency tier (`low`, `medium`, `high`) used to prioritize triage queues. */
+  urgency?: IssueUrgency | null;
   created_at: IsoDateString;
   updated_at: IsoDateString;
 }
@@ -98,4 +112,8 @@ export function isIssueStatus(value: unknown): value is IssueStatus {
 
 export function isWeatherElement(value: unknown): value is WeatherElement {
   return WEATHER_ELEMENTS.includes(value as WeatherElement);
+}
+
+export function isIssueUrgency(value: unknown): value is IssueUrgency {
+  return ISSUE_URGENCIES.includes(value as IssueUrgency);
 }

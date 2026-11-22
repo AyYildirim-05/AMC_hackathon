@@ -1,10 +1,13 @@
 import {
   ISSUE_CATEGORIES,
   ISSUE_STATUSES,
+  isIssueUrgency,
   isWeatherElement,
+  severityScoreToUrgency,
   type Issue,
   type IssueCategory,
   type IssueStatus,
+  type IssueUrgency,
   type WeatherElement,
 } from '@/models/Issue';
 
@@ -153,6 +156,22 @@ export function normalizeIssue(raw: Record<string, unknown>): Issue {
     ? Array.from(new Set(raw.elements.filter(isWeatherElement)))
     : [];
 
+  const rawSeverity = raw.severity_score ?? raw.severityScore;
+  const parsedSeverity =
+    rawSeverity !== null && rawSeverity !== undefined && rawSeverity !== ''
+      ? Number(rawSeverity)
+      : NaN;
+  const severityScore = Number.isFinite(parsedSeverity)
+    ? Math.min(10, Math.max(1, Math.round(parsedSeverity)))
+    : null;
+
+  const rawUrgency = raw.urgency;
+  const urgency: IssueUrgency | null = isIssueUrgency(rawUrgency)
+    ? rawUrgency
+    : severityScore !== null
+      ? severityScoreToUrgency(severityScore)
+      : null;
+
   return {
     id,
     title: String(raw.title ?? ''),
@@ -181,6 +200,8 @@ export function normalizeIssue(raw: Record<string, unknown>): Issue {
         ? Number(raw.comments_count ?? raw.commentsCount ?? 0)
         : undefined,
     external_311_ref: externalRefRaw === null ? null : String(externalRefRaw),
+    severity_score: severityScore,
+    urgency,
     created_at: String(raw.created_at ?? raw.createdAt ?? ''),
     updated_at: String(raw.updated_at ?? raw.updatedAt ?? ''),
   };

@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
+import { getIssueUrgency, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { ThemedText } from '@/components/utils/themed-text';
 import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -116,6 +117,17 @@ export function IssueCard({
 
   // 6. Category styling & icon
   const categoryConfig = getCategoryConfig(issue.category, translateSafe);
+  const urgency = getIssueUrgency(issue);
+  const severityPalette = urgency ? getSeverityBadgePalette(urgency, isDark) : null;
+  const severityText = urgency
+    ? issue.severity_score != null
+      ? t('issue.severityBadge', {
+          urgency: translateSafe(`issue.urgency.${urgency}`, urgency),
+          score: issue.severity_score,
+          defaultValue: `${translateSafe(`issue.urgency.${urgency}`, urgency)} • ${issue.severity_score}/10`,
+        })
+      : translateSafe(`issue.urgency.${urgency}`, urgency)
+    : null;
 
   // 7. Interactive wrappers
   const isCardPressable = Boolean(onPress);
@@ -294,8 +306,27 @@ export function IssueCard({
         </View>
       ) : null}
 
-      {/* ─── Tags: Category & 311 Reference ─── */}
+      {/* ─── Tags: Severity, Category & 311 Reference ─── */}
       <View style={styles.tagsRow}>
+        {/* AI Severity / Urgency Pill */}
+        {severityPalette && severityText ? (
+          <View
+            testID="issue-severity-badge"
+            style={[
+              styles.tagPill,
+              {
+                backgroundColor: severityPalette.backgroundColor,
+                borderColor: severityPalette.borderColor,
+              },
+            ]}
+          >
+            <Text style={styles.tagIcon}>{severityPalette.icon}</Text>
+            <Text style={[styles.tagText, { color: severityPalette.textColor }]}>
+              {severityText}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Category Pill */}
         <View
           style={[

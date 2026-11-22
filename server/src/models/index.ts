@@ -7,11 +7,14 @@ export {
 export {
   ISSUE_CATEGORIES,
   ISSUE_STATUSES,
+  ISSUE_URGENCIES,
   IssueModel,
+  severityScoreToUrgency,
   WEATHER_ELEMENTS,
   type Issue,
   type IssueCategory,
   type IssueStatus,
+  type IssueUrgency,
   type WeatherElement,
 } from './issue.model.js';
 export { IssueCommentModel, type IssueComment } from './issue-comment.model.js';

@@ -11,7 +11,7 @@ Express 5 + MongoDB (Mongoose) API server written in TypeScript (ESM).
 | `POST`   | `/api/auth/login`                  | Authenticate by email or username + password and return JWT tokens                                                                                                                  |
 | `POST`   | `/api/auth/refresh`                | Exchange a valid `refreshToken` for new JWT tokens                                                                                                                                  |
 | `GET`    | `/api/auth/me`                     | Return the authenticated `Person` (requires `Authorization: Bearer <token>`)                                                                                                        |
-| `POST`   | `/api/issues`                      | Report an issue (uses JWT user when authenticated, or `createdById`)                                                                                                                |
+| `POST`   | `/api/issues`                      | Report an issue (uses JWT user when authenticated, or `createdById`); automatically assigns an AI `severityScore` (1–10) and `urgency` (`low` / `medium` / `high`) via Gemini       |
 | `GET`    | `/api/issues`                      | All issues, newest first (enriched with `author`, `officialResponse`, `commentsCount`)                                                                                              |
 | `GET`    | `/api/issues/votes/me`             | Authenticated user's upvoted and resolution-confirmed issue IDs                                                                                                                     |
 | `GET`    | `/api/issues/:id`                  | One enriched issue                                                                                                                                                                  |
@@ -64,6 +64,8 @@ in `.env` (on a physical device use your machine's LAN IP; on the Android emulat
 | `CLOUDINARY_API_KEY`             | _(optional)_                    | Cloudinary API key                                                    |
 | `CLOUDINARY_API_SECRET`          | _(optional)_                    | Cloudinary API secret (kept server-side only in `server/.env`)        |
 | `CLOUDINARY_UPLOAD_FOLDER`       | `issues`                        | Default Cloudinary folder for uploaded images                         |
+| `GEMINI_API_KEY`                 | _(optional)_                    | Google Gemini API key for AI severity scoring (`POST /api/issues`)    |
+| `GEMINI_MODEL`                   | `gemini-3.1-flash-lite`         | Primary Gemini model ID (auto-falls back on 503/429)                  |
 | `JWT_SECRET`                     | _(required)_                    | Secret key (≥32 chars) in `server/.env` used to sign HS256 JWT tokens |
 | `JWT_ACCESS_EXPIRES_IN_SECONDS`  | `3600`                          | Access token lifetime in seconds                                      |
 | `JWT_REFRESH_EXPIRES_IN_SECONDS` | `604800`                        | Refresh token lifetime in seconds                                     |

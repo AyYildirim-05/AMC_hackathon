@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { compareIssuesBySeverityDesc } from '@/components/utils/issue-severity';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedCard } from '@/components/utils/themed-card';
 import {
@@ -37,7 +38,10 @@ export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps)
   const [triageTab, setTriageTab] = useState<IssueStatus>(firstWithIssues ?? 'not_started');
 
   const districtName = nameOf(profile.district, i18n.language);
-  const queue = issues.filter((i) => i.status === triageTab);
+  const queue = useMemo(
+    () => issues.filter((i) => i.status === triageTab).sort(compareIssuesBySeverityDesc),
+    [issues, triageTab],
+  );
 
   return (
     <View style={styles.page}>

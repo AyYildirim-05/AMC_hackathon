@@ -69,6 +69,12 @@ const fr: Translations = {
       freezing_rain: 'Pluie verglaçante',
       extreme_heat: 'Chaleur extrême',
     },
+    urgency: {
+      high: 'Urgence élevée',
+      medium: 'Urgence moyenne',
+      low: 'Urgence faible',
+    },
+    severityBadge: '{{urgency}} • {{score}}/10',
     photo: '{{count}} photo',
     photos: '{{count}} photos',
     confirmed: '{{count}} confirmé',

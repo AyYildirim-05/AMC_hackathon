@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { formatAddress } from '@/components/utils/formatter';
+import { getIssueUrgency, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { Pill } from '@/components/utils/pill';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedCard } from '@/components/utils/themed-card';
@@ -40,9 +41,20 @@ export function TriageIssueCard({
 }: TriageIssueCardProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
+  const isDark = theme.text !== '#1C211F';
   const statusColors = useIssueStatusColors();
   const [statusOpen, setStatusOpen] = useState(false);
   const statusLabel = t(`profile.triage.status.${issue.status}`);
+  const urgency = getIssueUrgency(issue);
+  const severityPalette = urgency ? getSeverityBadgePalette(urgency, isDark) : null;
+  const severityLabel = urgency
+    ? issue.severity_score != null
+      ? t('issue.severityBadge', {
+          urgency: t(`issue.urgency.${urgency}`),
+          score: issue.severity_score,
+        })
+      : t(`issue.urgency.${urgency}`)
+    : null;
 
   const chooseStatus = (status: IssueStatus) => {
     setStatusOpen(false);
@@ -50,8 +62,39 @@ export function TriageIssueCard({
   };
 
   return (
-    <ThemedCard variant="outlined">
+    <ThemedCard
+      variant="outlined"
+      style={
+        urgency === 'high' && severityPalette
+          ? {
+              borderLeftWidth: 4,
+              borderLeftColor: severityPalette.accentBorderColor,
+            }
+          : undefined
+      }
+    >
       <View style={styles.tagRow}>
+        {severityPalette && severityLabel && (
+          <View
+            testID={`triage-severity-badge-${issue.id}`}
+            style={[
+              styles.severityBadge,
+              {
+                backgroundColor: severityPalette.backgroundColor,
+                borderColor: severityPalette.borderColor,
+              },
+            ]}
+          >
+            <ThemedText
+              type="miniText"
+              weight="semibold"
+              style={{ color: severityPalette.textColor }}
+              numberOfLines={1}
+            >
+              {`${severityPalette.icon} ${severityLabel}`}
+            </ThemedText>
+          </View>
+        )}
         <Pill tone="accent">{t(`issue.category.${issue.category}`)}</Pill>
         {issue.external_311_ref && (
           <Pill tone="outline" mono>
@@ -185,6 +228,15 @@ const formatReplyTime = (iso: string, locale: string) => {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  severityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
   section: { gap: Spacing.two },
   box: {
     flexDirection: 'row',

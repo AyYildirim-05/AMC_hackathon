@@ -71,6 +71,12 @@ const en = {
       freezing_rain: 'Freezing Rain',
       extreme_heat: 'Extreme Heat',
     },
+    urgency: {
+      high: 'High urgency',
+      medium: 'Medium urgency',
+      low: 'Low urgency',
+    },
+    severityBadge: '{{urgency}} • {{score}}/10',
     photo: '{{count}} photo',
     photos: '{{count}} photos',
     confirmed: '{{count}} confirmed',
