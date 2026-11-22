@@ -1,6 +1,8 @@
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { Text } from 'react-native';
 
+import type { IssueCategory } from '@/models/Issue';
+
 export type MapIconName =
   | 'city'
   | 'search'
@@ -20,7 +22,13 @@ export type MapIconName =
   | 'verified'
   | 'camera'
   | 'park'
-  | 'cluster';
+  | 'cluster'
+  | 'roadwork'
+  | 'road'
+  | 'water'
+  | 'bolt'
+  | 'hammer'
+  | 'warning';
 
 type SymbolSpec = {
   name: SymbolViewProps['name'];
@@ -104,7 +112,41 @@ const ICON_MAP: Record<MapIconName, SymbolSpec> = {
     name: { ios: 'circle.grid.2x2.fill', android: 'density_medium', web: 'density_medium' },
     fallback: '◈',
   },
+  roadwork: {
+    name: { ios: 'wrench.and.screwdriver.fill', android: 'construction', web: 'construction' },
+    fallback: '🚧',
+  },
+  road: {
+    name: { ios: 'road.lanes', android: 'road', web: 'road' },
+    fallback: '🛣',
+  },
+  water: {
+    name: { ios: 'drop.fill', android: 'water_drop', web: 'water_drop' },
+    fallback: '💧',
+  },
+  bolt: {
+    name: { ios: 'bolt.fill', android: 'bolt', web: 'bolt' },
+    fallback: '⚡',
+  },
+  hammer: {
+    name: { ios: 'hammer.fill', android: 'handyman', web: 'handyman' },
+    fallback: '🏗',
+  },
+  warning: {
+    name: { ios: 'exclamationmark.triangle.fill', android: 'warning', web: 'warning' },
+    fallback: '⚠',
+  },
 };
+
+/** The icon that stands for each issue category on the maps. */
+export const CATEGORY_ICONS: Record<IssueCategory, MapIconName> = {
+  traffic_safety: 'bike',
+  roads_potholes: 'pothole',
+  streetlights_utilities: 'lightbulb',
+};
+
+/** Text version of an icon, for HTML markers (Leaflet) that cannot render a symbol view. */
+export const mapIconGlyph = (name: MapIconName): string => ICON_MAP[name].fallback;
 
 export interface MapIconProps {
   name: MapIconName;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isIssuePhotoUrl } from '../lib/cloudinary.js';
 import { HttpError } from '../lib/http-error.js';
 import type { PersonRole } from '../models/index.js';
 import { createComment, findCommentsByIssue } from '../repositories/comment.repository.js';
@@ -7,10 +8,31 @@ import { findDistrictManagerId } from '../repositories/district.repository.js';
 import { findIssueById } from '../repositories/issue.repository.js';
 import { findPersonsByIds } from '../repositories/person.repository.js';
 
-export const createCommentInput = z.object({
-  body: z.string().trim().min(1, 'Comment cannot be empty').max(2000),
-  isOfficialResponse: z.boolean().optional().default(false),
-});
+const MAX_COMMENT_PHOTOS = 3;
+
+export const createCommentInput = z
+  .object({
+    body: z.string().trim().max(2000).optional().default(''),
+    images: z
+      .array(
+        z.url().refine((url) => isIssuePhotoUrl(url), {
+          message: 'Must be a photo uploaded through /api/uploads/signature',
+        }),
+      )
+      .max(MAX_COMMENT_PHOTOS)
+      .optional()
+      .default([]),
+    isOfficialResponse: z.boolean().optional().default(false),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.body && data.images.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['body'],
+        message: 'Comment must include text or at least one image',
+      });
+    }
+  });
 export type CreateCommentInput = z.infer<typeof createCommentInput>;
 
 type SerializableDoc = { toJSON: () => Record<string, unknown> };
@@ -20,6 +42,7 @@ export type EnrichedComment = Record<string, unknown> & {
   issueId: string;
   userId: string;
   body: string;
+  images: string[];
   isOfficialResponse: boolean;
   createdAt: string;
   updatedAt: string;
@@ -51,7 +74,8 @@ async function enrichComments(docs: readonly SerializableDoc[]): Promise<Enriche
       id: String(comment.id),
       issueId: String(comment.issueId),
       userId: String(comment.userId),
-      body: String(comment.body),
+      body: String(comment.body ?? ''),
+      images: Array.isArray(comment.images) ? comment.images.map(String) : [],
       isOfficialResponse: Boolean(comment.isOfficialResponse),
       createdAt: String(comment.createdAt),
       updatedAt: String(comment.updatedAt),
@@ -100,6 +124,7 @@ export async function addCommentToIssue(
     issueId,
     userId,
     body: input.body,
+    images: input.images,
     isOfficialResponse,
   });
   const [enriched] = await enrichComments([created]);

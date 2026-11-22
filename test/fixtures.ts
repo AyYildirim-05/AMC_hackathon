@@ -2,6 +2,7 @@ import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 import type { District } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
+import type { Roadwork } from '@/lib/api/roadworks';
 import type { IssueComment, IssueVote, Person, ProfileData } from '@/lib/profile';
 import type { Issue } from '@/models/Issue';
 
@@ -462,6 +463,7 @@ function toServerComment(c: IssueComment, persons: Person[]) {
     issueId: c.issue_id,
     userId: c.user_id,
     body: c.body,
+    images: c.images ?? [],
     isOfficialResponse: c.is_official_response,
     createdAt: c.created_at,
     updatedAt: c.created_at,
@@ -480,6 +482,66 @@ function toServerComment(c: IssueComment, persons: Person[]) {
  * Installs an in-memory stateful Express-compatible axios adapter on `apiClient` for Jest tests.
  * Returns a cleanup function that restores the original adapter.
  */
+/** City of Montréal roadworks as `GET /api/roadworks` returns them (normalized by the server). */
+export const TEST_ROADWORKS: Roadwork[] = [
+  {
+    id: 'rw-rachel',
+    permitId: 'OCC-2611AA00000001',
+    borough: 'Le Plateau-Mont-Royal',
+    location: 'Rachel entre Saint-Denis et Berri',
+    reason: 'Réseaux routier - Réfection et travaux corrélatifs',
+    type: 'roads',
+    organization: 'Pavage Montréal Inc.',
+    isCityProject: true,
+    startDate: '2026-11-01T12:00:00Z',
+    endDate: '2026-12-15T12:00:00Z',
+    latitude: 45.5236,
+    longitude: -73.5794,
+  },
+  {
+    id: 'rw-masson',
+    permitId: 'OCC-2611AA00000002',
+    borough: 'Rosemont-La Petite-Patrie',
+    location: 'Masson entre 1re et 2e',
+    reason: 'Égouts et aqueducs - Excavation',
+    type: 'water',
+    organization: null,
+    isCityProject: false,
+    startDate: '2026-11-10T12:00:00Z',
+    endDate: '2026-11-30T12:00:00Z',
+    latitude: 45.5431,
+    longitude: -73.5776,
+  },
+  {
+    id: 'rw-peel',
+    permitId: 'OCC-2611AA00000003',
+    borough: 'Ville-Marie',
+    location: 'Peel entre René-Lévesque et Sainte-Catherine',
+    reason: 'Construction/rénovation sans excavation',
+    type: 'building',
+    organization: 'Constructions ABC',
+    isCityProject: false,
+    startDate: '2026-10-01T12:00:00Z',
+    endDate: '2026-12-31T12:00:00Z',
+    latitude: 45.4993,
+    longitude: -73.5733,
+  },
+];
+
+const ROADWORKS_SOURCE = {
+  name: 'Ville de Montréal: Entraves et travaux en cours',
+  license: 'CC BY 4.0',
+  url: 'https://donnees.montreal.ca/dataset/info-travaux',
+};
+
+/** Same matching rule as the server: accents, case and dash style don't matter. */
+const roadworkBoroughKey = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
 export function installMockBackendApi(options?: {
   profileData?: ProfileData;
   currentUsername?: string;
@@ -513,6 +575,12 @@ export function installMockBackendApi(options?: {
 
     if (method === 'get' && url === '/api/issues') {
       return reply(issues.map(toServerIssue));
+    }
+
+    const byDistrict = url.match(/^\/api\/issues\/district\/([^/]+)$/);
+    if (method === 'get' && byDistrict) {
+      const districtId = decodeURIComponent(byDistrict[1]);
+      return reply(issues.filter((i) => i.district_id === districtId).map(toServerIssue));
     }
 
     if (method === 'post' && url === '/api/issues') {
@@ -595,6 +663,7 @@ export function installMockBackendApi(options?: {
           issue_id: issueId,
           user_id: current?.id ?? 'current-user',
           body: String(body.body ?? ''),
+          images: Array.isArray(body.images) ? body.images.map(String) : [],
           is_official_response: Boolean(body.isOfficialResponse),
           created_at: new Date().toISOString(),
         };
@@ -611,6 +680,30 @@ export function installMockBackendApi(options?: {
         issue.status = body.status as Issue['status'];
         return reply(toServerIssue(issue));
       }
+    }
+
+    if (method === 'get' && url.startsWith('/api/roadworks')) {
+      const params = new URLSearchParams(url.split('?')[1] ?? '');
+      const list = (key: string) => (params.get(key) ?? '').split(',').filter(Boolean);
+      const boroughs = new Set(list('boroughs').map(roadworkBoroughKey));
+      const types = list('types');
+      const beforeType = TEST_ROADWORKS.filter(
+        (w) =>
+          params.get('when') !== 'upcoming' &&
+          (boroughs.size === 0 || boroughs.has(roadworkBoroughKey(w.borough))) &&
+          (params.get('cityOnly') !== 'true' || w.isCityProject),
+      );
+      const typeCounts = { roads: 0, water: 0, utilities: 0, building: 0, other: 0 };
+      for (const w of beforeType) typeCounts[w.type] += 1;
+      const works =
+        types.length > 0 ? beforeType.filter((w) => types.includes(w.type)) : beforeType;
+      return reply({
+        source: ROADWORKS_SOURCE,
+        fetchedAt: '2026-11-21T12:00:00.000Z',
+        total: works.length,
+        typeCounts,
+        works,
+      });
     }
 
     if (method === 'get' && url === '/api/districts') {

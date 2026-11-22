@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Share } from 'react-native';
 
 import { installMockBackendApi, TEST_DISTRICTS, TEST_ISSUES } from '../../../../test/fixtures';
@@ -453,5 +453,86 @@ describe('CardScreen (Map page) — all interactive controls', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'French' }));
     expect(screen.getByText('Consulter le dossier')).toBeOnTheScreen();
+  });
+
+  describe('City of Montréal roadworks layer', () => {
+    it('shows street works when the map opens, with their own filters, and hides them on demand', async () => {
+      await renderCardScreen();
+
+      expect(screen.getByTestId('map-roadworks-filters')).toBeOnTheScreen();
+      // Default types are the street network ones: roads, water, utilities. Not building sites.
+      expect(await screen.findByTestId('map-roadwork-rw-rachel')).toBeOnTheScreen();
+      expect(screen.getByTestId('map-roadwork-rw-masson')).toBeOnTheScreen();
+      expect(screen.queryByTestId('map-roadwork-rw-peel')).toBeNull();
+      expect(screen.getByTestId('map-roadworks-status')).toHaveTextContent('2 chantiers');
+      expect(screen.getByTestId('map-roadworks-type-roads')).toBeSelected();
+      expect(screen.getByTestId('map-roadworks-type-building')).not.toBeSelected();
+
+      await fireEvent.press(screen.getByTestId('map-roadworks-button'));
+
+      expect(screen.queryByTestId('map-roadworks-filters')).toBeNull();
+      expect(screen.queryByTestId('map-roadwork-rw-rachel')).toBeNull();
+    });
+
+    it('adds a type, and narrows to City projects', async () => {
+      await renderCardScreen();
+      await screen.findByTestId('map-roadwork-rw-rachel');
+
+      await fireEvent.press(screen.getByTestId('map-roadworks-type-building'));
+      expect(await screen.findByTestId('map-roadwork-rw-peel')).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByTestId('map-roadworks-city-only'));
+      await waitFor(() => expect(screen.queryByTestId('map-roadwork-rw-peel')).toBeNull());
+      expect(screen.queryByTestId('map-roadwork-rw-masson')).toBeNull();
+      expect(screen.getByTestId('map-roadwork-rw-rachel')).toBeOnTheScreen();
+    });
+
+    it('keeps at least one type selected', async () => {
+      await renderCardScreen();
+      await screen.findByTestId('map-roadwork-rw-rachel');
+
+      await fireEvent.press(screen.getByTestId('map-roadworks-type-roads'));
+      await fireEvent.press(screen.getByTestId('map-roadworks-type-water'));
+      await fireEvent.press(screen.getByTestId('map-roadworks-type-utilities'));
+
+      expect(screen.getByTestId('map-roadworks-type-utilities')).toBeSelected();
+    });
+
+    it('limits works to the selected borough, despite the en dash in "Rosemont–La Petite-Patrie"', async () => {
+      await renderCardScreen();
+      await screen.findByTestId('map-roadwork-rw-rachel');
+
+      await fireEvent.press(screen.getByTestId('map-borough-selector'));
+      await fireEvent.press(screen.getByTestId('map-borough-option-rosemont-la-petite-patrie'));
+
+      await waitFor(() => expect(screen.queryByTestId('map-roadwork-rw-rachel')).toBeNull());
+      expect(screen.getByTestId('map-roadwork-rw-masson')).toBeOnTheScreen();
+    });
+
+    it('shows a work in the bottom card when its marker is tapped', async () => {
+      await renderCardScreen();
+      await fireEvent.press(await screen.findByTestId('map-roadwork-rw-rachel'));
+
+      const card = screen.getByTestId('map-roadwork-card');
+      expect(within(card).getByText('Rachel entre Saint-Denis et Berri')).toBeOnTheScreen();
+      expect(within(card).getByText('Chaussée & trottoirs')).toBeOnTheScreen();
+      expect(within(card).getByText('Ville de Montréal')).toBeOnTheScreen();
+      expect(within(card).getByText('Permis OCC-2611AA00000001')).toBeOnTheScreen();
+      expect(within(card).getByText(/CC BY 4\.0/)).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByTestId('map-roadwork-close'));
+      expect(screen.queryByTestId('map-roadwork-card')).toBeNull();
+    });
+
+    it('comes back on with the "Works & REV" map layer', async () => {
+      await renderCardScreen();
+      await fireEvent.press(screen.getByTestId('map-roadworks-button'));
+      expect(screen.queryByTestId('map-roadworks-filters')).toBeNull();
+
+      await fireEvent.press(screen.getByTestId('map-layers-button'));
+
+      expect(screen.getByTestId('map-roadworks-filters')).toBeOnTheScreen();
+      expect(await screen.findByTestId('map-roadwork-rw-rachel')).toBeOnTheScreen();
+    });
   });
 });

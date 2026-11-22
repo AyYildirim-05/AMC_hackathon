@@ -8,6 +8,7 @@ import { profileRouter } from './controllers/profile.controller.js';
 import { errorHandler, notFound } from './middleware/error-handler.js';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
+import { roadworksRouter } from './routes/roadworks.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 
 /** Builds the app without connecting to MongoDB, so tests can import it directly. */
@@ -30,6 +31,7 @@ export function createApp() {
   app.use('/api/issues', issueRouter);
   app.use('/api/districts', districtRouter);
   app.use('/api/profile', profileRouter);
+  app.use('/api/roadworks', roadworksRouter);
 
   app.use(notFound);
   app.use(errorHandler);

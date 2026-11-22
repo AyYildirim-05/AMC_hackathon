@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Linking,
   Modal,
@@ -31,14 +34,19 @@ import {
   fetchMyVotes,
   toggleIssueVote,
 } from '@/lib/api/issues';
+import { getApiErrorMessage } from '@/lib/auth/auth-api';
+import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 import { type Issue } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
+
+const MAX_COMMENT_PHOTOS = 3;
 
 export interface IssueCommentItem {
   id: string;
   issue_id: string;
   user_id: string;
   body: string;
+  images: string[];
   is_official_response: boolean;
   created_at: string;
   username: string;
@@ -85,6 +93,7 @@ function mapApiCommentToItem(c: ApiIssueComment): IssueCommentItem {
     issue_id: c.issueId,
     user_id: c.userId,
     body: c.body,
+    images: Array.isArray(c.images) ? c.images : [],
     is_official_response: c.isOfficialResponse,
     created_at: c.createdAt,
     username,
@@ -248,6 +257,9 @@ export function IssueDetailScreen({
     confirmCount: number;
   } | null>(null);
   const [newCommentText, setNewCommentText] = useState<string>('');
+  const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const serverIsUpvoted = myVotes ? myVotes.upvotedIssueIds.includes(issue.id) : false;
   const serverIsConfirmed = myVotes ? myVotes.confirmedIssueIds.includes(issue.id) : false;
@@ -282,8 +294,15 @@ export function IssueDetailScreen({
   });
 
   const commentMutation = useMutation({
-    mutationFn: ({ body, isOfficial }: { body: string; isOfficial: boolean }) =>
-      createIssueComment(issue.id, body, isOfficial),
+    mutationFn: ({
+      body,
+      isOfficial,
+      images,
+    }: {
+      body: string;
+      isOfficial: boolean;
+      images: string[];
+    }) => createIssueComment(issue.id, body, isOfficial, images),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['issues', issue.id, 'comments'] });
       void queryClient.invalidateQueries({ queryKey: ['issues'] });
@@ -327,16 +346,69 @@ export function IssueDetailScreen({
     voteMutation.mutate('confirm_resolved');
   };
 
-  const handleAddComment = () => {
+  const canSendComment =
+    !isSubmittingComment && (newCommentText.trim().length > 0 || pendingPhotos.length > 0);
+
+  const handlePickCommentPhoto = async () => {
+    if (isSubmittingComment) return;
+    if (pendingPhotos.length >= MAX_COMMENT_PHOTOS) {
+      Alert.alert(
+        'Photo limit reached',
+        `You can attach up to ${MAX_COMMENT_PHOTOS} photos per comment.`,
+      );
+      return;
+    }
+
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.7,
+      });
+      if (!res.canceled && res.assets?.[0]?.uri) {
+        setPendingPhotos((prev) => [...prev, res.assets[0].uri].slice(0, MAX_COMMENT_PHOTOS));
+      }
+    } catch {
+      Alert.alert('Error', 'Unable to open your photo library.');
+    }
+  };
+
+  const handleRemovePendingPhoto = (index: number) => {
+    setPendingPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddComment = async () => {
     const trimmed = newCommentText.trim();
-    if (!trimmed) return;
+    if (isSubmittingComment || (!trimmed && pendingPhotos.length === 0)) return;
 
     const isDistrictManagerForIssue =
       Boolean(user?.id) &&
       ((matchedDistrict?.manager_id != null && matchedDistrict.manager_id === user?.id) ||
         user?.role === 'admin');
-    setNewCommentText('');
-    commentMutation.mutate({ body: trimmed, isOfficial: isDistrictManagerForIssue });
+
+    setIsSubmittingComment(true);
+    try {
+      let uploadedImages: string[] = [];
+      if (pendingPhotos.length > 0) {
+        const existingRemote = pendingPhotos.filter((uri) =>
+          /^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//i.test(uri),
+        );
+        const localUris = pendingPhotos.filter((uri) => !/^https?:\/\//i.test(uri));
+        const newlyUploaded = localUris.length > 0 ? await uploadIssuePhotos(localUris) : [];
+        uploadedImages = [...existingRemote, ...newlyUploaded];
+      }
+
+      await commentMutation.mutateAsync({
+        body: trimmed,
+        isOfficial: isDistrictManagerForIssue,
+        images: uploadedImages,
+      });
+      setNewCommentText('');
+      setPendingPhotos([]);
+    } catch (err) {
+      Alert.alert('Error', getApiErrorMessage(err, 'Unable to post comment. Please try again.'));
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   const handleShare = async () => {
@@ -923,21 +995,52 @@ export function IssueDetailScreen({
                         </View>
 
                         {/* Nested quote card */}
-                        <View
-                          style={[
-                            styles.quoteBox,
-                            {
-                              backgroundColor: isDark ? '#22382D' : '#FFFFFF',
-                              borderColor: isDark ? '#2E503D' : '#E0ECE4',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[styles.quoteText, { color: isDark ? '#DDEFE5' : '#233229' }]}
+                        {comment.body.length > 0 ? (
+                          <View
+                            style={[
+                              styles.quoteBox,
+                              {
+                                backgroundColor: isDark ? '#22382D' : '#FFFFFF',
+                                borderColor: isDark ? '#2E503D' : '#E0ECE4',
+                              },
+                            ]}
                           >
-                            &ldquo;{comment.body}&rdquo;
-                          </Text>
-                        </View>
+                            <Text
+                              style={[styles.quoteText, { color: isDark ? '#DDEFE5' : '#233229' }]}
+                            >
+                              &ldquo;{comment.body}&rdquo;
+                            </Text>
+                          </View>
+                        ) : null}
+
+                        {/* Attached comment images */}
+                        {comment.images.length > 0 ? (
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.commentImagesRow}
+                          >
+                            {comment.images.map((uri, idx) => (
+                              <Pressable
+                                key={`${comment.id}-img-${idx}`}
+                                accessibilityRole="imagebutton"
+                                accessibilityLabel="View comment photo"
+                                onPress={() => setPreviewImageUrl(uri)}
+                                style={({ pressed }) => [pressed && styles.pressedOpacity]}
+                              >
+                                <Image
+                                  testID={`comment-image-${comment.id}-${idx}`}
+                                  source={{ uri }}
+                                  style={[
+                                    styles.commentImageThumb,
+                                    { borderColor: isDark ? '#2E503D' : '#D4E6DC' },
+                                  ]}
+                                  contentFit="cover"
+                                />
+                              </Pressable>
+                            ))}
+                          </ScrollView>
+                        ) : null}
 
                         {/* Official Ticket Footer */}
                         <View style={styles.officialFooterRow}>
@@ -1033,11 +1136,45 @@ export function IssueDetailScreen({
                       </View>
 
                       {/* Comment body */}
-                      <Text
-                        style={[styles.commentBodyText, { color: isDark ? '#D8E8DF' : '#2A3630' }]}
-                      >
-                        {comment.body}
-                      </Text>
+                      {comment.body.length > 0 ? (
+                        <Text
+                          style={[
+                            styles.commentBodyText,
+                            { color: isDark ? '#D8E8DF' : '#2A3630' },
+                          ]}
+                        >
+                          {comment.body}
+                        </Text>
+                      ) : null}
+
+                      {/* Attached comment images */}
+                      {comment.images.length > 0 ? (
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.commentImagesRow}
+                        >
+                          {comment.images.map((uri, idx) => (
+                            <Pressable
+                              key={`${comment.id}-img-${idx}`}
+                              accessibilityRole="imagebutton"
+                              accessibilityLabel="View comment photo"
+                              onPress={() => setPreviewImageUrl(uri)}
+                              style={({ pressed }) => [pressed && styles.pressedOpacity]}
+                            >
+                              <Image
+                                testID={`comment-image-${comment.id}-${idx}`}
+                                source={{ uri }}
+                                style={[
+                                  styles.commentImageThumb,
+                                  { borderColor: isDark ? '#2E3D35' : '#DCE5DF' },
+                                ]}
+                                contentFit="cover"
+                              />
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      ) : null}
                     </View>
                   );
                 })}
@@ -1046,6 +1183,51 @@ export function IssueDetailScreen({
 
             <View style={{ height: 24 }} />
           </ScrollView>
+
+          {/* ─── Pending Comment Photos Preview Strip ─── */}
+          {pendingPhotos.length > 0 ? (
+            <View
+              testID="pending-comment-photos-strip"
+              style={[
+                styles.pendingPhotosBar,
+                {
+                  backgroundColor: isDark ? '#1D2722' : '#F4F8F5',
+                  borderTopColor: isDark ? '#2C3A33' : '#E5EAE7',
+                },
+              ]}
+            >
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.pendingPhotosList}
+              >
+                {pendingPhotos.map((uri, index) => (
+                  <View key={`${uri}-${index}`} style={styles.pendingPhotoWrap}>
+                    <Image
+                      testID={`pending-comment-photo-${index}`}
+                      source={{ uri }}
+                      style={styles.pendingPhotoThumb}
+                      contentFit="cover"
+                    />
+                    <Pressable
+                      testID={`remove-comment-photo-${index}`}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove attached photo"
+                      onPress={() => handleRemovePendingPhoto(index)}
+                      disabled={isSubmittingComment}
+                      hitSlop={6}
+                      style={styles.pendingPhotoRemoveBtn}
+                    >
+                      <Text style={styles.pendingPhotoRemoveText}>✕</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+              <Text style={[styles.pendingPhotosCount, { color: isDark ? '#8CB39D' : '#5A6C63' }]}>
+                {pendingPhotos.length}/{MAX_COMMENT_PHOTOS}
+              </Text>
+            </View>
+          ) : null}
 
           {/* ─── Fixed Bottom Comment Input Bar ─── */}
           <View
@@ -1059,15 +1241,20 @@ export function IssueDetailScreen({
           >
             {/* Camera Button */}
             <Pressable
+              testID="comment-attach-photo-button"
               accessibilityRole="button"
               accessibilityLabel="Attach photo"
+              onPress={handlePickCommentPhoto}
+              disabled={isSubmittingComment}
               hitSlop={8}
-              style={[
+              style={({ pressed }) => [
                 styles.cameraButton,
                 {
                   backgroundColor: isDark ? '#24302A' : '#EFF3F0',
-                  borderColor: isDark ? '#33443C' : '#DFE5E1',
+                  borderColor:
+                    pendingPhotos.length > 0 ? '#1E3B2C' : isDark ? '#33443C' : '#DFE5E1',
                 },
+                (pressed || pendingPhotos.length >= MAX_COMMENT_PHOTOS) && styles.pressedOpacity,
               ]}
             >
               <Text style={styles.cameraButtonIcon}>📷</Text>
@@ -1078,6 +1265,7 @@ export function IssueDetailScreen({
               testID="comment-input"
               value={newCommentText}
               onChangeText={setNewCommentText}
+              editable={!isSubmittingComment}
               placeholder="Add a comment..."
               placeholderTextColor={isDark ? '#698875' : '#8C9E94'}
               style={[
@@ -1096,23 +1284,43 @@ export function IssueDetailScreen({
               accessibilityRole="button"
               accessibilityLabel="Send comment"
               onPress={handleAddComment}
+              disabled={!canSendComment}
               hitSlop={8}
               style={({ pressed }) => [
                 styles.sendButton,
                 {
-                  backgroundColor: newCommentText.trim()
-                    ? '#1E3B2C'
-                    : isDark
-                      ? '#24352C'
-                      : '#9EBAA9',
+                  backgroundColor: canSendComment ? '#1E3B2C' : isDark ? '#24352C' : '#9EBAA9',
                 },
                 pressed && styles.pressedOpacity,
               ]}
             >
-              <Text style={styles.sendButtonIcon}>➤</Text>
+              {isSubmittingComment ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.sendButtonIcon}>➤</Text>
+              )}
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+
+        {previewImageUrl ? (
+          <Pressable
+            testID="comment-image-lightbox"
+            accessibilityRole="button"
+            accessibilityLabel="Close photo preview"
+            onPress={() => setPreviewImageUrl(null)}
+            style={styles.lightboxOverlay}
+          >
+            <View style={styles.lightboxCloseBadge}>
+              <Text style={styles.lightboxCloseText}>✕</Text>
+            </View>
+            <Image
+              source={{ uri: previewImageUrl }}
+              style={styles.lightboxImage}
+              contentFit="contain"
+            />
+          </Pressable>
+        ) : null}
       </SafeAreaView>
     </Modal>
   );
@@ -1651,6 +1859,93 @@ const styles = StyleSheet.create({
   commentBodyText: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  commentImagesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 4,
+  },
+  commentImageThumb: {
+    width: 112,
+    height: 84,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  pendingPhotosBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    gap: Spacing.two,
+  },
+  pendingPhotosList: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pendingPhotoWrap: {
+    position: 'relative',
+    width: 56,
+    height: 56,
+  },
+  pendingPhotoThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+  },
+  pendingPhotoRemoveBtn: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(18, 28, 22, 0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingPhotoRemoveText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  pendingPhotosCount: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  lightboxOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.three,
+    zIndex: 50,
+  },
+  lightboxCloseBadge: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 51,
+  },
+  lightboxCloseText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  lightboxImage: {
+    width: '100%',
+    height: '80%',
   },
   /* Bottom Comment Input Bar */
   bottomInputBar: {

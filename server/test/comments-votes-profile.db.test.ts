@@ -115,13 +115,15 @@ describe(
         .send({ body: 'Fake official', isOfficialResponse: true });
       assert.equal(forbiddenOfficial.status, 403);
 
-      // Resident posts normal comment; manager posts official response.
+      // Resident posts normal comment with photo; manager posts official response.
+      const commentPhotoUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME || 'demo'}/image/upload/v1700000000/issues/comment-1.jpg`;
       const residentComment = await request(app)
         .post(`/api/issues/${issueId}/comments`)
         .set('Authorization', tokenFor(resident, 'resident'))
-        .send({ body: 'Still blocked this morning.' });
+        .send({ body: 'Still blocked this morning.', images: [commentPhotoUrl] });
       assert.equal(residentComment.status, 201);
       assert.equal(residentComment.body.author.username, 'marc_velo');
+      assert.deepEqual(residentComment.body.images, [commentPhotoUrl]);
 
       const officialComment = await request(app)
         .post(`/api/issues/${issueId}/comments`)
