@@ -13,7 +13,7 @@ const en = {
     card: 'Map',
     report: 'Report',
     district: 'District',
-    brand: 'Montone',
+    brand: '{{appName}}',
   },
   feed: {
     boroughSearch: 'Search a borough',
@@ -30,7 +30,7 @@ const en = {
     reset: 'Reset filters',
   },
   home: {
-    title: 'Welcome to Montone',
+    title: 'Welcome to {{appName}}',
     getStarted: 'get started',
     tryEditing: 'Try editing',
     devTools: 'Dev tools',
@@ -202,7 +202,7 @@ const en = {
       'Official municipal tracking number issued after publication (e.g. MTL-311-2026-XXXXX).',
     publishButton: 'Publish report',
     draftButton: 'Save as draft',
-    charterFooter: 'Montone Citizen Charter • OpenNorth Open Data',
+    charterFooter: '{{appName}} Citizen Charter • OpenNorth Open Data',
     publishedSuccessTitle: 'Report published successfully!',
     publishedSuccessMessage:
       'Your report has been forwarded to the City of Montréal with an official reference number.',
@@ -342,7 +342,7 @@ const en = {
     unavailableTitle: 'Map unavailable on this device',
     unavailableBody:
       'This Android build has no Google Maps API key. Add GOOGLE_MAPS_ANDROID_API_KEY to .env and rebuild.',
-    brandTitle: 'Montone',
+    brandTitle: '{{appName}}',
     allBoroughs: 'All boroughs',
     searchPlaceholder: 'Search street, #311, park...',
     clearSearch: 'Clear search',
@@ -415,11 +415,11 @@ const en = {
     noIssues: 'No other issues reported in this district yet.',
   },
   splash: {
-    badge: 'Montréal • Civic Pulse',
-    title: 'Montone',
+    badge: 'Montréal • {{appName}}',
+    title: '{{appName}}',
     tagline: 'Report, track, and resolve neighborhood issues together.',
     footer: 'OpenNorth Boundaries • MTL-311 Sync',
-    loadingLabel: 'Loading Montone',
+    loadingLabel: 'Loading {{appName}}',
   },
   onboarding: {
     skip: 'Skip',

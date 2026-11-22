@@ -8,7 +8,7 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
-import { Palette, StatusColors } from '@/constants/palette';
+import { Palette, type PaletteShade, StatusColors } from '@/constants/palette';
 
 function semanticColors(mode: 'light' | 'dark') {
   const p = Palette[mode];
@@ -47,7 +47,7 @@ function semanticColors(mode: 'light' | 'dark') {
   };
 }
 
-type Shade = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+type Shade = PaletteShade;
 
 /** `{ 100: '#…', … }` → `{ neutral100: '#…', … }`. */
 function shades<P extends string>(scale: Record<Shade, string>, prefix: P) {

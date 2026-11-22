@@ -4,6 +4,8 @@ import { createInstance } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { Platform } from 'react-native';
 
+import { brand } from '@/brand';
+
 import en from './locales/en';
 import fr from './locales/fr';
 
@@ -66,7 +68,11 @@ i18n.use(initReactI18next).init({
   lng: getDeviceLanguage(),
   fallbackLng: fallbackLanguage,
   supportedLngs: supportedLanguages,
-  interpolation: { escapeValue: false }, // React already escapes output.
+  interpolation: {
+    escapeValue: false, // React already escapes output.
+    // White labelling: `{{appName}}` in any string is the active brand's name.
+    defaultVariables: { appName: brand.name },
+  },
   returnNull: false,
   initAsync: false,
 });

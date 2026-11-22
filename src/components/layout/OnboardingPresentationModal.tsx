@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { brand, brandLogo } from '@/brand';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedText } from '@/components/utils/themed-text';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -340,13 +341,9 @@ export function OnboardingPresentationModal({
                   },
                 ]}
               >
-                <Image
-                  source={require('@/assets/images/montone-icon.png')}
-                  style={styles.miniLogo}
-                  contentFit="cover"
-                />
+                <Image source={brandLogo} style={styles.miniLogo} contentFit="cover" />
               </View>
-              <Text style={[styles.brandWordmark, { color: theme.text }]}>Montone</Text>
+              <Text style={[styles.brandWordmark, { color: theme.text }]}>{brand.name}</Text>
             </View>
 
             <Pressable

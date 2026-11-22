@@ -249,7 +249,7 @@ describe('CardScreen (Map page) — all interactive controls', () => {
   it('renders header, map, markers, and lists every report until one is selected (French)', async () => {
     await renderCardScreen();
 
-    expect(screen.getByText('Montone')).toBeOnTheScreen();
+    expect(screen.getByText('MonTone')).toBeOnTheScreen();
     expect(screen.getByText('Tous les arrondissements ▾')).toBeOnTheScreen();
     expect(screen.getByTestId('montreal-map-canvas')).toBeOnTheScreen();
 

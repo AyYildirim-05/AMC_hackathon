@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Montone",
+    "name": "MonTone",
     "slug": "Montone",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -57,15 +57,15 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Montone uses your camera to photograph the issues you report.",
-          "photosPermission": "Montone uses your photo library to attach photos to the issues you report.",
+          "cameraPermission": "MonTone uses your camera to photograph the issues you report.",
+          "photosPermission": "MonTone uses your photo library to attach photos to the issues you report.",
           "microphonePermission": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Montone uses your location to pinpoint civic issues and identify your Montreal borough."
+          "locationWhenInUsePermission": "MonTone uses your location to pinpoint civic issues and identify your Montreal borough."
         }
       ],
       "expo-status-bar",

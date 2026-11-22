@@ -59,7 +59,7 @@ describe('SplashScreenOverlay', () => {
     jest.useRealTimers();
   });
 
-  it('renders the branded Montone splash screen, hides native splash, and calls onFinish when ready', async () => {
+  it('renders the branded MonTone splash screen, hides native splash, and calls onFinish when ready', async () => {
     const onFinish = jest.fn();
 
     await render(<SplashScreenOverlay ready={true} minimumDurationMs={1000} onFinish={onFinish} />);
@@ -67,7 +67,7 @@ describe('SplashScreenOverlay', () => {
     expect(SplashScreen.hideAsync).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('splash-screen-overlay')).toBeOnTheScreen();
     expect(screen.getByTestId('splash-logo-image')).toBeOnTheScreen();
-    expect(screen.getByText('Montone')).toBeOnTheScreen();
+    expect(screen.getByText('MonTone')).toBeOnTheScreen();
     expect(
       screen.getByText('Report, track, and resolve neighborhood issues together.'),
     ).toBeOnTheScreen();

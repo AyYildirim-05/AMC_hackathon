@@ -150,7 +150,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
 
         // Add user geolocation beacon at Métro Mont-Royal
         const userIcon = L.divIcon({
-          className: 'citypulse-user-beacon',
+          className: 'montone-user-beacon',
           html: `<div style="width:18px;height:18px;border-radius:9999px;background:${theme.accent};border:3px solid ${theme.background};box-shadow:0 0 0 8px ${theme.backgroundSelected}73,0 2px 6px ${markerShadow};"></div>`,
           iconSize: [18, 18],
           iconAnchor: [9, 9],
@@ -225,7 +225,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         const style = ROADWORK_STYLE[work.type];
         const size = isSelected ? 32 : 22;
         const icon = L.divIcon({
-          className: 'citypulse-roadwork',
+          className: 'montone-roadwork',
           html: `<div style="width:${size}px;height:${size}px;border-radius:${isSelected ? 8 : 6}px;background:${theme.text};border:${isSelected ? 3 : 1.5}px solid ${theme.background};display:flex;align-items:center;justify-content:center;font-size:${isSelected ? 15 : 11}px;box-shadow:0 1px 4px ${markerShadow};cursor:pointer;">${style.glyph}</div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],

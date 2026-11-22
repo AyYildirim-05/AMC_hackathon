@@ -138,7 +138,7 @@ it('has no language switch; the language is changed from the profile', async () 
 it('falls back to the app name without a home district, and asks the API for nothing', async () => {
   await renderHeader({ ...manager, homeDistrictId: null, role: 'resident' });
 
-  expect(screen.getByText('Montone')).toBeOnTheScreen();
+  expect(screen.getByText('MonTone')).toBeOnTheScreen();
   expect(screen.getByText('Resident')).toBeOnTheScreen();
   expect(requests).toEqual([]);
 });

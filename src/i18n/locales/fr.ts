@@ -11,7 +11,7 @@ const fr: Translations = {
     card: 'Carte',
     report: 'Signaler',
     district: 'Arrondissement',
-    brand: 'Montone',
+    brand: '{{appName}}',
   },
   feed: {
     boroughSearch: 'Rechercher un arrondissement',
@@ -28,7 +28,7 @@ const fr: Translations = {
     reset: 'Réinitialiser les filtres',
   },
   home: {
-    title: 'Bienvenue sur Montone',
+    title: 'Bienvenue sur {{appName}}',
     getStarted: 'pour commencer',
     tryEditing: 'Modifiez',
     devTools: 'Outils de dév.',
@@ -202,7 +202,7 @@ const fr: Translations = {
       'Numéro de suivi municipal officiel délivré après publication (ex. MTL-311-2026-XXXXX).',
     publishButton: 'Publier le signalement',
     draftButton: 'Enregistrer comme brouillon',
-    charterFooter: 'Charte citoyenne Montone • Données ouvertes OpenNorth',
+    charterFooter: 'Charte citoyenne {{appName}} • Données ouvertes OpenNorth',
     publishedSuccessTitle: 'Signalement publié avec succès !',
     publishedSuccessMessage:
       'Votre signalement a été transmis à la Ville de Montréal avec le numéro de référence officiel.',
@@ -342,7 +342,7 @@ const fr: Translations = {
     unavailableTitle: 'Carte indisponible sur cet appareil',
     unavailableBody:
       "Cette version Android n'a pas de clé API Google Maps. Ajoutez GOOGLE_MAPS_ANDROID_API_KEY dans .env et recompilez.",
-    brandTitle: 'Montone',
+    brandTitle: '{{appName}}',
     allBoroughs: 'Tous les arrondissements',
     searchPlaceholder: 'Rechercher rue, #311, parc...',
     clearSearch: 'Effacer la recherche',
@@ -415,11 +415,11 @@ const fr: Translations = {
     noIssues: 'Aucun autre signalement dans cet arrondissement pour le moment.',
   },
   splash: {
-    badge: 'Montréal • Pouls Civique',
-    title: 'Montone',
+    badge: 'Montréal • {{appName}}',
+    title: '{{appName}}',
     tagline: 'Signalez, suivez et résolvez les enjeux de quartier ensemble.',
     footer: 'Limites OpenNorth • Sync MTL-311',
-    loadingLabel: 'Chargement de Montone',
+    loadingLabel: 'Chargement de {{appName}}',
   },
   onboarding: {
     skip: 'Passer',

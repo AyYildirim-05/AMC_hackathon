@@ -1,4 +1,4 @@
-# Montone
+# MonTone
 
 A cross-platform (iOS, Android, web) starter built on **Expo SDK 58** and **Expo Router**. It ships with a themed component kit, an authenticated API client, TanStack Query wiring, and server-side API routes with a multi-database SQL helper. Use it as the base for new apps.
 
@@ -204,6 +204,34 @@ See [`server/README.md`](server/README.md) for routes, Firebase project setup, a
 - **Pre-push**: `npm run typecheck` and the full test suite.
 
 Run `npm run lint` and `npm run typecheck` before opening a pull request.
+
+## White labelling (brands)
+
+The app can be built under another name and look. Each brand is a folder in `brands/`:
+
+```
+brands/
+  montone/brand.json      # the default brand
+  citypulse/brand.json    # a demo brand
+  citypulse/icon.png
+```
+
+A `brand.json` sets the app name, store IDs (`ios.bundleIdentifier`, `android.package`), link
+`scheme`, icon, splash colors, and the full light/dark `palette` the theme is built from. Texts use
+`{{appName}}`, filled in with the brand's name.
+
+Pick the brand with `APP_BRAND` (MonTone when unset). Native settings (name, icon, splash, IDs) are
+baked in at prebuild, so regenerate the native projects when switching:
+
+```bash
+APP_BRAND=citypulse npx expo prebuild --clean
+APP_BRAND=citypulse npx expo run:ios        # or run:android
+APP_BRAND=citypulse npx expo start          # keep APP_BRAND set for Metro too
+```
+
+To add a brand: copy `brands/montone/brand.json` to `brands/<id>/brand.json`, change its values
+(the store IDs must be unique), add its icon, and register it in `src/brand/index.ts`. The brand
+tests check every registered brand file.
 
 ## Building and deploying
 

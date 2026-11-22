@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { brand } from '@/brand';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
@@ -1650,7 +1651,7 @@ export function DistrictScreen({
             <Text style={[styles.footerText, { color: theme.neutral600 }]}>
               {tText(
                 'districtScreen.charterFooter',
-                'Charte citoyenne Montone • Données ouvertes OpenNorth',
+                `Charte citoyenne ${brand.name} • Données ouvertes OpenNorth`,
               )}
             </Text>
           </View>

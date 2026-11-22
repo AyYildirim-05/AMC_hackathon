@@ -1,0 +1,85 @@
+{
+  "id": "montone",
+  "name": "MonTone",
+  "slug": "Montone",
+  "scheme": "montone",
+  "ios": {
+    "bundleIdentifier": "com.yildirim.cuneyt.it.Montone"
+  },
+  "android": {
+    "package": "com.yildirim.cuneyt.it.Montone",
+    "adaptiveIconBackground": "#FFFFFF"
+  },
+  "icon": "./assets/images/montone-icon.png",
+  "splash": {
+    "image": "./assets/images/montone-icon.png",
+    "light": "#F3F2F2",
+    "dark": "#181716"
+  },
+  "palette": {
+    "light": {
+      "neutral": {
+        "100": "#f8f4f4",
+        "200": "#eae7e7",
+        "300": "#d7d3d3",
+        "400": "#bab6b6",
+        "500": "#9b9797",
+        "600": "#7d7979",
+        "700": "#605d5d",
+        "800": "#444141",
+        "900": "#2d2b2b"
+      },
+      "accent": {
+        "100": "#fff2ef",
+        "200": "#ffe0d9",
+        "300": "#ffc4b8",
+        "400": "#ff9783",
+        "500": "#ec3013",
+        "600": "#dd2b0f",
+        "700": "#ae1800",
+        "800": "#7c1405",
+        "900": "#4d170e"
+      },
+      "bg": "#f3f2f2",
+      "surface": "#eae9e9",
+      "ink": "#201e1d"
+    },
+    "dark": {
+      "neutral": {
+        "100": "#2d2b2b",
+        "200": "#2a2827",
+        "300": "#383534",
+        "400": "#605d5d",
+        "500": "#7d7979",
+        "600": "#9b9797",
+        "700": "#bab6b6",
+        "800": "#d7d3d3",
+        "900": "#f3f2f2"
+      },
+      "accent": {
+        "100": "#3b1610",
+        "200": "#4d170e",
+        "300": "#7c1405",
+        "400": "#ae1800",
+        "500": "#ec3013",
+        "600": "#ff563c",
+        "700": "#ff9783",
+        "800": "#ffc4b8",
+        "900": "#fff2ef"
+      },
+      "bg": "#181716",
+      "surface": "#242221",
+      "ink": "#f3f2f2"
+    }
+  },
+  "statusColors": {
+    "light": {
+      "success": "#201e1d",
+      "danger": "#ae1800"
+    },
+    "dark": {
+      "success": "#f3f2f2",
+      "danger": "#ff9783"
+    }
+  }
+}
