@@ -194,12 +194,12 @@ const en = {
     optional: 'Optional',
     photoAddedSingle: '1 added',
     photoAddedPlural: '{{count}} added',
-    mtl311Title: 'Transmission MTL-311',
-    autoTicket: 'AUTO-TICKET',
+    mtl311Title: 'Send to 311',
+    autoTicket: 'EMAIL',
     mtl311Desc:
-      'Automatically transmit an official request to City of Montréal municipal services.',
+      'After publishing, send the report to Montréal’s 311 from your own mail app, with the address, GPS position, photos and description filled in.',
     mtl311Tracking:
-      'Official municipal tracking number issued after publication (e.g. MTL-311-2026-XXXXX).',
+      'You review and send the email yourself. Your report gets a {{appName}} reference; the borough can link the official 311 number later.',
     publishButton: 'Publish report',
     draftButton: 'Save as draft',
     charterFooter: '{{appName}} Citizen Charter • OpenNorth Open Data',
@@ -465,6 +465,30 @@ const en = {
         step3: 'Final resolution & community confirmation',
       },
     },
+  },
+  report311: {
+    greeting: 'Hello,',
+    intro: 'I would like to report the following problem to the City of Montréal 311 service:',
+    separator: ': ',
+    fields: {
+      category: 'Category',
+      title: 'Title',
+      description: 'Description',
+      address: 'Address',
+      borough: 'Borough',
+      gps: 'GPS coordinates',
+      map: 'Map',
+      photos: 'Photos',
+      reference: '{{appName}} reference',
+    },
+    closing: 'Sent with {{appName}}. Thank you for your help.',
+    promptTitle: 'Send this report to 311?',
+    promptBody:
+      'Montréal’s 311 does not take reports from apps directly. You can send it yourself: your mail app opens with everything filled in, or call 311.',
+    email: 'Email 311',
+    call: 'Call 311',
+    later: 'Not now',
+    noMailApp: 'No mail app is set up on this device. Call 311 at 514-872-0311 instead.',
   },
 };
 
