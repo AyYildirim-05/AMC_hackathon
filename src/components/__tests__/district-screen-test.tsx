@@ -1,6 +1,8 @@
 import { setLanguage } from '@/i18n';
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react-native';
 
+import { installMockBackendApi } from '../../../test/fixtures';
+
 import { DistrictScreen } from '@/components/DistrictScreen';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -37,7 +39,7 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
-const render = (ui: React.ReactElement) => {
+const render = async (ui: React.ReactElement) => {
   // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
@@ -45,12 +47,21 @@ const render = (ui: React.ReactElement) => {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return rtlRender(ui, { wrapper });
+  const utils = await rtlRender(ui, { wrapper });
+  await screen.findByText('Le Plateau-Mont-Royal');
+  return utils;
 };
 
 describe('DistrictScreen', () => {
+  let restoreApi: (() => void) | undefined;
+
   beforeEach(async () => {
+    restoreApi = installMockBackendApi({ currentUsername: mockUser.username });
     await setLanguage('fr');
+  });
+
+  afterEach(() => {
+    restoreApi?.();
   });
 
   afterAll(async () => {
@@ -243,10 +254,10 @@ describe('DistrictScreen', () => {
     const handleSubmit = jest.fn();
     await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
 
-    fireEvent.press(screen.getByTestId('publish-report-button'));
+    await fireEvent.press(screen.getByTestId('publish-report-button'));
 
-    expect(handleSubmit).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('Signalement publié avec succès !')).toBeOnTheScreen();
+    expect(handleSubmit).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('published-ticket-ref')).toBeOnTheScreen();
 
     // Close modal

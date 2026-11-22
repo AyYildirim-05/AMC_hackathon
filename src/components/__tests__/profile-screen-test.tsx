@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react-native';
 
+import { TEST_PROFILE_DATA } from '../../../test/fixtures';
+
 import '@/i18n';
 import { ProfileScreen } from '@/components/profile-screen';
 import type { AuthUser } from '@/lib/auth/auth-api';
-import { dummyProfileData, type ProfileData } from '@/lib/profile';
+import type { ProfileData } from '@/lib/profile';
 
 // The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
 jest.mock('react-native-reanimated', () => {
@@ -36,7 +38,7 @@ const loggedIn = (username: string, role: AuthUser['role'], email: string): Auth
   preferredLanguage: 'en',
 });
 
-const renderProfile = (user: AuthUser, data?: ProfileData) => {
+const renderProfile = (user: AuthUser, data: ProfileData = TEST_PROFILE_DATA) => {
   // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
@@ -100,8 +102,8 @@ it('shows the identity and says the activity data is missing for an unknown acco
 
 it("shows the manager badges only when the person's data says so", async () => {
   const unverified: ProfileData = {
-    ...dummyProfileData,
-    persons: dummyProfileData.persons.map((p) =>
+    ...TEST_PROFILE_DATA,
+    persons: TEST_PROFILE_DATA.persons.map((p) =>
       p.username === 'camille_mtl' ? { ...p, is_verified: false, is_active_post: false } : p,
     ),
   };

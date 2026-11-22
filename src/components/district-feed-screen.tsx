@@ -1,11 +1,8 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-
-import dummyDistricts from '../../dummy_data/districts.json';
-import dummyIssues from '../../dummy_data/issues.json';
-import dummyPersons from '../../dummy_data/person.json';
 
 import { IssueCard } from '@/components/IssueCard';
 import { IssueDetailScreen } from '@/components/IssueDetailScreen';
@@ -16,11 +13,10 @@ import { formatIssueDate } from '@/components/utils/formatter';
 import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
+import { fetchDistricts } from '@/lib/api/districts';
+import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, type Issue, type IssueCategory } from '@/models/Issue';
-
-// Dummy data until the issues and districts APIs are wired into this screen.
-const ISSUES = dummyIssues.issues as Issue[];
-const DISTRICTS = dummyDistricts.districts as District[];
+import { useAuth } from '@/providers/auth-provider';
 
 type CategoryFilter = 'all' | IssueCategory;
 type SortMode = 'recent' | 'popular';
@@ -38,15 +34,6 @@ const ALERT_COLORS = {
 };
 
 /**
- * The user's home district in the sample data: matched by username, falling back to the first
- * district (the signed-in account's ids come from the server and don't exist in dummy_data).
- */
-function homeDistrictIdFor(username: string | undefined): string {
-  const person = dummyPersons.persons.find((p) => p.username === username);
-  return person?.home_district_id ?? DISTRICTS[0].id;
-}
-
-/**
  * The borough feed (District tab): live sync strip, category filters, the current works alert,
  * recent reports in and around the selected district, and a call to report a new problem.
  */
@@ -56,20 +43,74 @@ export function DistrictFeedScreen() {
   const isDark = theme.text !== '#1C211F';
   const router = useRouter();
   const user = useCurrentUser();
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [districtId, setDistrictId] = useState(() => homeDistrictIdFor(user?.username));
+  const { data: issues = [] } = useQuery<Issue[]>({
+    queryKey: ['issues'],
+    queryFn: fetchIssues,
+  });
+
+  const { data: districts = [] } = useQuery<District[]>({
+    queryKey: ['districts'],
+    queryFn: fetchDistricts,
+  });
+
+  const { data: myVotes } = useQuery({
+    queryKey: ['votes', 'me'],
+    queryFn: fetchMyVotes,
+    enabled: isAuthenticated,
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: (issueId: string) => toggleIssueVote(issueId, 'upvote'),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    },
+  });
+
+  const [pickedDistrictId, setPickedDistrictId] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [sort, setSort] = useState<SortMode>('recent');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [upvoted, setUpvoted] = useState<Set<string>>(new Set());
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
-  const district = DISTRICTS.find((d) => d.id === districtId) ?? DISTRICTS[0];
+  const defaultDistrictId = useMemo(() => {
+    if (user?.homeDistrictId && districts.some((d) => d.id === user.homeDistrictId)) {
+      return user.homeDistrictId;
+    }
+    return districts[0]?.id ?? '';
+  }, [user?.homeDistrictId, districts]);
+
+  const activeDistrictId = pickedDistrictId ?? defaultDistrictId;
+  const district: District = districts.find((d) => d.id === activeDistrictId) ??
+    districts[0] ?? {
+      id: '',
+      name_fr: '',
+      name_en: '',
+      open_north_slug: '',
+      district_type: 'borough',
+      manager_id: null,
+      is_claimed: false,
+      created_at: '',
+    };
+
+  const selectedIssue = selectedIssueId
+    ? (issues.find((i) => i.id === selectedIssueId) ?? null)
+    : null;
+
+  const upvoted = useMemo(
+    () => new Set(myVotes?.upvotedIssueIds ?? []),
+    [myVotes?.upvotedIssueIds],
+  );
+
   const language = i18n.language === 'fr' ? 'fr' : 'en';
   const districtName = (d: District) => (language === 'fr' ? d.name_fr : d.name_en);
 
   const feed = useMemo(() => {
-    const filtered = ISSUES.filter((issue) => category === 'all' || issue.category === category);
+    const filtered = issues.filter((issue) => category === 'all' || issue.category === category);
     // The selected district's reports first, then neighbouring ones.
     const own = (issue: Issue) => (issue.district_id === district.id ? 0 : 1);
     return [...filtered].sort(
@@ -79,27 +120,25 @@ export function DistrictFeedScreen() {
           ? b.upvote_count - a.upvote_count
           : b.created_at.localeCompare(a.created_at)),
     );
-  }, [category, sort, district.id]);
+  }, [issues, category, sort, district.id]);
 
   // The most supported in-progress report in this district with an official update.
   const alert = useMemo(
     () =>
-      ISSUES.filter(
-        (i) => i.district_id === district.id && i.status === 'in_progress' && i.official_response,
-      ).sort((a, b) => b.upvote_count - a.upvote_count)[0] ?? null,
-    [district.id],
+      issues
+        .filter(
+          (i) => i.district_id === district.id && i.status === 'in_progress' && i.official_response,
+        )
+        .sort((a, b) => b.upvote_count - a.upvote_count)[0] ?? null,
+    [issues, district.id],
   );
 
   const countFor = (filter: CategoryFilter) =>
-    ISSUES.filter((i) => filter === 'all' || i.category === filter).length;
+    issues.filter((i) => filter === 'all' || i.category === filter).length;
 
-  const toggleUpvote = (id: string) =>
-    setUpvoted((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggleUpvote = (id: string) => {
+    voteMutation.mutate(id);
+  };
 
   const alertColors = ALERT_COLORS[isDark ? 'dark' : 'light'];
   const chipStyle = (selected: boolean) => [
@@ -216,7 +255,7 @@ export function DistrictFeedScreen() {
             <Pressable
               testID="district-feed-alert-details"
               accessibilityRole="button"
-              onPress={() => setSelectedIssue(alert)}
+              onPress={() => setSelectedIssueId(alert.id)}
               hitSlop={8}
             >
               <ThemedText type="miniText" weight="bold" style={{ color: alertColors.title }}>
@@ -293,8 +332,8 @@ export function DistrictFeedScreen() {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
           const isUpvoted = upvoted.has(item.id);
-          const other = DISTRICTS.find((d) => d.id === item.district_id);
-          const outside = item.district_id !== district.id;
+          const other = districts.find((d) => d.id === item.district_id);
+          const outside = Boolean(district.id) && item.district_id !== district.id;
           return (
             <View>
               {outside && other ? (
@@ -311,12 +350,12 @@ export function DistrictFeedScreen() {
                 </View>
               ) : null}
               <IssueCard
-                issue={{ ...item, upvote_count: item.upvote_count + (isUpvoted ? 1 : 0) }}
+                issue={item}
                 isUpvoted={isUpvoted}
                 onUpvote={() => toggleUpvote(item.id)}
-                onPress={() => setSelectedIssue(item)}
-                onCommentsPress={() => setSelectedIssue(item)}
-                onImagePress={() => setSelectedIssue(item)}
+                onPress={() => setSelectedIssueId(item.id)}
+                onCommentsPress={() => setSelectedIssueId(item.id)}
+                onImagePress={() => setSelectedIssueId(item.id)}
                 style={outside ? styles.attachedCard : undefined}
               />
             </View>
@@ -336,7 +375,7 @@ export function DistrictFeedScreen() {
             <ThemedText type="smallBold" accessibilityRole="header">
               {t('districtFeed.chooseDistrict')}
             </ThemedText>
-            {DISTRICTS.map((d) => {
+            {districts.map((d) => {
               const selected = d.id === district.id;
               return (
                 <Pressable
@@ -344,7 +383,7 @@ export function DistrictFeedScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   onPress={() => {
-                    setDistrictId(d.id);
+                    setPickedDistrictId(d.id);
                     setPickerOpen(false);
                   }}
                   style={[
@@ -364,7 +403,7 @@ export function DistrictFeedScreen() {
       </Modal>
 
       {selectedIssue ? (
-        <IssueDetailScreen issue={selectedIssue} visible onClose={() => setSelectedIssue(null)} />
+        <IssueDetailScreen issue={selectedIssue} visible onClose={() => setSelectedIssueId(null)} />
       ) : null}
     </TabScreen>
   );

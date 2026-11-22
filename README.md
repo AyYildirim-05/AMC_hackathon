@@ -228,4 +228,5 @@ Because the web build uses server output, deploy it to a host that supports Expo
 # Todo
 
 - update issue to have a type
+- backend api not correct
 -

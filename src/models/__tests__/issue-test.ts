@@ -1,12 +1,10 @@
-import data from '../../../dummy_data/issues.json';
+import { TEST_ISSUES } from '../../../test/fixtures';
 
-import { type Issue, isIssueCategory, isIssueStatus } from '@/models/Issue';
+import { isIssueCategory, isIssueStatus } from '@/models/Issue';
 
-it('accepts the category and status of every issue in the dummy data', () => {
-  const issues = data.issues as Issue[];
-
-  expect(issues.length).toBeGreaterThan(0);
-  for (const issue of issues) {
+it('accepts the category and status of every issue fixture', () => {
+  expect(TEST_ISSUES.length).toBeGreaterThan(0);
+  for (const issue of TEST_ISSUES) {
     expect(isIssueCategory(issue.category)).toBe(true);
     expect(isIssueStatus(issue.status)).toBe(true);
   }

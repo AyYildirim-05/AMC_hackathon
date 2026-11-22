@@ -2,14 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Share } from 'react-native';
 
-import dummyDistricts from '../../../../dummy_data/districts.json';
-import dummyIssues from '../../../../dummy_data/issues.json';
+import { installMockBackendApi, TEST_DISTRICTS, TEST_ISSUES } from '../../../../test/fixtures';
 
 import CardScreen from '@/app/card';
 import {
   BOROUGH_REGIONS,
   deltaToLeafletZoom,
-  type District,
   filterMapIssues,
   getCategoryCounts,
   getDistrictName,
@@ -22,7 +20,6 @@ import {
   zoomRegion,
 } from '@/components/map/map-utils';
 import i18n from '@/i18n';
-import type { Issue } from '@/models/Issue';
 
 const mockAnimateToRegion = jest.fn();
 const mockSignOut = jest.fn();
@@ -121,18 +118,20 @@ jest.mock('@/providers/auth-provider', () => ({
   }),
 }));
 
-const issues = dummyIssues.issues as Issue[];
-const districts = dummyDistricts.districts as District[];
+const issues = TEST_ISSUES;
+const districts = TEST_DISTRICTS;
 
-function renderCardScreen() {
+async function renderCardScreen() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
-  return render(
+  const utils = await render(
     <QueryClientProvider client={queryClient}>
       <CardScreen />
     </QueryClientProvider>,
   );
+  await screen.findByText('Blocked bike lane on Rue Rachel Est');
+  return utils;
 }
 
 describe('map-utils', () => {
@@ -256,10 +255,17 @@ describe('map-utils', () => {
 });
 
 describe('CardScreen (Map page) — all interactive controls', () => {
+  let restoreApi: (() => void) | undefined;
+
   beforeEach(async () => {
+    restoreApi = installMockBackendApi({ currentUsername: 'camille_mtl' });
     mockAnimateToRegion.mockClear();
     mockSignOut.mockClear();
     await i18n.changeLanguage('fr');
+  });
+
+  afterEach(() => {
+    restoreApi?.();
   });
 
   it('renders header, real map view, markers, and default selected incident preview in French', async () => {
@@ -403,11 +409,11 @@ describe('CardScreen (Map page) — all interactive controls', () => {
     await fireEvent.press(screen.getByTestId('map-sheet-handle'));
     expect(screen.getByText(/Inspection team notified/i)).toBeOnTheScreen();
 
-    // Upvote toggle (2 -> 3 -> 2)
+    // Upvote toggle (2 -> 3)
     const upvoteBtn = screen.getByTestId('map-preview-upvote');
     expect(within(upvoteBtn).getByText('2')).toBeOnTheScreen();
     await fireEvent.press(upvoteBtn);
-    expect(within(upvoteBtn).getByText('3')).toBeOnTheScreen();
+    expect(await within(upvoteBtn).findByText('3')).toBeOnTheScreen();
 
     // Share button invokes Share.share with title & address
     await fireEvent.press(screen.getByTestId('map-preview-share'));
@@ -423,7 +429,7 @@ describe('CardScreen (Map page) — all interactive controls', () => {
     expect(screen.getByTestId('map-detail-modal')).toBeOnTheScreen();
     expect(screen.getByText('@marc_velo')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('issue-confirm-button'));
-    expect(screen.getByText('2 confirmés')).toBeOnTheScreen();
+    expect(await screen.findByText('2 confirmés')).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId('map-detail-modal-close'));
 
     // Profile avatar -> the same profile page as every other tab -> Sign out button

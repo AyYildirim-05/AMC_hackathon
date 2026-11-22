@@ -7,7 +7,7 @@ const FRENCH_LOOSE = { locale: 'fr', strength: 1 } as const;
 export type NewDistrict = Pick<
   District,
   'nameFr' | 'nameEn' | 'openNorthSlug' | 'districtType' | 'isClaimed'
-> & { managerId: string | null };
+> & { managerId: string | null; postalCode?: string | null };
 
 export type DistrictChanges = Partial<NewDistrict>;
 

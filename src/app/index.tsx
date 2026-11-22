@@ -1,21 +1,54 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet } from 'react-native';
-
-import dummyIssues from '../../dummy_data/issues.json';
 
 import { IssueCard } from '@/components/IssueCard';
 import { IssueDetailScreen } from '@/components/IssueDetailScreen';
 import { TabScreen } from '@/components/tab-screen';
 import { Spacing } from '@/constants/theme';
+import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import type { Issue } from '@/models/Issue';
-
-// Dummy data until the issues API exists.
-const issues = dummyIssues.issues as Issue[];
+import { useAuth } from '@/providers/auth-provider';
 
 export default function IssuesScreen() {
   const { t } = useTranslation();
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
+
+  const { data: issues = [] } = useQuery<Issue[]>({
+    queryKey: ['issues'],
+    queryFn: fetchIssues,
+  });
+
+  const { data: myVotes } = useQuery({
+    queryKey: ['votes', 'me'],
+    queryFn: fetchMyVotes,
+    enabled: isAuthenticated,
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: ({
+      issueId,
+      voteType,
+    }: {
+      issueId: string;
+      voteType: 'upvote' | 'confirm_resolved';
+    }) => toggleIssueVote(issueId, voteType),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+    },
+  });
+
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const selectedIssue = selectedIssueId
+    ? (issues.find((i) => i.id === selectedIssueId) ?? null)
+    : null;
+
+  const upvotedSet = new Set(myVotes?.upvotedIssueIds ?? []);
+  const confirmedSet = new Set(myVotes?.confirmedIssueIds ?? []);
 
   return (
     <TabScreen title={t('tabs.issues')}>
@@ -25,9 +58,15 @@ export default function IssuesScreen() {
         renderItem={({ item }) => (
           <IssueCard
             issue={item}
-            onPress={() => setSelectedIssue(item)}
-            onCommentsPress={() => setSelectedIssue(item)}
-            onImagePress={() => setSelectedIssue(item)}
+            isUpvoted={upvotedSet.has(item.id)}
+            isConfirmed={confirmedSet.has(item.id)}
+            onUpvote={() => voteMutation.mutate({ issueId: item.id, voteType: 'upvote' })}
+            onConfirmResolution={() =>
+              voteMutation.mutate({ issueId: item.id, voteType: 'confirm_resolved' })
+            }
+            onPress={() => setSelectedIssueId(item.id)}
+            onCommentsPress={() => setSelectedIssueId(item.id)}
+            onImagePress={() => setSelectedIssueId(item.id)}
           />
         )}
         contentContainerStyle={styles.list}
@@ -37,7 +76,7 @@ export default function IssuesScreen() {
         <IssueDetailScreen
           issue={selectedIssue}
           visible={Boolean(selectedIssue)}
-          onClose={() => setSelectedIssue(null)}
+          onClose={() => setSelectedIssueId(null)}
         />
       )}
     </TabScreen>

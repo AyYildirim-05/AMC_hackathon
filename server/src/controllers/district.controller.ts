@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import { type RequestHandler, Router } from 'express';
 
+import { optionalAuth } from '../middleware/auth.js';
 import { parseParams, validateBody } from '../middleware/validate.js';
 import {
   allDistricts,
@@ -15,15 +16,31 @@ import {
   updateDistrictInput,
 } from '../services/district.service.js';
 
+const withAuthActor: RequestHandler = (req, _res, next) => {
+  if (req.auth?.userId) {
+    req.body = {
+      ...(req.body && typeof req.body === 'object' ? req.body : {}),
+      actorId: req.auth.userId,
+    };
+  }
+  next();
+};
+
 export const districtRouter = Router();
 
 districtRouter.get('/', async (_req, res) => {
   res.json(await allDistricts());
 });
 
-districtRouter.post('/', validateBody(createDistrictInput), async (req, res) => {
-  res.status(201).json(await createDistrict(req.body));
-});
+districtRouter.post(
+  '/',
+  optionalAuth,
+  withAuthActor,
+  validateBody(createDistrictInput),
+  async (req, res) => {
+    res.status(201).json(await createDistrict(req.body));
+  },
+);
 
 districtRouter.get('/name/:name', async (req, res) => {
   const { name } = parseParams(districtNameParams, req.params);
@@ -35,13 +52,25 @@ districtRouter.get('/:id', async (req, res) => {
   res.json(await districtById(id));
 });
 
-districtRouter.patch('/:id', validateBody(updateDistrictInput), async (req, res) => {
-  const { id } = parseParams(districtIdParams, req.params);
-  res.json(await updateDistrict(id, req.body));
-});
+districtRouter.patch(
+  '/:id',
+  optionalAuth,
+  withAuthActor,
+  validateBody(updateDistrictInput),
+  async (req, res) => {
+    const { id } = parseParams(districtIdParams, req.params);
+    res.json(await updateDistrict(id, req.body));
+  },
+);
 
-districtRouter.delete('/:id', validateBody(deleteDistrictInput), async (req, res) => {
-  const { id } = parseParams(districtIdParams, req.params);
-  await deleteDistrict(id, req.body);
-  res.status(204).end();
-});
+districtRouter.delete(
+  '/:id',
+  optionalAuth,
+  withAuthActor,
+  validateBody(deleteDistrictInput),
+  async (req, res) => {
+    const { id } = parseParams(districtIdParams, req.params);
+    await deleteDistrict(id, req.body);
+    res.status(204).end();
+  },
+);

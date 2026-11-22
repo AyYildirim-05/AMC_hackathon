@@ -6,10 +6,14 @@ import type { AuthTokens } from '@/lib/auth/token-storage';
 export type AuthUser = {
   id: string;
   username: string;
+  displayName?: string;
+  avatarUrl?: string | null;
   email: string;
   postalCode: string;
   homeDistrictId: string | null;
   role: 'resident' | 'district_manager' | 'admin';
+  isVerified?: boolean;
+  isActivePost?: boolean;
   preferredLanguage: 'fr' | 'en';
 };
 
