@@ -4,9 +4,11 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
 import { useTheme } from '@/hooks/use-theme';
+import type { Roadwork } from '@/lib/api/roadworks';
 import type { Issue, IssueCategory } from '@/models/Issue';
 
 import { MapIcon, type MapIconName } from './MapIcon';
+import { ROADWORK_STYLE } from './roadwork-style';
 import {
   type MapLayerMode,
   type MapRegion,
@@ -29,6 +31,10 @@ export interface MontrealMapCanvasProps {
   selectedIssueId: string | null;
   onSelectIssue: (issue: Issue) => void;
   layerMode: MapLayerMode;
+  /** City of Montréal roadworks to show next to the citizen reports. */
+  roadworks?: readonly Roadwork[];
+  selectedRoadworkId?: string | null;
+  onSelectRoadwork?: (work: Roadwork) => void;
 }
 
 function getCategoryIcon(category: IssueCategory): MapIconName {
@@ -70,7 +76,18 @@ function getCategoryPinAccent(category: IssueCategory, isDark: boolean) {
  * user geolocation, and custom interactive issue markers.
  */
 export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvasProps>(
-  function MontrealMapCanvas({ issues, selectedIssueId, onSelectIssue, layerMode }, ref) {
+  function MontrealMapCanvas(
+    {
+      issues,
+      selectedIssueId,
+      onSelectIssue,
+      layerMode,
+      roadworks = [],
+      selectedRoadworkId = null,
+      onSelectRoadwork,
+    },
+    ref,
+  ) {
     const { t } = useTranslation();
     const theme = useTheme();
     const isDark = theme.text !== '#1C211F';
@@ -141,6 +158,34 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
               lineDashPattern={[10, 6]}
             />
           ))}
+
+          {/* City of Montréal roadworks (open data): small squares, so they read apart from reports */}
+          {roadworks.map((work) => {
+            const isSelected = work.id === selectedRoadworkId;
+            const style = ROADWORK_STYLE[work.type];
+            return (
+              <Marker
+                key={`${work.id}-${isSelected ? 'selected' : 'idle'}`}
+                testID={`map-roadwork-${work.id}`}
+                identifier={`roadwork-${work.id}`}
+                coordinate={{ latitude: work.latitude, longitude: work.longitude }}
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={isSelected ? 15 : 5}
+                tracksViewChanges={false}
+                onPress={() => onSelectRoadwork?.(work)}
+              >
+                <View
+                  style={[
+                    styles.roadworkPin,
+                    { backgroundColor: style.color },
+                    isSelected && styles.roadworkPinSelected,
+                  ]}
+                >
+                  <MapIcon name={style.icon} size={isSelected ? 16 : 12} color="#FFFFFF" />
+                </View>
+              </Marker>
+            );
+          })}
 
           {/* Issue Pins at Real GPS Coordinates */}
           {issues.map((issue) => {
@@ -277,6 +322,26 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
     borderTopColor: '#39473F',
+  },
+  roadworkPin: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1C211F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  roadworkPinSelected: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 3,
   },
   secondaryPinCircle: {
     width: 36,
