@@ -10,7 +10,7 @@ const en = {
   },
   tabs: {
     issues: 'Issues',
-    card: 'Card',
+    card: 'Map',
     report: 'Report',
     district: 'District',
     brand: 'Montone',
