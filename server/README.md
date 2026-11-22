@@ -66,7 +66,7 @@ in `.env` (on a physical device use your machine's LAN IP; on the Android emulat
 | `CLOUDINARY_API_SECRET`          | _(optional)_                    | Cloudinary API secret (kept server-side only in `server/.env`)        |
 | `CLOUDINARY_UPLOAD_FOLDER`       | `issues`                        | Default Cloudinary folder for uploaded images                         |
 | `GEMINI_API_KEY`                 | _(optional)_                    | Google Gemini API key for AI photo-to-description generation          |
-| `GEMINI_MODEL`                   | `gemini-3.8-flash`              | Gemini model ID used for image description generation                 |
+| `GEMINI_MODEL`                   | `gemini-3.1-flash-lite`         | Primary Gemini model ID (auto-falls back on 503/429)                  |
 | `JWT_SECRET`                     | _(required)_                    | Secret key (≥32 chars) in `server/.env` used to sign HS256 JWT tokens |
 | `JWT_ACCESS_EXPIRES_IN_SECONDS`  | `3600`                          | Access token lifetime in seconds                                      |
 | `JWT_REFRESH_EXPIRES_IN_SECONDS` | `604800`                        | Refresh token lifetime in seconds                                     |

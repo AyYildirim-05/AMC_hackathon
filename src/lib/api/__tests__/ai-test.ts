@@ -34,6 +34,15 @@ describe('ai API client', () => {
     });
     expect(fromDataUri).toEqual({ mimeType: 'image/webp', base64: 'UklGRh4=' });
 
+    // iOS HEIC photos re-encoded to JPEG by expo-image-picker keep JPEG magic bytes (/9j/).
+    const heicReencodedAsJpeg = await prepareInlineImage({
+      uri: 'file:///IMG_1234.HEIC',
+      base64: '/9j/4AAQSkZJRg==',
+      mimeType: 'image/heic',
+      fileName: 'IMG_1234.HEIC',
+    });
+    expect(heicReencodedAsJpeg).toEqual({ mimeType: 'image/jpeg', base64: '/9j/4AAQSkZJRg==' });
+
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
