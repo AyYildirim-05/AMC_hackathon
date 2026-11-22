@@ -14,7 +14,7 @@ import { ResidentProfile } from '@/components/utils/resident-profile';
 import { ThemedText } from '@/components/utils/themed-text';
 import { Spacing } from '@/constants/theme';
 import { fetchDistrict } from '@/lib/api/districts';
-import { updateIssueStatus } from '@/lib/api/issues';
+import { refetchAllIssueQueries, updateIssueStatus } from '@/lib/api/issues';
 import { fetchMyProfile } from '@/lib/api/profile';
 import type { AuthUser } from '@/lib/auth/auth-api';
 import {
@@ -52,14 +52,15 @@ export function ProfileScreen({ user, data }: ProfileScreenProps) {
     queryKey: ['profile', 'me', user.id],
     queryFn: fetchMyProfile,
     enabled: data === undefined,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ issueId, status }: { issueId: string; status: IssueStatus }) =>
       updateIssueStatus(issueId, status),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      void refetchAllIssueQueries(queryClient);
     },
   });
 

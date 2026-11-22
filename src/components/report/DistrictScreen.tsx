@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -38,6 +38,8 @@ import {
   emitIssueCreated,
   fetchIssuesByDistrict,
   fetchMyVotes,
+  refetchAllIssueQueries,
+  syncCreatedIssueInCache,
   toggleIssueVote,
 } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
@@ -271,6 +273,17 @@ export function DistrictScreen({
     queryKey: ['issues', 'district', selectedDistrict.id],
     queryFn: () => fetchIssuesByDistrict(selectedDistrict.id),
     enabled: Boolean(selectedDistrict.id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const createIssueMutation = useMutation({
+    mutationFn: createIssue,
+    onSuccess: async (created) => {
+      syncCreatedIssueInCache(queryClient, created);
+      await refetchAllIssueQueries(queryClient);
+      emitIssueCreated(created);
+    },
   });
   const mappableIssues = useMemo(
     () =>
@@ -703,9 +716,7 @@ export function DistrictScreen({
         return;
       }
       await toggleIssueVote(issue.id, 'upvote');
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      await refetchAllIssueQueries(queryClient);
       showToast(t('districtScreen.duplicate.upvoted'));
     } catch (err) {
       Alert.alert(
@@ -735,7 +746,7 @@ export function DistrictScreen({
       }
       const issueImages = [...existingCloudinaryUrls, ...uploadedUrls];
 
-      const created = await createIssue({
+      const created = await createIssueMutation.mutateAsync({
         title: title.trim(),
         description: description.trim(),
         category: issueCategory,
@@ -747,23 +758,6 @@ export function DistrictScreen({
         images: issueImages,
         external311Ref: mtl311Enabled ? ticketNumber : null,
       });
-
-      // Immediately reflect the new issue on the Issues feed, the Carte map, and the report map.
-      queryClient.setQueryData<Issue[]>(['issues'], (prev) => {
-        if (!prev) return [created];
-        if (prev.some((item) => item.id === created.id)) return prev;
-        return [created, ...prev];
-      });
-      if (selectedDistrict.id) {
-        queryClient.setQueryData<Issue[]>(['issues', 'district', selectedDistrict.id], (prev) => {
-          if (!prev) return [created];
-          if (prev.some((item) => item.id === created.id)) return prev;
-          return [created, ...prev];
-        });
-      }
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
-      emitIssueCreated(created);
 
       resetForm();
       onSubmitSuccess?.(created);

@@ -1,5 +1,8 @@
+import type { QueryClient } from '@tanstack/react-query';
+
 import { normalizeIssue } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
+import type { ProfileData } from '@/lib/profile';
 import type { Issue, IssueCategory, IssueStatus, WeatherElement } from '@/models/Issue';
 
 export type CreateIssuePayload = {
@@ -58,6 +61,46 @@ export function onIssueCreated(listener: IssueCreatedListener): () => void {
   return () => {
     issueCreatedListeners.delete(listener);
   };
+}
+
+/**
+ * Optimistically prepends a newly created issue into every cached React Query list that may
+ * display it (global feed, district feed, and personal profile "My reports" / triage queue).
+ */
+export function syncCreatedIssueInCache(queryClient: QueryClient, created: Issue): void {
+  const prependUnique = (prev: Issue[] | undefined): Issue[] => {
+    if (!prev) return [created];
+    if (prev.some((item) => item.id === created.id)) return prev;
+    return [created, ...prev];
+  };
+
+  queryClient.setQueryData<Issue[]>(['issues'], prependUnique);
+
+  if (created.district_id) {
+    queryClient.setQueryData<Issue[]>(['issues', 'district', created.district_id], prependUnique);
+  }
+
+  queryClient.setQueriesData<ProfileData>({ queryKey: ['profile', 'me'] }, (prev) => {
+    if (!prev) return prev;
+    if (prev.issues.some((item) => item.id === created.id)) return prev;
+    return {
+      ...prev,
+      issues: [created, ...prev.issues],
+    };
+  });
+}
+
+/**
+ * Invalidates and immediately refetches ALL issue-related React Query caches — including inactive
+ * / unmounted views such as the personal profile drawer and background tabs.
+ */
+export async function refetchAllIssueQueries(queryClient: QueryClient): Promise<void> {
+  await Promise.allSettled([
+    queryClient.invalidateQueries({ queryKey: ['issues'], refetchType: 'all' }),
+    queryClient.invalidateQueries({ queryKey: ['profile', 'me'], refetchType: 'all' }),
+    queryClient.invalidateQueries({ queryKey: ['districts'], refetchType: 'all' }),
+    queryClient.invalidateQueries({ queryKey: ['votes', 'me'], refetchType: 'all' }),
+  ]);
 }
 
 export async function fetchIssues(): Promise<Issue[]> {

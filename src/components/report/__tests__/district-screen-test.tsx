@@ -12,6 +12,8 @@ import type { ReactNode } from 'react';
 import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { DistrictScreen } from '@/components/report/DistrictScreen';
 import { setLanguage } from '@/i18n';
+import { fetchIssues } from '@/lib/api/issues';
+import { fetchMyProfile } from '@/lib/api/profile';
 import type { AuthUser } from '@/lib/auth/auth-api';
 
 import { installMockBackendApi, TEST_ISSUES } from '../../../../test/fixtures';
@@ -744,5 +746,66 @@ describe('DistrictScreen', () => {
       );
     });
     expect(screen.getByText('Description filled from your photo.')).toBeOnTheScreen();
+  });
+
+  it('refetches all issue and personal profile React Query caches when a new issue is published', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: 30_000 } },
+    });
+    // Pre-populate both the global issues query and an inactive personal profile query,
+    // mimicking the closed Profile drawer before a new report is submitted.
+    await client.fetchQuery({
+      queryKey: ['issues'],
+      queryFn: fetchIssues,
+    });
+    await client.fetchQuery({
+      queryKey: ['profile', 'me', mockUser.id],
+      queryFn: fetchMyProfile,
+    });
+    const invalidateSpy = jest.spyOn(client, 'invalidateQueries');
+
+    const handleSubmit = jest.fn();
+    await rtlRender(
+      <QueryClientProvider client={client}>
+        <ProfilePanelProvider>
+          <DistrictScreen onSubmitSuccess={handleSubmit} />
+        </ProfilePanelProvider>
+      </QueryClientProvider>,
+    );
+    await screen.findByText('Le Plateau-Mont-Royal');
+
+    await fireEvent.press(screen.getByTestId('category-card-roads_potholes'));
+    await fireEvent.changeText(
+      screen.getByTestId('location-address-input'),
+      '1250 Rue Rachel Est, Montréal, QC H2J 2J9',
+    );
+    await fireEvent.changeText(
+      screen.getByTestId('report-title-input'),
+      'Fresh React Query report',
+    );
+    await fireEvent.changeText(
+      screen.getByTestId('report-description-input'),
+      'Deep pothole reported to verify React Query refetch across all pages.',
+    );
+    await fireEvent.press(screen.getByTestId('publish-report-button'));
+
+    await waitFor(() => {
+      expect(handleSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['issues'], refetchType: 'all' });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['profile', 'me'], refetchType: 'all' });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['districts'], refetchType: 'all' });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['votes', 'me'], refetchType: 'all' });
+
+    const cachedIssues = client.getQueryData<typeof TEST_ISSUES>(['issues']);
+    expect(cachedIssues?.some((i) => i.title === 'Fresh React Query report')).toBe(true);
+
+    const cachedProfile = client.getQueryData<{ issues: typeof TEST_ISSUES }>([
+      'profile',
+      'me',
+      mockUser.id,
+    ]);
+    expect(cachedProfile?.issues.some((i) => i.title === 'Fresh React Query report')).toBe(true);
   });
 });

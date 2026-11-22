@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { IssueCard } from '@/components/layout/IssueCard';
@@ -16,7 +16,12 @@ import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts } from '@/lib/api/districts';
-import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
+import {
+  fetchIssues,
+  fetchMyVotes,
+  refetchAllIssueQueries,
+  toggleIssueVote,
+} from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, type Issue, type IssueCategory } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -50,9 +55,13 @@ export function DistrictFeedScreen() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: issues = [] } = useQuery<Issue[]>({
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const { data: issues = [], isRefetching } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { data: districts = [] } = useQuery<District[]>({
@@ -64,16 +73,25 @@ export function DistrictFeedScreen() {
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const voteMutation = useMutation({
     mutationFn: (issueId: string) => toggleIssueVote(issueId, 'upvote'),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      void refetchAllIssueQueries(queryClient);
     },
   });
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchAllIssueQueries(queryClient);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient]);
 
   const [pickedDistrictId, setPickedDistrictId] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryFilter>('all');
@@ -326,6 +344,16 @@ export function DistrictFeedScreen() {
       <FlatList
         data={feed}
         keyExtractor={(issue) => issue.id}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing || isRefetching}
+            onRefresh={() => {
+              void handleRefresh();
+            }}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
         ListHeaderComponent={header}
         ListFooterComponent={footer}
         ListEmptyComponent={

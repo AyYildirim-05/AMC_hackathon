@@ -37,6 +37,7 @@ import {
   createIssueComment,
   fetchIssueComments,
   fetchMyVotes,
+  refetchAllIssueQueries,
   toggleIssueVote,
 } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
@@ -296,9 +297,7 @@ export function IssueDetailScreen({
       } else {
         onConfirmResolution?.(issue.id, res.resolutionConfirmations);
       }
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      void refetchAllIssueQueries(queryClient);
     },
   });
 
@@ -313,9 +312,11 @@ export function IssueDetailScreen({
       images: string[];
     }) => createIssueComment(issue.id, body, isOfficial, images),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['issues', issue.id, 'comments'] });
-      void queryClient.invalidateQueries({ queryKey: ['issues'] });
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['issues', issue.id, 'comments'],
+        refetchType: 'all',
+      });
+      void refetchAllIssueQueries(queryClient);
     },
   });
 
