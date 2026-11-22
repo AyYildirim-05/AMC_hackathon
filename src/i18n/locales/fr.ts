@@ -315,6 +315,12 @@ const fr: Translations = {
     profileLabel: 'Profil citoyen',
     coordinates: 'Coordonnées',
   },
+  reportMap: {
+    reportPoint: 'Votre signalement',
+    issueMarker: '{{title}}, {{status}}',
+    legendTitle: 'Autres signalements dans {{district}}',
+    noIssues: 'Aucun autre signalement dans cet arrondissement pour le moment.',
+  },
 };
 
 export default fr;

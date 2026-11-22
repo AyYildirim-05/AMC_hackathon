@@ -324,3 +324,31 @@ export function shortStreetLabel(address: string): string {
   const firstPart = address.split(',')[0]?.trim();
   return firstPart || address;
 }
+
+/**
+ * The smallest region showing every point, with 40% padding so markers don't touch the edges,
+ * and at least `minDelta` degrees across so a single point is not zoomed in to street level.
+ */
+export function regionForPoints(points: readonly LatLng[], minDelta = 0.01): MapRegion {
+  if (points.length === 0) return MONTREAL_DEFAULT_REGION;
+  const lats = points.map((p) => p.latitude);
+  const lngs = points.map((p) => p.longitude);
+  const [minLat, maxLat] = [Math.min(...lats), Math.max(...lats)];
+  const [minLng, maxLng] = [Math.min(...lngs), Math.max(...lngs)];
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max((maxLat - minLat) * 1.4, minDelta),
+    longitudeDelta: Math.max((maxLng - minLng) * 1.4, minDelta),
+  };
+}
+
+/**
+ * Extends `region` downward so it fills only the top `1 - fraction` of the map, keeping its top
+ * edge: for overlays (badges, buttons) that cover the bottom `fraction` of the map.
+ */
+export function reserveBottom(region: MapRegion, fraction: number): MapRegion {
+  const latitudeDelta = region.latitudeDelta / (1 - fraction);
+  const top = region.latitude + region.latitudeDelta / 2;
+  return { ...region, latitude: top - latitudeDelta / 2, latitudeDelta };
+}
