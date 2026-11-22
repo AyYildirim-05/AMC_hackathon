@@ -155,7 +155,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
 
         // Add user geolocation beacon at Métro Mont-Royal
         const userIcon = L.divIcon({
-          className: 'citypulse-user-beacon',
+          className: 'montone-user-beacon',
           html: `<div style="width:18px;height:18px;border-radius:9999px;background:#446552;border:3px solid #fff;box-shadow:0 0 0 8px rgba(171,207,183,0.45),0 2px 6px rgba(0,0,0,0.25);"></div>`,
           iconSize: [18, 18],
           iconAnchor: [9, 9],
@@ -261,7 +261,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
 
         const icon = isSelected
           ? L.divIcon({
-              className: 'citypulse-active-pin',
+              className: 'montone-active-pin',
               html: `
                 <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);cursor:pointer;">
                   <div style="display:flex;align-items:center;gap:6px;background:#39473F;color:#fff;padding:5px 10px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.28);margin-bottom:5px;white-space:nowrap;font-family:Inter,system-ui,sans-serif;">
@@ -279,7 +279,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
               iconAnchor: [0, 0],
             })
           : L.divIcon({
-              className: 'citypulse-pin',
+              className: 'montone-pin',
               html: `
                 <div style="width:34px;height:34px;border-radius:9999px;background:#ffffff;border:2.5px solid ${borderColor};display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,0.22);cursor:pointer;">
                   ${glyph}

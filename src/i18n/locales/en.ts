@@ -13,10 +13,10 @@ const en = {
     card: 'Card',
     report: 'Report',
     district: 'District',
-    brand: 'Expo Starter',
+    brand: 'Montone',
   },
   home: {
-    title: 'Welcome to Expo',
+    title: 'Welcome to Montone',
     getStarted: 'get started',
     tryEditing: 'Try editing',
     devTools: 'Dev tools',
@@ -63,6 +63,13 @@ const en = {
       roads_potholes: 'Potholes & roads',
       streetlights_utilities: 'Streetlights & utilities',
       traffic_safety: 'Cycling safety',
+    },
+    elements: {
+      snow_ice: 'Snow & Ice',
+      rain_flooding: 'Rain & Flooding',
+      high_wind: 'High Wind',
+      freezing_rain: 'Freezing Rain',
+      extreme_heat: 'Extreme Heat',
     },
     photo: '{{count}} photo',
     photos: '{{count}} photos',
@@ -134,6 +141,8 @@ const en = {
       parks: 'Parks & Cleanliness',
       parksSub: 'Illegal dumping, parks',
     },
+    weatherElementsTitle: 'Weather & Elements',
+    weatherElementsSub: 'Tag weather conditions linked to this issue (optional).',
     locationTitle: 'Precise location',
     detectedAddress: 'DETECTED ADDRESS',
     useCurrentLocation: 'Use my current location',
@@ -160,7 +169,7 @@ const en = {
       'Official municipal tracking number issued after publication (e.g. MTL-311-2026-XXXXX).',
     publishButton: 'Publish report',
     draftButton: 'Save as draft',
-    charterFooter: 'CityPulse MTL Citizen Charter • OpenNorth Open Data',
+    charterFooter: 'Montone Citizen Charter • OpenNorth Open Data',
     publishedSuccessTitle: 'Report published successfully!',
     publishedSuccessMessage:
       'Your report has been forwarded to the City of Montréal with an official reference number.',
@@ -294,7 +303,7 @@ const en = {
     },
   },
   map: {
-    brandTitle: 'CityPulse MTL',
+    brandTitle: 'Montone',
     allBoroughs: 'All boroughs',
     searchPlaceholder: 'Search street, #311, park...',
     clearSearch: 'Clear search',
@@ -359,6 +368,58 @@ const en = {
     issueMarker: '{{title}}, {{category}}, {{status}}',
     legendTitle: 'Other issues in {{district}}',
     noIssues: 'No other issues reported in this district yet.',
+  },
+  splash: {
+    badge: 'Montréal • Civic Pulse',
+    title: 'Montone',
+    tagline: 'Report, track, and resolve neighborhood issues together.',
+    footer: 'OpenNorth Boundaries • MTL-311 Sync',
+    loadingLabel: 'Loading Montone',
+  },
+  onboarding: {
+    skip: 'Skip',
+    back: 'Back',
+    next: 'Next',
+    getStarted: 'Get Started',
+    slideIndicator: 'Slide {{current}} of {{total}}',
+    slides: {
+      report: {
+        eyebrow: 'GPS + OpenNorth Detection',
+        title: 'Pinpoint Issues in Seconds',
+        description:
+          'Snap up to 3 photos, auto-detect your exact Montréal borough from your device GPS, and file a geo-verified civic report.',
+        point1: 'Automatic borough matching via OpenNorth Represent API',
+        point2: 'Attach up to 3 photos with optional MTL-311 tracking',
+      },
+      map: {
+        eyebrow: 'Live Neighborhood Map',
+        title: 'See Every Issue Around You',
+        description:
+          'Explore real-time civic reports across Montréal boroughs, filter by category or status, and prevent duplicate tickets automatically.',
+        point1: 'Filter by Bike & REV, Roads, Lighting, and status',
+        point2: 'Smart nearby-duplicate detection before you publish',
+      },
+      community: {
+        eyebrow: 'Community Verification',
+        title: 'Upvote & Comment with Photos',
+        description:
+          'Rally neighbors behind urgent issues, post live photo updates directly in comments, and confirm when fixes are completed.',
+        point1: 'Attach progress photos directly inside issue comments',
+        point2: 'Confirm resolutions on the ground with one tap',
+        sampleComment: 'Fencing moved off the bike lane — clear for cyclists now!',
+      },
+      timeline: {
+        eyebrow: 'Municipal Transparency',
+        title: 'Follow Every Step to Resolution',
+        description:
+          'Track official municipal intervention milestones and read verified responses directly from your borough manager.',
+        point1: 'Real-time intervention timeline synced with your borough',
+        point2: 'Verified responses from official district managers',
+        step1: 'Citizen report submitted & geo-verified',
+        step2: 'Inspection crew dispatched by borough',
+        step3: 'Final resolution & community confirmation',
+      },
+    },
   },
 };
 

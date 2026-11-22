@@ -75,7 +75,7 @@ it("shows a resident's activity and own reports for a resident", async () => {
 });
 
 it('shows every district and who manages it for an admin', async () => {
-  await renderProfile(loggedIn('admin_mtl', 'admin', 'admin@citypulse-mtl.example.ca'));
+  await renderProfile(loggedIn('admin_mtl', 'admin', 'admin@montone.example.ca'));
 
   expect(screen.getByText('City overview')).toBeOnTheScreen();
   expect(screen.getByText('Managed by @camille_mtl')).toBeOnTheScreen();

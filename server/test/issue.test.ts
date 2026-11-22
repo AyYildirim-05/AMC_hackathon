@@ -68,6 +68,14 @@ describe('POST /api/issues (reportIssue)', () => {
     assert.ok(res.body.details.fieldErrors.latitude);
     assert.ok(res.body.details.fieldErrors.category);
   });
+
+  it('rejects unknown weather elements', async () => {
+    const res = await request(app)
+      .post('/api/issues')
+      .send({ ...validBody, elements: ['snow_ice', 'volcano'] });
+    assert.equal(res.status, 400);
+    assert.ok(res.body.details.fieldErrors.elements);
+  });
 });
 
 describe('issue routes with an id', () => {

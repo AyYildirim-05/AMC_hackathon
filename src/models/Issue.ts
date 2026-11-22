@@ -13,6 +13,15 @@ export type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 export const ISSUE_STATUSES = ['not_started', 'in_progress', 'resolved'] as const;
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
 
+export const WEATHER_ELEMENTS = [
+  'snow_ice',
+  'rain_flooding',
+  'high_wind',
+  'freezing_rain',
+  'extreme_heat',
+] as const;
+export type WeatherElement = (typeof WEATHER_ELEMENTS)[number];
+
 /** UUID string. */
 export type Id = string;
 /** ISO 8601 timestamp, e.g. `2026-11-18T08:00:00.000Z`. */
@@ -38,6 +47,8 @@ export interface Issue {
   description: string;
   category: IssueCategory;
   status: IssueStatus;
+  /** Optional weather conditions associated with this issue. */
+  elements?: WeatherElement[];
   /** Image URLs; empty when none were attached. */
   images: string[];
   address: string;
@@ -67,11 +78,14 @@ export interface Issue {
 export type CreateIssueInput = Pick<
   Issue,
   'title' | 'description' | 'category' | 'address' | 'latitude' | 'longitude' | 'district_id'
-> & { images?: string[] };
+> & { elements?: WeatherElement[]; images?: string[] };
 
 /** Fields that can be changed on an existing issue. */
 export type UpdateIssueInput = Partial<
-  Pick<Issue, 'title' | 'description' | 'category' | 'status' | 'images' | 'external_311_ref'>
+  Pick<
+    Issue,
+    'title' | 'description' | 'category' | 'status' | 'elements' | 'images' | 'external_311_ref'
+  >
 >;
 
 export function isIssueCategory(value: unknown): value is IssueCategory {
@@ -80,4 +94,8 @@ export function isIssueCategory(value: unknown): value is IssueCategory {
 
 export function isIssueStatus(value: unknown): value is IssueStatus {
   return ISSUE_STATUSES.includes(value as IssueStatus);
+}
+
+export function isWeatherElement(value: unknown): value is WeatherElement {
+  return WEATHER_ELEMENTS.includes(value as WeatherElement);
 }
