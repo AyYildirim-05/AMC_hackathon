@@ -1,9 +1,54 @@
 import '@/i18n';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react-native';
 
 import dummyIssues from '../../../dummy_data/issues.json';
 import { IssueDetailScreen } from '@/components/IssueDetailScreen';
 import { type Issue } from '@/models/Issue';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
+
+import type { AuthUser } from '@/lib/auth/auth-api';
+
+// The header's profile button reads the signed-in user and opens the profile sheet.
+const mockUser: AuthUser = {
+  id: '64b7f0c2a1b2c3d4e5f60719',
+  username: 'camille_mtl',
+  email: 'camille.tremblay@example.ca',
+  postalCode: 'H2J1S4',
+  homeDistrictId: null,
+  role: 'resident',
+  preferredLanguage: 'en',
+};
+jest.mock('@/providers/auth-provider', () => ({
+  useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: async () => {} }),
+}));
+// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
+jest.mock('react-native-reanimated', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const sharedValue = <T,>(initial: T) => {
+    let value = initial;
+    return { get: () => value, set: (next: T) => (value = next) };
+  };
+  return {
+    __esModule: true,
+    default: { View },
+    useSharedValue: sharedValue,
+    useAnimatedStyle: (factory: () => object) => factory(),
+    withTiming: <T,>(value: T) => value,
+  };
+});
+
+const render = (ui: React.ReactElement) => {
+  // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper });
+};
 
 const mockBikeIssue = dummyIssues.issues[0] as Issue;
 
@@ -109,5 +154,14 @@ describe('IssueDetailScreen', () => {
 
     expect(screen.getByText('Inspected again this afternoon, clear now!')).toBeOnTheScreen();
     expect(screen.getByText('4 updates')).toBeOnTheScreen();
+  });
+  it("opens the signed-in user's profile from the header", async () => {
+    await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);
+
+    const button = screen.getByTestId('issue-detail-profile-button');
+    expect(screen.getByText('CM')).toBeOnTheScreen();
+    await fireEvent.press(button);
+
+    expect(screen.getByRole('header', { name: 'Profile' })).toBeOnTheScreen();
   });
 });

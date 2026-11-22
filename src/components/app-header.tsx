@@ -1,12 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { computeInitials } from '@/components/utils/formatter';
-import { ProfileSheet } from '@/components/profile-sheet';
+import { ProfileButton } from '@/components/profile-button';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
@@ -25,7 +23,6 @@ export function AppHeader() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const user = useCurrentUser();
-  const [profileOpen, setProfileOpen] = useState(false);
   const districtId = user?.homeDistrictId ?? null;
   const { data: district } = useQuery({
     queryKey: ['districts', districtId],
@@ -84,18 +81,7 @@ export function AppHeader() {
         })}
       </View>
 
-      {user ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('profile.open', { username: user.username })}
-          onPress={() => setProfileOpen(true)}
-          style={[styles.avatar, { backgroundColor: theme.backgroundSelected }]}
-        >
-          <ThemedText type="smallBold">{computeInitials(user.username)}</ThemedText>
-        </Pressable>
-      ) : null}
-
-      <ProfileSheet visible={profileOpen} onClose={() => setProfileOpen(false)} />
+      <ProfileButton />
     </View>
   );
 }
@@ -125,12 +111,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
     borderRadius: 999,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

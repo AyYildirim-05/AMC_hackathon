@@ -1,7 +1,52 @@
 import { setLanguage } from '@/i18n';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react-native';
 
 import { DistrictScreen } from '@/components/DistrictScreen';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
+
+import type { AuthUser } from '@/lib/auth/auth-api';
+
+// The header's profile button reads the signed-in user and opens the profile sheet.
+const mockUser: AuthUser = {
+  id: '64b7f0c2a1b2c3d4e5f60719',
+  username: 'camille_mtl',
+  email: 'camille.tremblay@example.ca',
+  postalCode: 'H2J1S4',
+  homeDistrictId: null,
+  role: 'resident',
+  preferredLanguage: 'en',
+};
+jest.mock('@/providers/auth-provider', () => ({
+  useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: async () => {} }),
+}));
+// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
+jest.mock('react-native-reanimated', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const sharedValue = <T,>(initial: T) => {
+    let value = initial;
+    return { get: () => value, set: (next: T) => (value = next) };
+  };
+  return {
+    __esModule: true,
+    default: { View },
+    useSharedValue: sharedValue,
+    useAnimatedStyle: (factory: () => object) => factory(),
+    withTiming: <T,>(value: T) => value,
+  };
+});
+
+const render = (ui: React.ReactElement) => {
+  // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return rtlRender(ui, { wrapper });
+};
 
 describe('DistrictScreen', () => {
   beforeEach(async () => {
@@ -19,8 +64,8 @@ describe('DistrictScreen', () => {
     await render(<DistrictScreen onBack={handleBack} onSubmitSuccess={handleSubmit} />);
 
     // 1. Navigation Header
-    expect(screen.getByTestId('district-screen-back-button')).toBeOnTheScreen();
-    expect(screen.getByText('Signale...')).toBeOnTheScreen();
+    expect(screen.getByTestId('district-screen-profile-button')).toBeOnTheScreen();
+    expect(screen.getByText('Municipalité')).toBeOnTheScreen();
 
     // 2. Stepper / Progress Bar
     expect(screen.getByText('• ÉTAPE 1 SUR 2')).toBeOnTheScreen();
@@ -110,12 +155,10 @@ describe('DistrictScreen', () => {
     ).toBeOnTheScreen();
   });
 
-  it('calls onBack when back button is pressed', async () => {
-    const handleBack = jest.fn();
-    await render(<DistrictScreen onBack={handleBack} />);
+  it('has no back button: it is the top-level Report tab', async () => {
+    await render(<DistrictScreen />);
 
-    fireEvent.press(screen.getByTestId('district-screen-back-button'));
-    expect(handleBack).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('district-screen-back-button')).toBeNull();
   });
 
   it('allows switching categories when tapping category cards', async () => {
@@ -214,11 +257,18 @@ describe('DistrictScreen', () => {
     await setLanguage('en');
     await render(<DistrictScreen />);
 
-    expect(screen.getByText('Report...')).toBeOnTheScreen();
+    expect(screen.getByText('District')).toBeOnTheScreen();
     expect(screen.getByText('• STEP 1 OF 2')).toBeOnTheScreen();
     expect(screen.getByText('Details & Location')).toBeOnTheScreen();
     expect(screen.getByText('My borough')).toBeOnTheScreen();
     expect(screen.getByText('Other borough')).toBeOnTheScreen();
     expect(screen.getByText('Safety & Bike paths')).toBeOnTheScreen();
+  });
+  it("opens the signed-in user's profile from the header", async () => {
+    await render(<DistrictScreen />);
+
+    await fireEvent.press(screen.getByTestId('district-screen-profile-button'));
+
+    expect(screen.getByRole('header', { name: 'Profil' })).toBeOnTheScreen();
   });
 });

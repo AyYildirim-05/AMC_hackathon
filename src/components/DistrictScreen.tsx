@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import dummyDistricts from '../../dummy_data/districts.json';
 
+import { ProfileButton } from '@/components/profile-button';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { type Issue } from '@/models/Issue';
@@ -117,8 +118,6 @@ export interface DistrictScreenProps {
 
 const DEFAULT_PHOTO =
   'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1200&q=80';
-const DEFAULT_AVATAR =
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
 
 export function DistrictScreen({
   onBack,
@@ -176,20 +175,6 @@ export function DistrictScreen({
     ticketRef: string;
     borough: string;
   } | null>(null);
-
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      try {
-        if (router.canGoBack()) {
-          router.back();
-        }
-      } catch {
-        // fallback
-      }
-    }
-  };
 
   const handleSelectDistrict = (item: DistrictItem) => {
     setSelectedDistrict(item);
@@ -289,17 +274,6 @@ export function DistrictScreen({
             },
           ]}
         >
-          <Pressable
-            testID="district-screen-back-button"
-            accessibilityRole="button"
-            accessibilityLabel="Retour"
-            onPress={handleBack}
-            hitSlop={12}
-            style={({ pressed }) => [styles.navIconButton, pressed && styles.pressedOpacity]}
-          >
-            <Text style={[styles.backArrowText, { color: isDark ? '#E5F2EA' : '#1C211F' }]}>←</Text>
-          </Pressable>
-
           <View style={styles.navTitleContainer}>
             {/* App Icon */}
             <View style={styles.appIconBadge}>
@@ -309,19 +283,12 @@ export function DistrictScreen({
               numberOfLines={1}
               style={[styles.navTitleText, { color: isDark ? '#E5F2EA' : '#0B1E16' }]}
             >
-              {tText('districtScreen.headerTitle', 'Signale...')}
+              {tText('districtScreen.headerTitle', 'Municipalité')}
             </Text>
           </View>
 
           {/* User Profile Avatar */}
-          <View style={styles.navAvatarContainer}>
-            <Image
-              source={{ uri: DEFAULT_AVATAR }}
-              style={styles.navAvatar}
-              contentFit="cover"
-              accessibilityLabel="Profil utilisateur"
-            />
-          </View>
+          <ProfileButton testID="district-screen-profile-button" />
         </View>
 
         {/* ─── 2. Stepper / Progress Bar ─── */}
@@ -1212,18 +1179,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     fontFamily: Fonts.sans,
-  },
-  navAvatarContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#D4E2D9',
-  },
-  navAvatar: {
-    width: '100%',
-    height: '100%',
   },
 
   // 2. Stepper
