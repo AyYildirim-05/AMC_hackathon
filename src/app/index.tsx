@@ -4,9 +4,9 @@ import { FlatList, StyleSheet } from 'react-native';
 
 import dummyIssues from '../../dummy_data/issues.json';
 
-import { IssueCard } from '@/components/IssueCard';
-import { IssueDetailScreen } from '@/components/IssueDetailScreen';
-import { TabScreen } from '@/components/tab-screen';
+import { IssueCard } from '@/components/layout/IssueCard';
+import { IssueDetailScreen } from '@/components/layout/IssueDetailScreen';
+import { TabScreen } from '@/components/utils/tab-screen';
 import { Spacing } from '@/constants/theme';
 import type { Issue } from '@/models/Issue';
 

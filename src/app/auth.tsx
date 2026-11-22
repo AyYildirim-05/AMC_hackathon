@@ -11,13 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedButton } from '@/components/themed-button';
-import { ThemedCard } from '@/components/themed-card';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedButton } from '@/components/utils/themed-button';
+import { ThemedCard } from '@/components/utils/themed-card';
+import { ThemedText } from '@/components/utils/themed-text';
+import { ThemedView } from '@/components/utils/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { isSupportedLanguage, setLanguage, supportedLanguages } from '@/i18n';
+import { isSupportedLanguage } from '@/i18n';
 import { getApiErrorMessage, loginWithEmail, registerWithEmail } from '@/lib/auth/auth-api';
 import { useAuth } from '@/providers/auth-provider';
 
@@ -138,34 +138,6 @@ export function AuthScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.container}>
-              <View style={styles.topBar}>
-                <ThemedView type="backgroundElement" style={styles.langToggle}>
-                  {supportedLanguages.map((lang) => {
-                    const active = lang === currentLang;
-                    return (
-                      <Pressable
-                        key={lang}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        onPress={() => void setLanguage(lang)}
-                        style={[
-                          styles.langOption,
-                          active && { backgroundColor: theme.primaryBtnBackground },
-                        ]}
-                      >
-                        <ThemedText
-                          type="caption"
-                          weight="bold"
-                          themeColor={active ? 'buttonText' : 'textSecondary'}
-                        >
-                          {lang.toUpperCase()}
-                        </ThemedText>
-                      </Pressable>
-                    );
-                  })}
-                </ThemedView>
-              </View>
-
               <View style={styles.header}>
                 <ThemedText type="h1">
                   {isRegister ? t('auth.registerTitle') : t('auth.signInTitle')}
@@ -340,23 +312,6 @@ const styles = StyleSheet.create({
     maxWidth: Math.min(MaxContentWidth, 440),
     alignSelf: 'center',
     gap: Spacing.four,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  langToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 2,
-    borderRadius: 999,
-  },
-  langOption: {
-    paddingHorizontal: Spacing.two + Spacing.half,
-    paddingVertical: Spacing.one,
-    borderRadius: 999,
-    minWidth: 36,
-    alignItems: 'center',
   },
   header: {
     gap: Spacing.one,

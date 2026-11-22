@@ -15,7 +15,7 @@ import {
   MONTREAL_DEFAULT_REGION,
   REV_CORRIDORS,
   shortStreetLabel,
-} from './map-utils';
+} from '../utils/map-utils';
 import type { MontrealMapCanvasProps, MontrealMapHandle } from './MontrealMapCanvas';
 
 const TILE_LAYERS: Record<MapLayerMode, { url: string; attribution: string }> = {

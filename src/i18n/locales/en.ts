@@ -185,6 +185,7 @@ const en = {
     ctaButton: 'Report',
   },
   profile: {
+    language: 'Language',
     notManager: 'No district is assigned to this account.',
     title: 'Profile',
     open: 'Open profile, @{{username}}',

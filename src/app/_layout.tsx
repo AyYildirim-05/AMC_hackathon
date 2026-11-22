@@ -3,10 +3,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { AnimatedSplashOverlay } from '@/components/layout/animated-icon';
+import AppTabs from '@/components/layout/app-tabs';
 import { AuthScreen } from '@/app/auth';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedView } from '@/components/utils/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { restoreSavedLanguage } from '@/i18n';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';

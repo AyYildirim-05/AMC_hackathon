@@ -74,8 +74,13 @@ src/
 │   ├── explore.tsx         # Explore tab (component & palette showcase)
 │   └── api/
 │       └── health+api.ts   # GET /api/health — database health check
-├── components/             # Themed UI kit (ThemedText, ThemedView, ThemedButton, ThemedCard, …)
-│   └── ui/                 # Small UI primitives (Collapsible)
+├── components/             # Grouped by the screen that uses them; shared ones live in utils/
+│   ├── layout/             # App shell: tabs, animated splash icon (_layout)
+│   ├── district/           # District tab: borough feed
+│   ├── report/             # Report tab: two-step report form
+│   ├── map/                # Map tab: canvas, markers, incident preview
+│   ├── explore/            # Explore: component & palette showcase
+│   └── utils/              # Used by several screens: themed UI kit, issue card/detail, profile, header, formatters
 ├── constants/
 │   ├── palette.ts          # Brand color scale (light/dark) and status colors
 │   └── theme.ts            # Semantic color roles, spacing, layout constants
@@ -91,7 +96,7 @@ scripts/reset-project.js    # Starter reset script
 test/                       # Jest stubs
 ```
 
-Keep non-route code (components, hooks, utilities) outside `src/app/`. Files ending in `.web.tsx` / `.web.ts` override their native counterparts on web. Import from `src` with the `@/` alias (e.g. `@/components/themed-text`).
+Keep non-route code (components, hooks, utilities) outside `src/app/`. Files ending in `.web.tsx` / `.web.ts` override their native counterparts on web. Import from `src` with the `@/` alias (e.g. `@/components/utils/themed-text`). A component used by only one screen goes in that screen's folder under `components/`; anything shared goes in `components/utils/`.
 
 ## Architecture
 

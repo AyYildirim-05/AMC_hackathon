@@ -184,6 +184,7 @@ const fr: Translations = {
     ctaButton: 'Signaler',
   },
   profile: {
+    language: 'Langue',
     notManager: 'Aucun arrondissement n’est associé à ce compte.',
     title: 'Profil',
     open: 'Ouvrir le profil, @{{username}}',
