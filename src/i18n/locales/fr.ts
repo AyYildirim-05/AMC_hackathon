@@ -166,6 +166,9 @@ const fr: Translations = {
       'Votre signalement a été transmis à la Ville de Montréal avec le numéro de référence officiel.',
     draftSavedToast: 'Brouillon enregistré avec succès.',
     selectBorough: 'Sélectionner un arrondissement',
+    searchBorough: 'Rechercher un arrondissement',
+    boroughCount_one: '{{count}} arrondissement',
+    boroughCount_other: '{{count}} arrondissements',
     close: 'Fermer',
     duplicate: {
       prompt:
@@ -328,6 +331,12 @@ const fr: Translations = {
     clusterLabel: '{{count}} signalements',
     profileLabel: 'Profil citoyen',
     coordinates: 'Coordonnées',
+    list: {
+      title_one: '{{count}} signalement sur la carte',
+      title_other: '{{count}} signalements sur la carte',
+      hint: 'Touchez un signalement ou un marqueur pour voir les détails.',
+      back: 'Tous les signalements',
+    },
     roadworks: {
       toggle: 'Travaux de la Ville',
       types: {

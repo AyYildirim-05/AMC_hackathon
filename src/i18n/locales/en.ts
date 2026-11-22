@@ -166,6 +166,9 @@ const en = {
       'Your report has been forwarded to the City of Montréal with an official reference number.',
     draftSavedToast: 'Draft saved successfully.',
     selectBorough: 'Select a borough',
+    searchBorough: 'Search a borough',
+    boroughCount_one: '{{count}} district',
+    boroughCount_other: '{{count}} districts',
     close: 'Close',
     duplicate: {
       prompt:
@@ -328,6 +331,12 @@ const en = {
     clusterLabel: '{{count}} reports',
     profileLabel: 'Citizen profile',
     coordinates: 'Coordinates',
+    list: {
+      title_one: '{{count}} report on the map',
+      title_other: '{{count}} reports on the map',
+      hint: 'Tap a report or a marker to see its details.',
+      back: 'All reports',
+    },
     roadworks: {
       toggle: 'City roadworks',
       types: {

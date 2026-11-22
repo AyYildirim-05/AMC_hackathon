@@ -710,6 +710,26 @@ export function installMockBackendApi(options?: {
       return reply(districts.map(toServerDistrict));
     }
 
+    // Like the server: every known district plus the Montréal boroughs it adds from OpenNorth.
+    if (method === 'get' && url === '/api/districts/montreal') {
+      if (!districts.some((d) => d.open_north_slug === 'verdun')) {
+        districts.push({
+          id: '11111111-1111-4111-8111-111111111199',
+          name_fr: 'Verdun',
+          name_en: 'Verdun',
+          open_north_slug: 'verdun',
+          district_type: 'borough',
+          postal_code: null,
+          manager_id: null,
+          manager_username: null,
+          is_claimed: false,
+          created_at: '2026-11-22T00:00:00.000Z',
+        });
+      }
+      const sorted = [...districts].sort((a, b) => a.name_fr.localeCompare(b.name_fr, 'fr'));
+      return reply(sorted.map(toServerDistrict));
+    }
+
     if (method === 'get' && url.startsWith('/api/districts/locate')) {
       const queryPart = url.split('?')[1] ?? '';
       const params = new URLSearchParams(queryPart);

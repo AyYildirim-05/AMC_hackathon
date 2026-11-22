@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Modal,
@@ -12,10 +12,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext, SafeAreaView } from 'react-native-safe-area-context';
 
 import { IssueCard } from '@/components/layout/IssueCard';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
+import { IssueListSheet } from '@/components/map/IssueListSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
 import { MontrealMapCanvas, type MontrealMapHandle } from '@/components/map/MontrealMapCanvas';
 import { RoadworkPreviewCard } from '@/components/map/RoadworkPreviewCard';
@@ -70,6 +71,10 @@ export default function CardScreen() {
   const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'fr';
 
   const mapRef = useRef<MontrealMapHandle>(null);
+  // The native tab bar floats over the bottom of the map. iOS reports it inside the bottom safe-area
+  // inset (as in TabScreen); Android uses the fixed inset. The context is null outside a provider.
+  const safeAreaInsets = useContext(SafeAreaInsetsContext);
+  const tabBarInset = Platform.OS === 'ios' ? (safeAreaInsets?.bottom ?? 0) : BottomTabInset;
 
   const { data: issues = [] } = useQuery<Issue[]>({
     queryKey: ['issues'],
@@ -215,17 +220,17 @@ export default function CardScreen() {
     [issues, districts, searchQuery, selectedCategory, selectedStatus, selectedDistrictId],
   );
 
-  // Keep selected issue in sync with filtered results
-  const selectedIssue = useMemo(() => {
-    if (filteredIssues.length === 0) return null;
-    return filteredIssues.find((item) => item.id === selectedIssueId) ?? filteredIssues[0];
-  }, [filteredIssues, selectedIssueId]);
+  // Nothing is selected until a marker or a list row is tapped; while nothing is selected the bottom
+  // sheet lists every report on the map. A selection hidden by the filters goes back to the list.
+  const selectedIssue = useMemo(
+    () => filteredIssues.find((item) => item.id === selectedIssueId) ?? null,
+    [filteredIssues, selectedIssueId],
+  );
 
-  // Smoothly focus the map whenever filtering/searching switches the active issue
+  // Smoothly focus the map on each newly selected issue (marker taps also animate on their own)
   useEffect(() => {
-    if (!selectedIssue) return;
-    if (prevFocusedIssueIdRef.current === null) {
-      prevFocusedIssueIdRef.current = selectedIssue.id;
+    if (!selectedIssue) {
+      prevFocusedIssueIdRef.current = null;
       return;
     }
     if (prevFocusedIssueIdRef.current === selectedIssue.id) return;
@@ -343,8 +348,9 @@ export default function CardScreen() {
     setSelectedRoadworkId(null);
   };
 
-  const headerBg = isDark ? '#1A231F' : '#EEF7F1';
-  const headerBorder = isDark ? 'rgba(158, 206, 176, 0.14)' : 'rgba(42, 52, 47, 0.1)';
+  // Same page background as every other tab (TabScreen / ThemedView).
+  const headerBg = theme.background;
+  const headerBorder = theme.backgroundElement;
   const pillSurface = isDark ? 'rgba(33, 42, 37, 0.94)' : 'rgba(255, 255, 255, 0.94)';
   const chipText = isDark ? '#D7E6DB' : '#39473F';
 
@@ -416,7 +422,10 @@ export default function CardScreen() {
             layerMode={layerMode}
             roadworks={roadworks}
             selectedRoadworkId={selectedRoadwork?.id ?? null}
-            onSelectRoadwork={(work) => setSelectedRoadworkId(work.id)}
+            onSelectRoadwork={(work) => {
+              setSelectedRoadworkId(work.id);
+              setSelectedIssueId(null);
+            }}
           />
 
           {/* Floating Top Controls: Search + Category Filter Pills */}
@@ -676,7 +685,7 @@ export default function CardScreen() {
           </View>
 
           {/* Floating Right-Side Map Utilities */}
-          <View style={styles.mapUtilitiesCol}>
+          <View style={[styles.mapUtilitiesCol, { bottom: 248 + tabBarInset }]}>
             <Pressable
               testID="map-recenter-button"
               accessibilityRole="button"
@@ -739,25 +748,38 @@ export default function CardScreen() {
             </View>
           </View>
 
-          {/* Bottom Sheet Incident Preview Card */}
+          {/* Bottom sheet: a roadwork's card, the selected report's details, or the list of reports */}
           <View style={styles.bottomSheetDock}>
             {selectedRoadwork ? (
               <RoadworkPreviewCard
                 work={selectedRoadwork}
                 upcoming={roadworkWhen === 'upcoming'}
                 onClose={() => setSelectedRoadworkId(null)}
+                bottomInset={tabBarInset}
               />
-            ) : (
+            ) : selectedIssue ? (
               <IncidentPreviewSheet
                 issue={selectedIssue}
                 districtName={selectedIssueDistrictName}
                 isUpvoted={isSelectedUpvoted}
                 upvoteCount={selectedUpvoteCount}
                 justShared={justShared}
-                onToggleUpvote={() => selectedIssue && handleToggleUpvote(selectedIssue.id)}
+                onToggleUpvote={() => handleToggleUpvote(selectedIssue.id)}
                 onShare={() => void handleShareIssue()}
                 onOpenDetails={() => setDetailModalVisible(true)}
                 onResetFilters={handleResetFilters}
+                onBackToList={() => setSelectedIssueId(null)}
+                bottomInset={tabBarInset}
+              />
+            ) : (
+              <IssueListSheet
+                issues={filteredIssues}
+                onSelectIssue={(issue) => setSelectedIssueId(issue.id)}
+                districtNameFor={(issue) =>
+                  getDistrictName(issue.district_id, districts, currentLang) ?? null
+                }
+                onResetFilters={handleResetFilters}
+                bottomInset={tabBarInset}
               />
             )}
           </View>
@@ -774,7 +796,7 @@ export default function CardScreen() {
         <View style={styles.modalBackdrop}>
           <View
             testID="map-detail-modal"
-            style={[styles.detailModalSheet, { backgroundColor: isDark ? '#1A231F' : '#EEF7F1' }]}
+            style={[styles.detailModalSheet, { backgroundColor: theme.background }]}
           >
             <View style={styles.modalHeader}>
               <ThemedText type="h3">{t('map.viewRecord')}</ThemedText>

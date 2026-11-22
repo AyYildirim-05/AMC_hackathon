@@ -24,6 +24,21 @@ export async function fetchDistricts(): Promise<District[]> {
   return Array.isArray(data) ? data.map(normalizeDistrict) : [];
 }
 
+/**
+ * Every district including all 19 City of Montréal boroughs: the server adds boroughs missing from
+ * the database from OpenNorth (`GET /api/districts/montreal`). Falls back to the plain list when
+ * that endpoint is unavailable (an older server, or OpenNorth down).
+ */
+export async function fetchMontrealDistricts(): Promise<District[]> {
+  try {
+    const { data } = await apiClient.get<Record<string, unknown>[]>('/api/districts/montreal');
+    if (Array.isArray(data)) return data.map(normalizeDistrict);
+  } catch {
+    // Fall through to the districts the server already knows.
+  }
+  return fetchDistricts();
+}
+
 export type LocateDistrictResult = {
   district: District;
   openNorth: {

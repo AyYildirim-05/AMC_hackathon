@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
+import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { useTheme } from '@/hooks/use-theme';
 import type { Roadwork } from '@/lib/api/roadworks';
 import type { Issue, IssueCategory } from '@/models/Issue';
@@ -49,27 +50,6 @@ function getCategoryIcon(category: IssueCategory): MapIconName {
   }
 }
 
-function getCategoryPinAccent(category: IssueCategory, isDark: boolean) {
-  switch (category) {
-    case 'roads_potholes':
-      return {
-        iconColor: isDark ? '#FFB4A9' : '#BA1A1A',
-        ringColor: isDark ? 'rgba(255, 180, 169, 0.5)' : 'rgba(186, 26, 26, 0.35)',
-      };
-    case 'streetlights_utilities':
-      return {
-        iconColor: isDark ? '#A6E3B9' : '#446552',
-        ringColor: isDark ? 'rgba(166, 227, 185, 0.5)' : 'rgba(68, 101, 82, 0.35)',
-      };
-    case 'traffic_safety':
-    default:
-      return {
-        iconColor: isDark ? '#C6EBD3' : '#39473F',
-        ringColor: isDark ? 'rgba(198, 235, 211, 0.5)' : 'rgba(57, 71, 63, 0.32)',
-      };
-  }
-}
-
 /**
  * Native interactive Montreal map powered by `react-native-maps` (Apple Maps on iOS,
  * Google Maps on Android), with real street tiles, REV bike corridor polylines,
@@ -91,6 +71,8 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
     const { t } = useTranslation();
     const theme = useTheme();
     const isDark = theme.text !== '#1C211F';
+    // Markers use theme colors only: status colors for reports, the text color for roadworks.
+    const statusColors = useIssueStatusColors();
 
     const mapRef = useRef<MapView>(null);
     const regionRef = useRef<MapRegion>(MONTREAL_DEFAULT_REGION);
@@ -165,7 +147,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
             const style = ROADWORK_STYLE[work.type];
             return (
               <Marker
-                key={`${work.id}-${isSelected ? 'selected' : 'idle'}`}
+                key={`${work.id}-${isSelected ? 'selected' : 'idle'}-${isDark ? 'dark' : 'light'}`}
                 testID={`map-roadwork-${work.id}`}
                 identifier={`roadwork-${work.id}`}
                 coordinate={{ latitude: work.latitude, longitude: work.longitude }}
@@ -177,11 +159,15 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
                 <View
                   style={[
                     styles.roadworkPin,
-                    { backgroundColor: style.color },
+                    {
+                      backgroundColor: theme.text,
+                      borderColor: theme.background,
+                      shadowColor: theme.shadow,
+                    },
                     isSelected && styles.roadworkPinSelected,
                   ]}
                 >
-                  <MapIcon name={style.icon} size={isSelected ? 16 : 12} color="#FFFFFF" />
+                  <MapIcon name={style.icon} size={isSelected ? 16 : 12} color={theme.background} />
                 </View>
               </Marker>
             );
@@ -191,7 +177,8 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
           {issues.map((issue) => {
             const isSelected = issue.id === selectedIssueId;
             const iconName = getCategoryIcon(issue.category);
-            const accent = getCategoryPinAccent(issue.category, isDark);
+            // Colored by status, with the category icon inside (like the report screen's map).
+            const statusColor = statusColors[issue.status];
             const statusLabel = t(`issue.status.${issue.status}`);
 
             return (
@@ -215,31 +202,53 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
               >
                 {isSelected ? (
                   <View style={styles.selectedPinContainer}>
-                    <View style={styles.calloutPill}>
-                      <View style={styles.calloutLiveDot} />
-                      <Text numberOfLines={1} style={styles.calloutAddress}>
+                    <View
+                      style={[
+                        styles.calloutPill,
+                        { backgroundColor: theme.text, shadowColor: theme.shadow },
+                      ]}
+                    >
+                      <View style={[styles.calloutLiveDot, { backgroundColor: statusColor }]} />
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.calloutAddress, { color: theme.background }]}
+                      >
                         {shortStreetLabel(issue.address)}
                       </Text>
-                      <View style={styles.calloutStatusChip}>
-                        <Text style={styles.calloutStatusText}>{statusLabel}</Text>
+                      <View style={[styles.calloutStatusChip, { backgroundColor: statusColor }]}>
+                        <Text style={[styles.calloutStatusText, { color: theme.background }]}>
+                          {statusLabel}
+                        </Text>
                       </View>
                     </View>
-                    <View style={styles.selectedPinCircle}>
-                      <MapIcon name={iconName} size={20} color="#C6EBD3" />
+                    <View
+                      testID={`map-pin-dot-${issue.id}`}
+                      style={[
+                        styles.selectedPinCircle,
+                        {
+                          backgroundColor: statusColor,
+                          borderColor: theme.background,
+                          shadowColor: theme.shadow,
+                        },
+                      ]}
+                    >
+                      <MapIcon name={iconName} size={20} color={theme.background} />
                     </View>
-                    <View style={styles.pinTriangle} />
+                    <View style={[styles.pinTriangle, { borderTopColor: statusColor }]} />
                   </View>
                 ) : (
                   <View
+                    testID={`map-pin-dot-${issue.id}`}
                     style={[
                       styles.secondaryPinCircle,
                       {
-                        backgroundColor: isDark ? '#26312C' : '#FFFFFF',
-                        borderColor: accent.ringColor,
+                        backgroundColor: statusColor,
+                        borderColor: theme.background,
+                        shadowColor: theme.shadow,
                       },
                     ]}
                   >
-                    <MapIcon name={iconName} size={16} color={accent.iconColor} />
+                    <MapIcon name={iconName} size={16} color={theme.background} />
                   </View>
                 )}
               </Marker>
@@ -265,10 +274,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#39473F',
     marginBottom: 5,
     maxWidth: 220,
-    shadowColor: '#1C211F',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -278,22 +285,18 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#C6EBD3',
   },
   calloutAddress: {
-    color: '#FFFFFF',
     fontSize: 11.5,
     fontWeight: '700',
     flexShrink: 1,
   },
   calloutStatusChip: {
-    backgroundColor: '#446552',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   calloutStatusText: {
-    color: '#C6EBD3',
     fontSize: 9.5,
     fontWeight: '600',
   },
@@ -301,12 +304,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#39473F',
     borderWidth: 3.5,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1C211F',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 8,
@@ -321,17 +321,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#39473F',
   },
   roadworkPin: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1C211F',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.25,
     shadowRadius: 2,
@@ -350,7 +347,6 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1C211F',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

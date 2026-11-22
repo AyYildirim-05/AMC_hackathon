@@ -20,6 +20,10 @@ export interface IncidentPreviewSheetProps {
   onShare: () => void;
   onOpenDetails: () => void;
   onResetFilters: () => void;
+  /** Shows an "All reports" link that returns to the list of reports. */
+  onBackToList?: () => void;
+  /** Room for the tab bar floating over the bottom of the map. */
+  bottomInset?: number;
 }
 
 function getCategoryIcon(category: IssueCategory): MapIconName {
@@ -72,17 +76,21 @@ export function IncidentPreviewSheet({
   onShare,
   onOpenDetails,
   onResetFilters,
+  onBackToList,
+  bottomInset = 0,
 }: IncidentPreviewSheetProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const isDark = theme.text !== '#1C211F';
   const [collapsed, setCollapsed] = useState(false);
 
-  const surfaceBg = isDark ? '#212A25' : '#FFFFFF';
-  const subtleBg = isDark ? '#2A362F' : '#F0F5F1';
-  const actionBg = isDark ? '#2D3A33' : '#EAEFEB';
-  const primaryText = isDark ? '#ECF4EF' : '#181D1B';
-  const secondaryText = isDark ? '#9ECEB0' : '#434844';
+  // Same colors as the page and the tab bar above it (theme only), so the floating iOS tab bar
+  // looks the same on the map as on every other tab.
+  const surfaceBg = theme.background;
+  const subtleBg = theme.backgroundElement;
+  const actionBg = theme.backgroundElement;
+  const primaryText = theme.text;
+  const secondaryText = theme.textSecondary;
 
   if (!issue) {
     return (
@@ -123,7 +131,14 @@ export function IncidentPreviewSheet({
   return (
     <View
       testID="map-preview-sheet"
-      style={[styles.sheet, { backgroundColor: surfaceBg, shadowColor: theme.shadow }]}
+      style={[
+        styles.sheet,
+        {
+          backgroundColor: surfaceBg,
+          shadowColor: theme.shadow,
+          paddingBottom: Spacing.three + bottomInset,
+        },
+      ]}
     >
       {/* Drag Handle (tap toggles compact/expanded) */}
       <Pressable
@@ -136,6 +151,20 @@ export function IncidentPreviewSheet({
       >
         <View style={[styles.dragHandle, { backgroundColor: isDark ? '#3B4B42' : '#DFE4E0' }]} />
       </Pressable>
+
+      {onBackToList ? (
+        <Pressable
+          testID="map-back-to-list"
+          accessibilityRole="button"
+          onPress={onBackToList}
+          hitSlop={8}
+          style={({ pressed }) => [styles.backLink, pressed && styles.pressed]}
+        >
+          <Text style={[styles.backLinkText, { color: secondaryText }]}>
+            ‹ {t('map.list.back')}
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* Header Row: Category Badge, Status Badge & Reference ID */}
       <View style={styles.headerRow}>
@@ -330,6 +359,8 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 10,
   },
+  backLink: { alignSelf: 'flex-start' },
+  backLinkText: { fontSize: 13, fontWeight: '600' },
   handleHitArea: {
     alignItems: 'center',
     paddingVertical: 4,

@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
 import { DistrictScreen } from '@/components/report/DistrictScreen';
@@ -209,6 +215,29 @@ describe('DistrictScreen', () => {
       expect(screen.getByText('Ville-Marie')).toBeOnTheScreen();
       expect(screen.getByText(/Secteur électoral H2L 2C9/)).toBeOnTheScreen();
     });
+  });
+
+  it('lists every Montréal borough in the picker, searchable, including ones the app did not know', async () => {
+    await render(<DistrictScreen />);
+
+    await fireEvent.press(screen.getByTestId('tab-autre-arrondissement'));
+    await screen.findByText('Sélectionner un arrondissement');
+
+    // Verdun comes from the server's OpenNorth borough list, not from the districts created before.
+    const verdun = await screen.findByTestId('borough-option-11111111-1111-4111-8111-111111111199');
+    expect(screen.getByText('5 arrondissements')).toBeOnTheScreen();
+    // No postal code is known for Verdun, so the Plateau fallback is not shown as its own.
+    expect(within(verdun).getByText('Arrondissement validé')).toBeOnTheScreen();
+    expect(within(verdun).queryByText(/Secteur/)).toBeNull();
+
+    await fireEvent.changeText(screen.getByTestId('borough-search-input'), 'verd');
+    expect(screen.getByText('1 arrondissement')).toBeOnTheScreen();
+    expect(screen.queryByTestId('borough-option-11111111-1111-4111-8111-111111111102')).toBeNull();
+
+    await fireEvent.press(
+      screen.getByTestId('borough-option-11111111-1111-4111-8111-111111111199'),
+    );
+    await waitFor(() => expect(screen.getByText('Verdun')).toBeOnTheScreen());
   });
 
   it('opens the phone camera on the first proof option and gallery on the second option', async () => {

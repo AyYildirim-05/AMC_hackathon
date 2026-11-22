@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { CATEGORY_ICONS, mapIconGlyph } from '@/components/map/MapIcon';
-import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
+import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { deltaToLeafletZoom, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
+import { useTheme } from '@/hooks/use-theme';
 
 import { OVERLAY_FRACTION, type ReportLocationMapProps } from './ReportLocationMap';
 
@@ -18,6 +19,8 @@ const TILES = {
 /** Web version of the report map, drawn with Leaflet like the Map tab. */
 export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const statusColors = useIssueStatusColors();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const layerRef = useRef<import('leaflet').LayerGroup | null>(null);
@@ -63,7 +66,7 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
       // Same look as the native marker: the category glyph on a dot colored by status.
       const icon = L.divIcon({
         className: '',
-        html: `<div style="width:24px;height:24px;box-sizing:border-box;border-radius:50%;border:2px solid #fff;background:${ISSUE_STATUS_COLORS[issue.status]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;">${mapIconGlyph(CATEGORY_ICONS[issue.category])}</div>`,
+        html: `<div style="width:24px;height:24px;box-sizing:border-box;border-radius:50%;border:2px solid ${theme.background};background:${statusColors[issue.status]};color:${theme.background};display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;">${mapIconGlyph(CATEGORY_ICONS[issue.category])}</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
@@ -75,7 +78,7 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
     // A marker too (not a circleMarker, which sits in a lower pane), so it can stay on top.
     const pointIcon = L.divIcon({
       className: '',
-      html: '<div style="width:22px;height:22px;box-sizing:border-box;border-radius:50%;border:3px solid #fff;background:#39473F;box-shadow:0 0 0 4px rgba(57,71,63,0.25);"></div>',
+      html: `<div style="width:22px;height:22px;box-sizing:border-box;border-radius:50%;border:3px solid ${theme.background};background:${theme.accent};box-shadow:0 0 0 4px ${theme.backgroundSelected};"></div>`,
       iconSize: [22, 22],
       iconAnchor: [11, 11],
     });
@@ -84,7 +87,7 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
       .addTo(layer);
 
     map.setView([region.latitude, region.longitude], deltaToLeafletZoom(region.latitudeDelta));
-  }, [ready, issues, point, region, t]);
+  }, [ready, issues, point, region, t, theme, statusColors]);
 
   return (
     <View testID="report-location-map" style={StyleSheet.absoluteFill}>

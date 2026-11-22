@@ -6,8 +6,10 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { HttpError } from '../src/lib/http-error.js';
 import {
+  clearMontrealBoroughsCache,
   clearOpenNorthCache,
   extractSlugFromBoundaryUrl,
+  listMontrealBoroughs,
   lookupBoundaryByCoordinates,
 } from '../src/lib/opennorth.js';
 
@@ -108,5 +110,63 @@ describe('GET /api/districts/locate validation', () => {
       const res = await request(app).get(`/api/districts/locate${query}`);
       assert.equal(res.status, 400, query);
     }
+  });
+});
+
+describe('OpenNorth Montréal borough list', () => {
+  beforeEach(() => clearMontrealBoroughsCache());
+
+  it('lists the montreal-boroughs set once and serves later calls from the cache', async () => {
+    const urls: string[] = [];
+    const mockFetch: typeof fetch = async (url) => {
+      urls.push(String(url));
+      return new Response(
+        JSON.stringify({
+          objects: [
+            {
+              url: '/boundaries/montreal-boroughs/plateau-mont-royal/',
+              name: 'Plateau-Mont-Royal',
+              related: { boundary_set_url: '/boundary-sets/montreal-boroughs/' },
+            },
+            {
+              url: '/boundaries/montreal-boroughs/rosemont-la-petite-patrie/',
+              name: 'Rosemont—La Petite-Patrie',
+              related: { boundary_set_url: '/boundary-sets/montreal-boroughs/' },
+            },
+            { url: '/boundaries/montreal-boroughs/nameless/' },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    };
+
+    const first = await listMontrealBoroughs({ fetchImpl: mockFetch });
+    const second = await listMontrealBoroughs({ fetchImpl: mockFetch });
+
+    assert.equal(urls.length, 1);
+    assert.match(urls[0], /\/boundaries\/montreal-boroughs\/\?limit=100$/);
+    assert.deepEqual(second, first);
+    assert.deepEqual(first, [
+      {
+        name: 'Plateau-Mont-Royal',
+        slug: 'plateau-mont-royal',
+        districtType: 'borough',
+        boundarySet: 'montreal-boroughs',
+      },
+      {
+        name: 'Rosemont—La Petite-Patrie',
+        slug: 'rosemont-la-petite-patrie',
+        districtType: 'borough',
+        boundarySet: 'montreal-boroughs',
+      },
+    ]);
+  });
+
+  it('reports a 502 when OpenNorth fails', async () => {
+    const mockFetch: typeof fetch = async () => new Response('boom', { status: 500 });
+    await assert.rejects(
+      () => listMontrealBoroughs({ fetchImpl: mockFetch }),
+      (err: unknown) => err instanceof HttpError && err.status === 502,
+    );
   });
 });
