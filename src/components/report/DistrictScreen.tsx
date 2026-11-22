@@ -40,7 +40,7 @@ import {
   toggleIssueVote,
 } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
-import { detectDeviceLocation, reverseGeocodeLocation } from '@/lib/location';
+import { detectDeviceLocation, geocodeAddress, reverseGeocodeLocation } from '@/lib/location';
 import {
   ISSUE_STATUSES,
   WEATHER_ELEMENTS,
@@ -465,6 +465,9 @@ export function DistrictScreen({
     };
   }, []);
 
+  /** Set once the user chooses a spot themselves, so the GPS lookup at open doesn't move it. */
+  const userPlacedRef = useRef(false);
+
   /**
    * Reads the device's GPS coordinates and resolves the matching Montreal district via the
    * backend's OpenNorth Represent API endpoint (`GET /api/districts/locate`).
@@ -535,7 +538,8 @@ export function DistrictScreen({
     let active = true;
     const run = async () => {
       const detected = await detectDeviceLocation();
-      if (!active || !detected) return;
+      // The user may have placed the pin or searched an address while GPS was still looking.
+      if (!active || !detected || userPlacedRef.current) return;
 
       setCoordinates((prev) => ({
         latitude: detected.latitude,
@@ -575,6 +579,7 @@ export function DistrictScreen({
 
   /** Only the latest pin placement may update the form, however fast the user taps. */
   const pickRequestRef = useRef(0);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
   /**
    * A point picked on the map becomes the report location: coordinates now, then the street
@@ -582,6 +587,7 @@ export function DistrictScreen({
    */
   const handlePickPoint = async (picked: { latitude: number; longitude: number }) => {
     const request = ++pickRequestRef.current;
+    userPlacedRef.current = true;
     const latitude = Number(picked.latitude.toFixed(6));
     const longitude = Number(picked.longitude.toFixed(6));
     setCoordinates((prev) => ({ ...prev, latitude, longitude }));
@@ -610,6 +616,27 @@ export function DistrictScreen({
           ),
         );
       }
+    }
+  };
+
+  /** The typed address becomes the report point: geocoded, then handled like a placed pin. */
+  const handleSearchAddress = async () => {
+    if (isSearchingAddress || !address.trim()) return;
+    setIsSearchingAddress(true);
+    try {
+      const found = await geocodeAddress(address);
+      if (!found) {
+        showToast(
+          tText(
+            'districtScreen.addressNotFound',
+            "Adresse introuvable. Essayez de placer l'épingle sur la carte.",
+          ),
+        );
+        return;
+      }
+      await handlePickPoint(found);
+    } finally {
+      setIsSearchingAddress(false);
     }
   };
 
@@ -795,6 +822,8 @@ export function DistrictScreen({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          // While placing the pin, drags pan the map instead of scrolling the form.
+          scrollEnabled={!isAdjustingPin}
         >
           {/* ─── 3. OpenNorth Pipeline / District Card ─── */}
           <View
@@ -1112,6 +1141,10 @@ export function DistrictScreen({
                   style={[styles.addressValueText, { color: theme.text }]}
                   value={address}
                   onChangeText={setAddress}
+                  returnKeyType="search"
+                  onSubmitEditing={() => {
+                    void handleSearchAddress();
+                  }}
                   placeholder="1250 Rue Rachel Est, Montréal, QC..."
                   placeholderTextColor={theme.neutral500}
                 />
@@ -1120,9 +1153,10 @@ export function DistrictScreen({
               <Pressable
                 testID="address-search-button"
                 accessibilityRole="button"
-                accessibilityLabel="Rechercher adresse"
+                accessibilityLabel={tText('districtScreen.searchAddress', "Rechercher l'adresse")}
+                disabled={isSearchingAddress}
                 onPress={() => {
-                  void handleUseCurrentLocation();
+                  void handleSearchAddress();
                 }}
                 style={({ pressed }) => [
                   styles.searchIconButton,
@@ -1182,7 +1216,7 @@ export function DistrictScreen({
               {isAdjustingPin ? (
                 <View testID="map-pin-hint" pointerEvents="none" style={styles.pinHint}>
                   <Text style={styles.pinHintText}>
-                    {tText('districtScreen.pinHint', "Touchez la carte pour placer l'épingle")}
+                    {tText('districtScreen.pinHint', "Déplacez la carte pour placer l'épingle")}
                   </Text>
                 </View>
               ) : null}
