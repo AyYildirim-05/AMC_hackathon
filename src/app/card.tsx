@@ -15,6 +15,7 @@ import {
 import { SafeAreaInsetsContext, SafeAreaView } from 'react-native-safe-area-context';
 
 import { IssueCard } from '@/components/layout/IssueCard';
+import { useProfilePanel } from '@/components/layout/profile-panel';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
 import { IssueListSheet } from '@/components/map/IssueListSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
@@ -33,7 +34,6 @@ import {
   nextLayerMode,
   type StatusFilter,
 } from '@/components/utils/map-utils';
-import { ProfileSheet } from '@/components/utils/profile-sheet';
 import { ThemedText } from '@/components/utils/themed-text';
 import { computeInitials } from '@/components/utils/formatter';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -174,7 +174,7 @@ export default function CardScreen() {
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [boroughModalVisible, setBoroughModalVisible] = useState(false);
-  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const profilePanel = useProfilePanel();
   const [justShared, setJustShared] = useState(false);
   const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevFocusedIssueIdRef = useRef<string | null>(null);
@@ -393,7 +393,7 @@ export default function CardScreen() {
               testID="map-profile-button"
               accessibilityRole="button"
               accessibilityLabel={t('map.profileLabel')}
-              onPress={() => setProfileModalVisible(true)}
+              onPress={profilePanel.open}
               style={[
                 styles.profileAvatar,
                 {
@@ -917,7 +917,6 @@ export default function CardScreen() {
       </Modal>
 
       {/* ─── Profile (same sheet as the avatar in every other tab's header) ─── */}
-      <ProfileSheet visible={profileModalVisible} onClose={() => setProfileModalVisible(false)} />
     </View>
   );
 }

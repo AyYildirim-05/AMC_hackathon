@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 
+import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { DistrictScreen } from '@/components/report/DistrictScreen';
 import { setLanguage } from '@/i18n';
 import type { AuthUser } from '@/lib/auth/auth-api';
@@ -74,7 +75,9 @@ const render = async (ui: React.ReactElement) => {
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <ProfilePanelProvider>{children}</ProfilePanelProvider>
+    </QueryClientProvider>
   );
   const utils = await rtlRender(ui, { wrapper });
   await screen.findByText('Le Plateau-Mont-Royal');

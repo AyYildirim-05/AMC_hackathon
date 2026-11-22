@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
+import { CARD_SHADOW } from '@/components/utils/themed-card';
 import { ThemedText } from '@/components/utils/themed-text';
 import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -523,10 +524,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     gap: Spacing.three,
     alignSelf: 'stretch',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    ...CARD_SHADOW,
   },
   cardPressed: {
     opacity: 0.95,

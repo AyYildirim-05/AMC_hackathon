@@ -17,18 +17,22 @@ export function ResidentProfile({ profile }: { profile: Profile }) {
       <Section title={t('profile.resident.activity')}>
         <StatGrid>
           <StatTile
+            icon="report"
             value={String(activity.reports)}
             label={t('profile.resident.reports', { count: activity.reports })}
           />
           <StatTile
+            icon="thumbUp"
             value={String(activity.upvotesGiven)}
             label={t('profile.resident.upvotes', { count: activity.upvotesGiven })}
           />
           <StatTile
+            icon="verified"
             value={String(activity.confirmationsGiven)}
             label={t('profile.resident.confirmations', { count: activity.confirmationsGiven })}
           />
           <StatTile
+            icon="comment"
             value={String(activity.comments)}
             label={t('profile.resident.comments', { count: activity.comments })}
           />

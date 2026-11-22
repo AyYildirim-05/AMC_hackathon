@@ -21,6 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
+import { PublishReportButton } from '@/components/report/PublishReportButton';
+import { CARD_SHADOW } from '@/components/utils/themed-card';
 import { ProfileButton } from '@/components/utils/profile-button';
 import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -172,6 +174,8 @@ export function DistrictScreen({
   const { t } = useTranslation();
   const theme = useTheme();
   const statusColors = useIssueStatusColors();
+  // The same shadow as every other card (ThemedCard), in the theme's shadow color.
+  const cardShadow = { ...CARD_SHADOW, shadowColor: theme.shadow };
   const user = useCurrentUser();
   const queryClient = useQueryClient();
   const isDark = theme.text !== '#1C211F';
@@ -689,6 +693,7 @@ export function DistrictScreen({
           <View
             style={[
               styles.districtCard,
+              cardShadow,
               {
                 backgroundColor: isDark ? '#1C3326' : '#E8F5EE',
                 borderColor: isDark ? '#2A4D3B' : '#CDE7D7',
@@ -819,6 +824,7 @@ export function DistrictScreen({
                     onPress={() => setSelectedCategory(cat.key)}
                     style={({ pressed }) => [
                       styles.categoryCard,
+                      cardShadow,
                       isSelected
                         ? styles.categoryCardSelected
                         : [
@@ -962,6 +968,7 @@ export function DistrictScreen({
             <View
               style={[
                 styles.addressCard,
+                cardShadow,
                 {
                   backgroundColor: isDark ? '#1C2922' : '#FFFFFF',
                   borderColor: isDark ? '#2E4136' : '#E2E9E4',
@@ -1315,6 +1322,7 @@ export function DistrictScreen({
           <View
             style={[
               styles.mtlCard,
+              cardShadow,
               {
                 backgroundColor: isDark ? '#1B2720' : '#FFFFFF',
                 borderColor: isDark ? '#2B3C32' : '#E0E8E3',
@@ -1379,24 +1387,13 @@ export function DistrictScreen({
 
           {/* ─── 10. Action Buttons ─── */}
           <View style={styles.actionButtonsCol}>
-            {/* Primary: Publier le signalement */}
-            <Pressable
-              testID="publish-report-button"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !canPublish }}
+            {/* Primary: Publier le signalement (the district's truck drives across it) */}
+            <PublishReportButton
+              label={tText('districtScreen.publishButton', 'Publier le signalement')}
               disabled={!canPublish}
+              sending={isPublishing}
               onPress={handlePublish}
-              style={({ pressed }) => [
-                styles.primaryPublishBtn,
-                !canPublish && styles.primaryPublishBtnDisabled,
-                pressed && canPublish && styles.pressedOpacity,
-              ]}
-            >
-              <Text style={styles.primaryPublishIcon}>➤</Text>
-              <Text style={styles.primaryPublishText}>
-                {tText('districtScreen.publishButton', 'Publier le signalement')}
-              </Text>
-            </Pressable>
+            />
 
             {/* Secondary: Enregistrer comme brouillon */}
             <Pressable
@@ -2210,34 +2207,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     marginTop: Spacing.two,
   },
-  primaryPublishBtn: {
-    height: 52,
-    borderRadius: 14,
-    backgroundColor: '#0A2540',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#0A2540',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  primaryPublishBtnDisabled: {
-    opacity: 0.45,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  primaryPublishIcon: {
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  primaryPublishText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+
   secondaryDraftBtn: {
     height: 48,
     borderRadius: 14,
