@@ -1,5 +1,5 @@
-import { DistrictScreen } from '@/components/DistrictScreen';
+import { DistrictFeedScreen } from '@/components/district-feed-screen';
 
 export default function DistrictRoute() {
-  return <DistrictScreen />;
+  return <DistrictFeedScreen />;
 }

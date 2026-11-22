@@ -19,6 +19,7 @@ import dummyDistricts from '../../dummy_data/districts.json';
 import dummyComments from '../../dummy_data/issue_comments.json';
 import dummyPersons from '../../dummy_data/person.json';
 
+import { ProfileButton } from '@/components/profile-button';
 import { ThemedText } from '@/components/themed-text';
 import { computeInitials } from '@/components/utils/formatter';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -354,18 +355,21 @@ export function IssueDetailScreen({
               {issue.title}
             </Text>
 
-            <Pressable
-              testID="issue-detail-share-button"
-              accessibilityRole="button"
-              accessibilityLabel="Share issue"
-              onPress={handleShare}
-              hitSlop={12}
-              style={({ pressed }) => [styles.navIconButton, pressed && styles.pressedOpacity]}
-            >
-              <Text style={[styles.shareIconText, { color: isDark ? '#E5F2EA' : '#1C211F' }]}>
-                ↗
-              </Text>
-            </Pressable>
+            <View style={styles.navActions}>
+              <Pressable
+                testID="issue-detail-share-button"
+                accessibilityRole="button"
+                accessibilityLabel="Share issue"
+                onPress={handleShare}
+                hitSlop={12}
+                style={({ pressed }) => [styles.navIconButton, pressed && styles.pressedOpacity]}
+              >
+                <Text style={[styles.shareIconText, { color: isDark ? '#E5F2EA' : '#1C211F' }]}>
+                  ↗
+                </Text>
+              </Pressable>
+              <ProfileButton testID="issue-detail-profile-button" />
+            </View>
           </View>
 
           {/* ─── Scrollable Issue Details ─── */}
@@ -1081,6 +1085,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.three,
     borderBottomWidth: 1,
+  },
+  navActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   navIconButton: {
     width: 36,
