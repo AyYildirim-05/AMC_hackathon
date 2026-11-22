@@ -135,6 +135,15 @@ describe('OnboardingPresentationModal', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it('promises only the 311 hand-off the app has: email, and a MonTone reference', async () => {
+    await render(<OnboardingPresentationModal visible={true} onComplete={jest.fn()} />);
+
+    expect(screen.getByText('MonTone #A1B2C3')).toBeOnTheScreen();
+    expect(screen.getByText(/send it to 311 by email/)).toBeOnTheScreen();
+    // No made-up official 311 number or "311 tracking".
+    expect(screen.queryByText(/MTL-311/)).toBeNull();
+  });
+
   it('dismisses immediately when Skip is pressed', async () => {
     const onComplete = jest.fn();
     await render(<OnboardingPresentationModal visible={true} onComplete={onComplete} />);

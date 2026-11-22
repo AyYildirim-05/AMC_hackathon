@@ -418,7 +418,7 @@ const en = {
     badge: 'Montréal • {{appName}}',
     title: '{{appName}}',
     tagline: 'Report, track, and resolve neighborhood issues together.',
-    footer: 'OpenNorth Boundaries • MTL-311 Sync',
+    footer: 'OpenNorth Boundaries • 311 by email',
     loadingLabel: 'Loading {{appName}}',
   },
   onboarding: {
@@ -434,7 +434,7 @@ const en = {
         description:
           'Snap up to 3 photos, auto-detect your exact Montréal borough from your device GPS, and file a geo-verified civic report.',
         point1: 'Automatic borough matching via OpenNorth Represent API',
-        point2: 'Attach up to 3 photos with optional MTL-311 tracking',
+        point2: 'Attach up to 3 photos, then send it to 311 by email in one tap',
       },
       map: {
         eyebrow: 'Live Neighborhood Map',

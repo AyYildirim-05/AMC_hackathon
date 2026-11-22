@@ -155,7 +155,9 @@ export function OnboardingPresentationModal({
             <View style={[styles.chip, { backgroundColor: theme.backgroundSelected }]}>
               <Text style={[styles.chipMono, { color: theme.text }]}>OPENNORTH ✓</Text>
             </View>
-            <Text style={[styles.metaMono, { color: theme.textSecondary }]}>MTL-311-2026</Text>
+            <Text style={[styles.metaMono, { color: theme.textSecondary }]}>
+              {`${brand.name} #A1B2C3`}
+            </Text>
           </View>
           <Text style={[styles.previewHeading, { color: theme.text }]}>Le Plateau-Mont-Royal</Text>
           <Text style={[styles.previewSub, { color: theme.textSecondary }]}>

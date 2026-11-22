@@ -418,7 +418,7 @@ const fr: Translations = {
     badge: 'Montréal • {{appName}}',
     title: '{{appName}}',
     tagline: 'Signalez, suivez et résolvez les enjeux de quartier ensemble.',
-    footer: 'Limites OpenNorth • Sync MTL-311',
+    footer: 'Limites OpenNorth • 311 par courriel',
     loadingLabel: 'Chargement de {{appName}}',
   },
   onboarding: {
@@ -434,7 +434,7 @@ const fr: Translations = {
         description:
           'Ajoutez jusqu’à 3 photos, détectez automatiquement votre arrondissement montréalais par GPS et soumettez un dossier géolocalisé.',
         point1: 'Arrondissement détecté automatiquement via l’API OpenNorth',
-        point2: 'Jusqu’à 3 photos jointes avec suivi MTL-311 optionnel',
+        point2: 'Jusqu’à 3 photos, puis envoi au 311 par courriel en un geste',
       },
       map: {
         eyebrow: 'Carte citoyenne en direct',
