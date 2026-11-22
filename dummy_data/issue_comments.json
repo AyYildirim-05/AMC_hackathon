@@ -44,6 +44,24 @@
       "is_official_response": true,
       "created_at": "2026-11-20T15:05:19.000Z",
       "updated_at": "2026-11-20T15:05:19.000Z"
+    },
+    {
+      "id": "77777777-7777-4777-8777-777777777701",
+      "issue_id": "55555555-5555-4555-8555-555555555502",
+      "user_id": "44444444-4444-4444-8444-444444444401",
+      "body": "Same here, my bike wheel caught the edge this morning.",
+      "is_official_response": false,
+      "created_at": "2026-11-21T11:01:00.000Z",
+      "updated_at": "2026-11-21T11:01:00.000Z"
+    },
+    {
+      "id": "77777777-7777-4777-8777-777777777702",
+      "issue_id": "55555555-5555-4555-8555-555555555501",
+      "user_id": "44444444-4444-4444-8444-444444444402",
+      "body": "Walked past last night, still out.",
+      "is_official_response": false,
+      "created_at": "2026-11-21T11:06:00.000Z",
+      "updated_at": "2026-11-21T11:06:00.000Z"
     }
   ]
 }

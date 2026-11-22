@@ -5,7 +5,7 @@ import { ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
-import { AuthScreen } from '@/components/auth-screen';
+import { AuthScreen } from '@/app/auth';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { restoreSavedLanguage } from '@/i18n';

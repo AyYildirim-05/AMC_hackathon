@@ -318,6 +318,8 @@ export function AuthScreen() {
   );
 }
 
+export default AuthScreen;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,

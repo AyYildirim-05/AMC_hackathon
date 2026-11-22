@@ -25,10 +25,7 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="card">
         <NativeTabs.Trigger.Label>{t('tabs.card')}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'rectangle.stack', selected: 'rectangle.stack.fill' }}
-          md="style"
-        />
+        <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="report">
@@ -41,7 +38,10 @@ export default function AppTabs() {
 
       <NativeTabs.Trigger name="district">
         <NativeTabs.Trigger.Label>{t('tabs.district')}</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf={{ default: 'map', selected: 'map.fill' }} md="map" />
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'building.columns', selected: 'building.columns.fill' }}
+          md="account_balance"
+        />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
