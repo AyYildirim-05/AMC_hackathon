@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { brand } from '@/brand';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
@@ -51,6 +52,7 @@ import {
   type IssueCategory,
   type WeatherElement,
 } from '@/models/Issue';
+import { build311Email, call311, open311Email } from '@/lib/report-311';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 
 import { ReportLocationMap } from './ReportLocationMap';
@@ -728,9 +730,28 @@ export function DistrictScreen({
     }
   };
 
+  /**
+   * After publishing with "Send to 311" on: the resident sends the report to 311 themselves, by
+   * email from their own mail app (filled in) or by phone. Montréal's 311 takes no app reports.
+   */
+  const offer311HandOff = (issue: Issue, districtName: string) => {
+    Alert.alert(t('report311.promptTitle'), t('report311.promptBody'), [
+      { text: t('report311.later'), style: 'cancel' },
+      { text: t('report311.call'), onPress: () => void call311() },
+      {
+        text: t('report311.email'),
+        style: 'default',
+        onPress: () => {
+          void open311Email(build311Email(issue, { districtName })).then((opened) => {
+            if (!opened) Alert.alert(t('report311.promptTitle'), t('report311.noMailApp'));
+          });
+        },
+      },
+    ]);
+  };
+
   const publishIssue = async () => {
     if (!issueCategory) return;
-    const ticketNumber = `MTL-311-2026-${Math.floor(10000 + Math.random() * 90000)}`;
 
     setIsPublishing(true);
     try {
@@ -756,12 +777,16 @@ export function DistrictScreen({
         longitude: coordinates.longitude,
         districtId: selectedDistrict.id,
         images: issueImages,
-        external311Ref: mtl311Enabled ? ticketNumber : null,
+        // The official 311 number, if any, is linked later by the borough.
+        external311Ref: null,
       });
 
+      const send311 = mtl311Enabled;
+      const districtName = selectedDistrict.name;
       resetForm();
       onSubmitSuccess?.(created);
       router.navigate('/');
+      if (send311) offer311HandOff(created, districtName);
     } catch (err) {
       Alert.alert(
         tText('common.error', 'Erreur'),
@@ -1650,7 +1675,7 @@ export function DistrictScreen({
             <Text style={[styles.footerText, { color: theme.neutral600 }]}>
               {tText(
                 'districtScreen.charterFooter',
-                'Charte citoyenne Montone • Données ouvertes OpenNorth',
+                `Charte citoyenne ${brand.name} • Données ouvertes OpenNorth`,
               )}
             </Text>
           </View>

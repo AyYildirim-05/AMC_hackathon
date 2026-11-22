@@ -45,3 +45,7 @@ example
 # generated native folders
 /ios
 /android
+
+# Build outputs (an APK is ~100 MB; GitHub rejects files over 100 MB)
+*.apk
+*.aab

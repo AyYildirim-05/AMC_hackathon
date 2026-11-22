@@ -12,6 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { brandLogo } from '@/brand';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -193,7 +194,7 @@ export function SplashScreenOverlay({
           >
             <Image
               testID="splash-logo-image"
-              source={require('@/assets/images/montone-icon.png')}
+              source={brandLogo}
               style={styles.logoImage}
               contentFit="cover"
             />

@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { brand } from '@/brand';
 import { useTheme } from '@/hooks/use-theme';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { getIssueSeverity, getSeverityBadgePalette } from '@/components/utils/issue-severity';
@@ -152,7 +153,7 @@ function getTimelineSteps(issue: Issue, districtNameOverride?: string): Timeline
       {
         id: 'step-1',
         title: 'Signalé par le citoyen',
-        subtitle: 'Ticket créé et géolocalisé via Montone',
+        subtitle: `Ticket créé et géolocalisé via ${brand.name}`,
         time: '08:00',
         status: 'completed',
       },
@@ -189,7 +190,7 @@ function getTimelineSteps(issue: Issue, districtNameOverride?: string): Timeline
     {
       id: 'step-1',
       title: 'Signalé par le citoyen',
-      subtitle: 'Ticket créé et géolocalisé via Montone',
+      subtitle: `Ticket créé et géolocalisé via ${brand.name}`,
       time: createdTime,
       status: 'completed',
     },

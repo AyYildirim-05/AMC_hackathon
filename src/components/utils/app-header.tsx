@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import Constants from 'expo-constants';
 import { SymbolView } from 'expo-symbols';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { brand } from '@/brand';
 import { ProfileButton } from '@/components/utils/profile-button';
 import { ThemedText } from '@/components/utils/themed-text';
 import { Spacing } from '@/constants/theme';
@@ -12,7 +12,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage } from '@/i18n';
 import { fetchDistrict } from '@/lib/api/districts';
 
-const APP_NAME = Constants.expoConfig?.name ?? 'Montone';
+const APP_NAME = brand.name;
 
 /**
  * Top bar shared by every tab: the signed-in user's home district and role, and their avatar,
