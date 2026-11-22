@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { useIssueStatusColors } from '@/components/utils/issue-status';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import type { IssueCategory } from '@/models/Issue';
 
@@ -74,7 +75,8 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
   ) {
     const { t } = useTranslation();
     const theme = useTheme();
-    const isDark = theme.text !== '#1C211F';
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     // Markers use theme colors only: status colors for reports, the text color for roadworks.
     const statusColors = useIssueStatusColors();
     /** Theme shadow color at ~30% opacity (8-digit hex), for marker shadows. */
@@ -192,8 +194,10 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
 
       if (revLayerRef.current) {
         revLayerRef.current.clearLayers();
+        // A light line on the dark satellite ("contrast") tiles; otherwise neutral 700, which is
+        // dark in light mode and light in dark mode.
         const revColor =
-          layerMode === 'works' ? '#15803D' : resolvedKey === 'contrast' ? '#6EE7B7' : '#446552';
+          resolvedKey === 'contrast' && !isDark ? theme.neutral300 : theme.neutral700;
         for (const corridor of REV_CORRIDORS) {
           L.polyline(
             corridor.coordinates.map((c) => [c.latitude, c.longitude]),
@@ -206,7 +210,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
           ).addTo(revLayerRef.current);
         }
       }
-    }, [mapReady, layerMode, isDark]);
+    }, [mapReady, layerMode, isDark, theme]);
 
     // Sync City of Montréal roadwork markers (small squares, below the report pins)
     useEffect(() => {

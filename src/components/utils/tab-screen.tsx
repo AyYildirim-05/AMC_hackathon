@@ -12,10 +12,20 @@ export type TabScreenProps = {
   /** Screen content. Without it, a centered placeholder message is shown. */
   children?: ReactNode;
   placeholder?: string;
+  /** Show the app header (district, role, avatar) at the top. Default true. */
+  showAppHeader?: boolean;
+  /** Show the title under the header. Default true. */
+  showTitle?: boolean;
 };
 
 /** Shared frame for the top-level tabs: safe area, title, and room for the tab bar. */
-export function TabScreen({ title, children, placeholder }: TabScreenProps) {
+export function TabScreen({
+  title,
+  children,
+  placeholder,
+  showAppHeader = true,
+  showTitle = true,
+}: TabScreenProps) {
   // iOS reports the floating native tab bar inside the bottom safe-area inset (about 97pt on an
   // iPhone 18 Pro: the bar plus the home indicator), so that inset alone keeps content above it.
   // Android keeps the starter's fixed inset (not measured).
@@ -28,12 +38,14 @@ export function TabScreen({ title, children, placeholder }: TabScreenProps) {
         style={[styles.safeArea, { paddingBottom: bottomInset }]}
         edges={['top', 'left', 'right']}
       >
-        <AppHeader />
-        <View style={styles.header}>
-          <ThemedText type="subtitle" style={styles.title}>
-            {title}
-          </ThemedText>
-        </View>
+        {showAppHeader ? <AppHeader /> : null}
+        {showTitle ? (
+          <View style={styles.header}>
+            <ThemedText type="subtitle" style={styles.title}>
+              {title}
+            </ThemedText>
+          </View>
+        ) : null}
         {children ?? (
           <ThemedView style={styles.placeholder} align="center" justify="center">
             <ThemedText themeColor="textSecondary">{placeholder}</ThemedText>

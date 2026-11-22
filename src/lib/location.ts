@@ -31,24 +31,31 @@ export async function detectDeviceLocation(): Promise<DeviceLocation | null> {
     const latitude = Number(position.coords.latitude.toFixed(6));
     const longitude = Number(position.coords.longitude.toFixed(6));
 
-    let address: string | null = null;
-    let postalCode: string | null = null;
-    let place: string | null = null;
-
-    try {
-      const geocoded = await Location.reverseGeocodeAsync({ latitude, longitude });
-      const first = geocoded[0];
-      if (first) {
-        address = formatGeocodedAddress(first);
-        postalCode = first.postalCode ?? null;
-        place = first.district || first.street || first.city || first.name || null;
-      }
-    } catch {
-      // Reverse geocoding can be unavailable offline or on web; coordinates are still valid.
-    }
-
-    return { latitude, longitude, address, postalCode, place };
+    return { latitude, longitude, ...(await reverseGeocodeLocation(latitude, longitude)) };
   } catch {
     return null;
   }
+}
+
+/**
+ * The street address, postal code and place name at `(latitude, longitude)`, e.g. for a pin placed
+ * on the map. Each is `null` when unknown: reverse geocoding can be unavailable offline or on web.
+ */
+export async function reverseGeocodeLocation(
+  latitude: number,
+  longitude: number,
+): Promise<Pick<DeviceLocation, 'address' | 'postalCode' | 'place'>> {
+  try {
+    const first = (await Location.reverseGeocodeAsync({ latitude, longitude }))[0];
+    if (first) {
+      return {
+        address: formatGeocodedAddress(first),
+        postalCode: first.postalCode ?? null,
+        place: first.district || first.street || first.city || first.name || null,
+      };
+    }
+  } catch {
+    // Coordinates stay valid without an address.
+  }
+  return { address: null, postalCode: null, place: null };
 }

@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, useColorScheme, View } from 'react-nativ
 
 import { AuthScreen } from '@/app/auth';
 import AppTabs from '@/components/layout/app-tabs';
+import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { OnboardingPresentationModal } from '@/components/layout/OnboardingPresentationModal';
 import { SplashScreenOverlay } from '@/components/layout/SplashScreenOverlay';
 import { ThemedView } from '@/components/utils/themed-view';
@@ -49,7 +50,10 @@ function RootContent() {
           <ActivityIndicator color={theme.accent} />
         </ThemedView>
       ) : status === 'signedIn' ? (
-        <AppTabs />
+        // The profile slides in over the tabs (tab bar included) from any screen.
+        <ProfilePanelProvider>
+          <AppTabs />
+        </ProfilePanelProvider>
       ) : (
         <AuthScreen />
       )}

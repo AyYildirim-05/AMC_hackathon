@@ -80,6 +80,7 @@
     "watchman": false,
     "moduleNameMapper": {
       "\\.css$": "<rootDir>/test/style-stub.js",
+      "^react-native-reanimated$": "<rootDir>/test/reanimated-mock.tsx",
       "^@/assets/(.*)$": "<rootDir>/assets/$1",
       "^@/(.*)$": "<rootDir>/src/$1"
     },

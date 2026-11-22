@@ -41,12 +41,11 @@ export function TriageIssueCard({
 }: TriageIssueCardProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
   const statusColors = useIssueStatusColors();
   const [statusOpen, setStatusOpen] = useState(false);
   const statusLabel = t(`profile.triage.status.${issue.status}`);
   const urgency = getIssueUrgency(issue);
-  const severityPalette = urgency ? getSeverityBadgePalette(urgency, isDark) : null;
+  const severityPalette = urgency ? getSeverityBadgePalette(urgency, theme) : null;
   const severityLabel = urgency
     ? issue.severity_score != null
       ? t('issue.severityBadge', {

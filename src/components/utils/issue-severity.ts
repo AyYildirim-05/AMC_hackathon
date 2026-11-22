@@ -1,3 +1,4 @@
+import { type ThemeColors } from '@/components/utils/issue-status';
 import { type Issue, type IssueUrgency, severityScoreToUrgency } from '@/models/Issue';
 
 export interface SeverityBadgePalette {
@@ -18,34 +19,35 @@ export function getIssueUrgency(
   return null;
 }
 
+/** Badge colors per urgency, from the theme (accent for the urgent ones, neutral for low). */
 export function getSeverityBadgePalette(
   urgency: IssueUrgency,
-  isDark: boolean,
+  theme: ThemeColors,
 ): SeverityBadgePalette {
   switch (urgency) {
     case 'high':
       return {
         icon: '🚨',
-        backgroundColor: isDark ? '#3B181B' : '#FEF2F2',
-        borderColor: isDark ? '#7F2329' : '#FECACA',
-        textColor: isDark ? '#FCA5A5' : '#B91C1C',
-        accentBorderColor: isDark ? '#EF4444' : '#DC2626',
+        backgroundColor: theme.accent100,
+        borderColor: theme.accent300,
+        textColor: theme.accent700,
+        accentBorderColor: theme.accent500,
       };
     case 'medium':
       return {
         icon: '⚠️',
-        backgroundColor: isDark ? '#382B14' : '#FFFBEB',
-        borderColor: isDark ? '#785A1F' : '#FDE68A',
-        textColor: isDark ? '#FCD34D' : '#B45309',
-        accentBorderColor: isDark ? '#F59E0B' : '#D97706',
+        backgroundColor: theme.neutral100,
+        borderColor: theme.accent200,
+        textColor: theme.accent600,
+        accentBorderColor: theme.accent400,
       };
     case 'low':
       return {
         icon: '🟢',
-        backgroundColor: isDark ? '#183326' : '#ECFDF5',
-        borderColor: isDark ? '#2B5B44' : '#A7F3D0',
-        textColor: isDark ? '#6EE7B7' : '#047857',
-        accentBorderColor: isDark ? '#10B981' : '#059669',
+        backgroundColor: theme.neutral100,
+        borderColor: theme.neutral300,
+        textColor: theme.neutral700,
+        accentBorderColor: theme.neutral500,
       };
   }
 }

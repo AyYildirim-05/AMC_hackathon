@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { installMockBackendApi, TEST_DISTRICTS } from '../../../../test/fixtures';
@@ -23,21 +23,6 @@ jest.mock('@/providers/auth-provider', () => ({
 const mockNavigate = jest.fn();
 jest.mock('expo-router', () => ({ useRouter: () => ({ navigate: mockNavigate }) }));
 jest.mock('expo-symbols', () => ({ SymbolView: () => null }));
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'fr', languageTag: 'fr-CA' }],
 }));
@@ -118,6 +103,17 @@ it('filters the feed by category', async () => {
 
   expect(screen.getByTestId('district-feed-category-traffic_safety')).toBeSelected();
   expect(screen.queryByText('Deep pothole near Beaubien and Saint-Denis')).toBeNull();
+});
+
+it('lists the boroughs in a sheet that can be closed without picking one', async () => {
+  await renderFeed();
+
+  await fireEvent.press(screen.getByTestId('district-feed-picker'));
+  expect(screen.getByTestId('district-feed-picker-sheet')).toBeOnTheScreen();
+  expect(screen.getByTestId('district-feed-picker-sheet-close')).toBeOnTheScreen();
+
+  await fireEvent.press(screen.getByTestId('district-feed-picker-sheet-close'));
+  await waitFor(() => expect(screen.queryByTestId('district-feed-picker-sheet')).toBeNull());
 });
 
 it('switches district from the picker', async () => {

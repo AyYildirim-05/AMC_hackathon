@@ -51,22 +51,6 @@ jest.mock('expo-location', () => ({
   reverseGeocodeAsync: async () => [],
 }));
 
-// The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let value = initial;
-    return { get: () => value, set: (next: T) => (value = next) };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-  };
-});
-
 const issue = (
   id: string,
   status: Issue['status'],
@@ -87,6 +71,62 @@ const dotColor = (label: RegExp) =>
 describe('ReportLocationMap', () => {
   beforeEach(async () => {
     await setLanguage('en');
+  });
+
+  describe('pin mode', () => {
+    const point = { latitude: 45.53, longitude: -73.58 };
+    const masson = { latitude: 45.546312, longitude: -73.577421 };
+    const press = (coordinate: object, action?: string) => ({
+      nativeEvent: { coordinate, ...(action ? { action } : {}) },
+    });
+
+    it('picks the point the user taps on the map', async () => {
+      const onPickPoint = jest.fn();
+      await render(
+        <ReportLocationMap point={point} issues={[]} pinMode onPickPoint={onPickPoint} />,
+      );
+
+      await fireEvent(screen.getByTestId('report-location-map'), 'press', press(masson));
+
+      expect(onPickPoint).toHaveBeenCalledWith(masson);
+    });
+
+    it('ignores taps on issue markers', async () => {
+      const onPickPoint = jest.fn();
+      await render(
+        <ReportLocationMap point={point} issues={[]} pinMode onPickPoint={onPickPoint} />,
+      );
+
+      await fireEvent(
+        screen.getByTestId('report-location-map'),
+        'press',
+        press(masson, 'marker-press'),
+      );
+
+      expect(onPickPoint).not.toHaveBeenCalled();
+    });
+
+    it('picks the point where the report marker is dropped after dragging', async () => {
+      const onPickPoint = jest.fn();
+      await render(
+        <ReportLocationMap point={point} issues={[]} pinMode onPickPoint={onPickPoint} />,
+      );
+
+      expect(screen.getByTestId('report-map-point').props.draggable).toBe(true);
+      await fireEvent(screen.getByTestId('report-map-point'), 'dragEnd', press(masson));
+
+      expect(onPickPoint).toHaveBeenCalledWith(masson);
+    });
+
+    it('does nothing outside pin mode', async () => {
+      const onPickPoint = jest.fn();
+      await render(<ReportLocationMap point={point} issues={[]} onPickPoint={onPickPoint} />);
+
+      await fireEvent(screen.getByTestId('report-location-map'), 'press', press(masson));
+
+      expect(onPickPoint).not.toHaveBeenCalled();
+      expect(screen.getByTestId('report-map-point').props.draggable).toBe(false);
+    });
   });
 
   it('marks the report point, colors each issue by status and shows its category icon', async () => {

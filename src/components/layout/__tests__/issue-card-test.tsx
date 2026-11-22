@@ -188,4 +188,63 @@ describe('IssueCard Helpers', () => {
     expect(computeInitials('@camille')).toBe('CA');
     expect(computeInitials('')).toBe('AV');
   });
+  describe('collapsible', () => {
+    const description =
+      'Construction barriers are blocking the protected bike lane near Parc La Fontaine with no marked detour.';
+
+    it('shows only the top part (header and title) until tapped', async () => {
+      await render(<IssueCard issue={mockBikeIssue} collapsible testID="card" />);
+
+      expect(screen.getByText('@marc_velo')).toBeOnTheScreen();
+      expect(screen.getByText('En cours')).toBeOnTheScreen();
+      expect(screen.getByText('Blocked bike lane on Rue Rachel Est')).toBeOnTheScreen();
+      // The other parts stay mounted (each measures its natural height) but folded: out of reach.
+      expect(screen.queryByText(description)).toBeNull();
+      expect(screen.getByText(description, { includeHiddenElements: true })).toBeTruthy();
+      expect(screen.queryByText('@camille_mtl')).toBeNull();
+      expect(screen.queryByTestId('issue-upvote-button')).toBeNull();
+      expect(screen.getByTestId('card')).not.toBeExpanded();
+    });
+
+    it('unfolds every part on tap, then folds them back on a second tap', async () => {
+      const onPress = jest.fn();
+      const onUpvote = jest.fn();
+      await render(
+        <IssueCard
+          issue={mockBikeIssue}
+          collapsible
+          onPress={onPress}
+          onUpvote={onUpvote}
+          testID="card"
+        />,
+      );
+
+      await fireEvent.press(screen.getByTestId('card'));
+
+      expect(screen.getByTestId('card')).toBeExpanded();
+      expect(screen.getByText(description)).toBeOnTheScreen();
+      expect(screen.getByText('1 photo')).toBeOnTheScreen();
+      expect(screen.getByText('@camille_mtl')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('issue-upvote-button'));
+      expect(onUpvote).toHaveBeenCalledTimes(1);
+      // A collapsible card's tap unfolds it; it does not also call onPress.
+      expect(onPress).not.toHaveBeenCalled();
+
+      await fireEvent.press(screen.getByTestId('card'));
+
+      expect(screen.getByTestId('card')).not.toBeExpanded();
+      expect(screen.queryByText(description)).toBeNull();
+      expect(screen.queryByTestId('issue-upvote-button')).toBeNull();
+    });
+
+    it('is off by default: the whole card shows and a tap calls onPress', async () => {
+      const onPress = jest.fn();
+      await render(<IssueCard issue={mockBikeIssue} onPress={onPress} testID="card" />);
+
+      expect(screen.getByText(description)).toBeOnTheScreen();
+      expect(screen.getByTestId('issue-upvote-button')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByTestId('card'));
+      expect(onPress).toHaveBeenCalledTimes(1);
+    });
+  });
 });

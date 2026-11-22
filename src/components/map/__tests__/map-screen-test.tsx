@@ -4,6 +4,7 @@ import { Share } from 'react-native';
 
 import { installMockBackendApi, TEST_DISTRICTS, TEST_ISSUES } from '../../../../test/fixtures';
 
+import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import CardScreen from '@/app/card';
 import { issueStatusColors } from '@/components/utils/issue-status';
 import { Colors } from '@/constants/theme';
@@ -72,33 +73,6 @@ jest.mock('react-native-maps', () => {
   };
 });
 
-jest.mock('react-native-reanimated', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  const sharedValue = <T,>(initial: T) => {
-    let current = initial;
-    return {
-      get value() {
-        return current;
-      },
-      set value(next: T) {
-        current = next;
-      },
-      get: () => current,
-      set: (next: T) => {
-        current = next;
-      },
-    };
-  };
-  return {
-    __esModule: true,
-    default: { View },
-    Easing: { out: (fn: unknown) => fn, ease: (v: number) => v },
-    useSharedValue: sharedValue,
-    useAnimatedStyle: (factory: () => object) => factory(),
-    withTiming: <T,>(value: T) => value,
-    withRepeat: <T,>(value: T) => value,
-  };
-});
 jest.mock('expo-localization', () => ({
   getLocales: () => [{ languageCode: 'fr', languageTag: 'fr-CA' }],
 }));
@@ -129,7 +103,9 @@ async function renderCardScreen() {
   });
   const utils = await render(
     <QueryClientProvider client={queryClient}>
-      <CardScreen />
+      <ProfilePanelProvider>
+        <CardScreen />
+      </ProfilePanelProvider>
     </QueryClientProvider>,
   );
   await screen.findByText('Blocked bike lane on Rue Rachel Est');
@@ -498,14 +474,22 @@ describe('CardScreen (Map page) — all interactive controls', () => {
 
     await fireEvent.press(screen.getByTestId('map-profile-button'));
     await fireEvent.press(screen.getByRole('button', { name: 'Anglais' }));
-    expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
-      `${issues.length} reports on the map`,
+    // While the profile covers the map, the map is hidden from screen readers; go back to it.
+    await fireEvent.press(screen.getByTestId('profile-back-button'));
+    await waitFor(() =>
+      expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
+        `${issues.length} reports on the map`,
+      ),
     );
     expect(screen.getByText('All boroughs ▾')).toBeOnTheScreen();
 
+    await fireEvent.press(screen.getByTestId('map-profile-button'));
     await fireEvent.press(screen.getByRole('button', { name: 'French' }));
-    expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
-      `${issues.length} signalements sur la carte`,
+    await fireEvent.press(screen.getByTestId('profile-back-button'));
+    await waitFor(() =>
+      expect(screen.getByTestId('map-issue-list-title')).toHaveTextContent(
+        `${issues.length} signalements sur la carte`,
+      ),
     );
   });
 

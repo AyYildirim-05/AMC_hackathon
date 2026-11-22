@@ -1,19 +1,23 @@
 import { NativeTabs } from 'expo-router/native-tabs';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function AppTabs() {
   const { t } = useTranslation();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const theme = useTheme();
 
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}
+      backgroundColor={theme.background}
+      indicatorColor={theme.backgroundElement}
+      // The selected tab in the accent color (not the system blue), the others in neutral grey.
+      tintColor={theme.tabIconSelected}
+      iconColor={{ default: theme.tabIconDefault, selected: theme.tabIconSelected }}
+      labelStyle={{
+        default: { color: theme.tabIconDefault },
+        selected: { color: theme.tabIconSelected },
+      }}
     >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>{t('tabs.issues')}</NativeTabs.Trigger.Label>

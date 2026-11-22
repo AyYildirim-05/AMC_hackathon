@@ -71,15 +71,18 @@ export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps)
       <Section title={t('profile.stats.title')} aside={`● ${t('profile.stats.live')}`}>
         <StatGrid>
           <StatTile
+            icon="warning"
             value={String(stats.activeIssues)}
             label={t('profile.stats.activeIssues', { count: stats.activeIssues })}
           />
           <StatTile
+            icon="percent"
             value={stats.responseRate311 === null ? '—' : `${stats.responseRate311}%`}
             label={t('profile.stats.responseRate')}
             tag="311"
           />
           <StatTile
+            icon="clock"
             value={
               stats.avgFirstResponseHours === null
                 ? '—'
@@ -89,6 +92,7 @@ export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps)
             tag={t('profile.stats.target')}
           />
           <StatTile
+            icon="verified"
             value={String(stats.confirmedResolutions)}
             label={t('profile.stats.confirmed', { count: stats.confirmedResolutions })}
             tag={t('profile.stats.citizens')}

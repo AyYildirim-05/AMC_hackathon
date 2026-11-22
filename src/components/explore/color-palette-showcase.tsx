@@ -8,7 +8,7 @@ import { Spacing } from '@/constants/theme';
 export function ColorPaletteShowcase() {
   return (
     <View style={styles.container}>
-      <ThemedText type="overline">Brand scale · #9ECEB0 → #1C211F</ThemedText>
+      <ThemedText type="overline">Brand palette · neutral & accent</ThemedText>
       <PaletteScale />
 
       <ThemedText type="overline">Status</ThemedText>

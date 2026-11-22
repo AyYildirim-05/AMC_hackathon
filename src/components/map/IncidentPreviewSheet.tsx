@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { computeInitials, formatAddress, formatIssueDate } from '@/components/utils/formatter';
 import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -39,26 +40,26 @@ function getCategoryIcon(category: IssueCategory): MapIconName {
   }
 }
 
-function getStatusPillColors(status: IssueStatus, isDark: boolean) {
+function getStatusPillColors(status: IssueStatus, theme: Theme) {
   switch (status) {
     case 'in_progress':
       return {
-        bg: isDark ? '#183827' : '#E3EFE7',
-        text: isDark ? '#A6E3B9' : '#14532D',
-        dot: isDark ? '#86EFAC' : '#14532D',
+        bg: theme.backgroundElement,
+        text: theme.neutral800,
+        dot: theme.neutral800,
       };
     case 'resolved':
       return {
-        bg: isDark ? '#0F3824' : '#DCFCE7',
-        text: isDark ? '#86EFAC' : '#15803D',
-        dot: '#16A34A',
+        bg: theme.background,
+        text: theme.neutral700,
+        dot: theme.neutral600,
       };
     case 'not_started':
     default:
       return {
-        bg: isDark ? '#28322D' : '#EEF2F0',
-        text: isDark ? '#CBD5E1' : '#475569',
-        dot: '#64748B',
+        bg: theme.background,
+        text: theme.neutral700,
+        dot: theme.neutral600,
       };
   }
 }
@@ -82,7 +83,7 @@ export function IncidentPreviewSheet({
 }: IncidentPreviewSheetProps) {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
-  const isDark = theme.text !== '#1C211F';
+  const styles = useThemedStyles(createStyles);
   const [collapsed, setCollapsed] = useState(false);
 
   // Same colors as the page and the tab bar above it (theme only), so the floating iOS tab bar
@@ -99,7 +100,7 @@ export function IncidentPreviewSheet({
         testID="map-empty-sheet"
         style={[styles.sheet, { backgroundColor: surfaceBg, shadowColor: theme.shadow }]}
       >
-        <View style={[styles.dragHandle, { backgroundColor: isDark ? '#3B4B42' : '#DFE4E0' }]} />
+        <View style={[styles.dragHandle, { backgroundColor: theme.neutral200 }]} />
         <View style={styles.emptyContent}>
           <Text style={[styles.emptyTitle, { color: primaryText }]}>{t('map.emptyTitle')}</Text>
           <Pressable
@@ -117,7 +118,7 @@ export function IncidentPreviewSheet({
 
   const categoryIcon = getCategoryIcon(issue.category);
   const categoryLabel = t(`issue.category.${issue.category}`);
-  const statusColors = getStatusPillColors(issue.status, isDark);
+  const statusColors = getStatusPillColors(issue.status, theme);
   const statusLabel =
     issue.status === 'in_progress' && issue.official_response
       ? t('map.teamNotified')
@@ -150,7 +151,7 @@ export function IncidentPreviewSheet({
         hitSlop={10}
         style={styles.handleHitArea}
       >
-        <View style={[styles.dragHandle, { backgroundColor: isDark ? '#3B4B42' : '#DFE4E0' }]} />
+        <View style={[styles.dragHandle, { backgroundColor: theme.neutral200 }]} />
       </Pressable>
 
       {onBackToList ? (
@@ -170,11 +171,9 @@ export function IncidentPreviewSheet({
       {/* Header Row: Category Badge, Status Badge & Reference ID */}
       <View style={styles.headerRow}>
         <View style={styles.badgeGroup}>
-          <View style={[styles.categoryBadge, { backgroundColor: isDark ? '#2B4A39' : '#C6EBD3' }]}>
-            <MapIcon name={categoryIcon} size={13} color={isDark ? '#D7F5E2' : '#002112'} />
-            <Text style={[styles.categoryBadgeText, { color: isDark ? '#D7F5E2' : '#002112' }]}>
-              {categoryLabel}
-            </Text>
+          <View style={[styles.categoryBadge, { backgroundColor: theme.neutral200 }]}>
+            <MapIcon name={categoryIcon} size={13} color={theme.text} />
+            <Text style={[styles.categoryBadgeText, { color: theme.text }]}>{categoryLabel}</Text>
           </View>
 
           <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
@@ -190,10 +189,10 @@ export function IncidentPreviewSheet({
               <View
                 key={el}
                 testID={`map-preview-element-${el}`}
-                style={[styles.categoryBadge, { backgroundColor: isDark ? '#1B3142' : '#EBF5FF' }]}
+                style={[styles.categoryBadge, { backgroundColor: theme.background }]}
               >
                 <Text style={styles.elementIcon}>{meta.icon}</Text>
-                <Text style={[styles.categoryBadgeText, { color: isDark ? '#BAE6FD' : '#1E40AF' }]}>
+                <Text style={[styles.categoryBadgeText, { color: theme.accent800 }]}>
                   {t(`issue.elements.${el}`, { defaultValue: meta.fallbackLabel })}
                 </Text>
               </View>
@@ -224,13 +223,13 @@ export function IncidentPreviewSheet({
                 accessibilityLabel={issue.title}
               />
               <View style={styles.photoCountBadge}>
-                <MapIcon name="camera" size={10} color="#FFFFFF" />
+                <MapIcon name="camera" size={10} color={theme.neutral100} />
                 <Text style={styles.photoCountText}>{issue.images.length}</Text>
               </View>
             </>
           ) : (
             <View style={styles.placeholderThumb}>
-              <MapIcon name={categoryIcon} size={28} color={isDark ? '#A6E3B9' : '#446552'} />
+              <MapIcon name={categoryIcon} size={28} color={theme.neutral700} />
             </View>
           )}
         </View>
@@ -244,7 +243,7 @@ export function IncidentPreviewSheet({
           </Text>
 
           <View style={styles.addressRow}>
-            <MapIcon name="location" size={14} color={isDark ? '#8CB69C' : '#446552'} />
+            <MapIcon name="location" size={14} color={theme.neutral700} />
             <Text numberOfLines={1} style={[styles.addressText, { color: secondaryText }]}>
               {formattedAddress}
             </Text>
@@ -260,10 +259,7 @@ export function IncidentPreviewSheet({
               <Text style={[styles.dotSep, { color: secondaryText }]}>•</Text>
             ) : null}
             {districtName ? (
-              <Text
-                numberOfLines={1}
-                style={[styles.boroughMeta, { color: isDark ? '#C6EBD3' : '#39473F' }]}
-              >
+              <Text numberOfLines={1} style={[styles.boroughMeta, { color: theme.neutral800 }]}>
                 {districtName}
               </Text>
             ) : null}
@@ -274,19 +270,15 @@ export function IncidentPreviewSheet({
       {/* Official Borough Team Update Excerpt (hidden when collapsed) */}
       {!collapsed && issue.official_response ? (
         <View style={[styles.officialCard, { backgroundColor: subtleBg }]}>
-          <View
-            style={[styles.officialAvatar, { backgroundColor: isDark ? '#2B4A39' : '#C6EBD3' }]}
-          >
-            <Text style={[styles.officialInitial, { color: isDark ? '#D7F5E2' : '#002112' }]}>
-              {officialInitial}
-            </Text>
+          <View style={[styles.officialAvatar, { backgroundColor: theme.neutral200 }]}>
+            <Text style={[styles.officialInitial, { color: theme.text }]}>{officialInitial}</Text>
           </View>
           <View style={styles.officialBody}>
             <View style={styles.officialHeader}>
               <Text numberOfLines={1} style={[styles.officialAuthor, { color: primaryText }]}>
                 {districtName ?? issue.official_response.author}
               </Text>
-              <MapIcon name="verified" size={13} color={isDark ? '#86EFAC' : '#446552'} />
+              <MapIcon name="verified" size={13} color={theme.neutral700} />
             </View>
             <Text numberOfLines={1} style={[styles.officialQuote, { color: secondaryText }]}>
               « {issue.official_response.comment} »
@@ -307,7 +299,7 @@ export function IncidentPreviewSheet({
           style={({ pressed }) => [
             styles.upvoteBtn,
             {
-              backgroundColor: isUpvoted ? (isDark ? '#1F4D36' : '#C6EBD3') : actionBg,
+              backgroundColor: isUpvoted ? theme.neutral200 : actionBg,
             },
             pressed && styles.pressed,
           ]}
@@ -315,12 +307,14 @@ export function IncidentPreviewSheet({
           <MapIcon
             name="thumbUp"
             size={16}
-            color={isUpvoted ? (isDark ? '#86EFAC' : '#14532D') : isDark ? '#A6E3B9' : '#446552'}
+            color={isUpvoted ? theme.neutral800 : theme.neutral700}
           />
           <Text
             style={[
               styles.upvoteText,
-              { color: isUpvoted ? (isDark ? '#ECFDF5' : '#002112') : primaryText },
+              {
+                color: isUpvoted ? theme.text : primaryText,
+              },
             ]}
           >
             {upvoteCount}
@@ -336,7 +330,7 @@ export function IncidentPreviewSheet({
           style={({ pressed }) => [
             styles.shareBtn,
             {
-              backgroundColor: justShared ? (isDark ? '#1F4D36' : '#C6EBD3') : actionBg,
+              backgroundColor: justShared ? theme.neutral200 : actionBg,
             },
             pressed && styles.pressed,
           ]}
@@ -344,7 +338,7 @@ export function IncidentPreviewSheet({
           <MapIcon
             name={justShared ? 'verified' : 'share'}
             size={17}
-            color={justShared ? (isDark ? '#86EFAC' : '#14532D') : secondaryText}
+            color={justShared ? theme.neutral800 : secondaryText}
           />
         </Pressable>
 
@@ -356,256 +350,257 @@ export function IncidentPreviewSheet({
           style={({ pressed }) => [styles.primaryCta, pressed && styles.pressed]}
         >
           <Text style={styles.primaryCtaText}>{t('map.viewRecord')}</Text>
-          <MapIcon name="arrowForward" size={16} color="#C6EBD3" />
+          <MapIcon name="arrowForward" size={16} color={theme.neutral200} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: Spacing.three,
-    paddingTop: 8,
-    paddingBottom: Spacing.three,
-    gap: 10,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    elevation: 10,
-  },
-  backLink: { alignSelf: 'flex-start' },
-  backLinkText: { fontSize: 13, fontWeight: '600' },
-  handleHitArea: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  dragHandle: {
-    width: 40,
-    height: 5,
-    borderRadius: 999,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  badgeGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 6,
-    flexShrink: 1,
-  },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  elementIcon: {
-    fontSize: 11,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  refCode: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    fontFamily: Fonts.mono,
-    flexShrink: 0,
-  },
-  bodyRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  thumbnailBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 12,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  thumbnailImage: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderThumb: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoCountBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(57, 71, 63, 0.84)',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 5,
-  },
-  photoCountText: {
-    color: '#FFFFFF',
-    fontSize: 9.5,
-    fontWeight: '700',
-    fontFamily: Fonts.mono,
-  },
-  bodyMeta: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  issueTitle: {
-    fontSize: 15.5,
-    lineHeight: 20,
-    fontWeight: '700',
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  addressText: {
-    fontSize: 12,
-    flexShrink: 1,
-  },
-  subMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 1,
-  },
-  dateMeta: {
-    fontSize: 11,
-    opacity: 0.85,
-  },
-  dotSep: {
-    fontSize: 11,
-    opacity: 0.6,
-  },
-  boroughMeta: {
-    fontSize: 11,
-    fontWeight: '600',
-    flexShrink: 1,
-  },
-  officialCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  officialAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  officialInitial: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  officialBody: {
-    flex: 1,
-    minWidth: 0,
-  },
-  officialHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  officialAuthor: {
-    fontSize: 12,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-  officialQuote: {
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 2,
-  },
-  upvoteBtn: {
-    height: 44,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  upvoteText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  shareBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryCta: {
-    flex: 1,
-    height: 44,
-    borderRadius: 999,
-    backgroundColor: '#39473F',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  primaryCtaText: {
-    color: '#C6EBD3',
-    fontSize: 13.5,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  emptyContent: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    sheet: {
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: Spacing.three,
+      paddingTop: 8,
+      paddingBottom: Spacing.three,
+      gap: 10,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.14,
+      shadowRadius: 14,
+      elevation: 10,
+    },
+    backLink: { alignSelf: 'flex-start' },
+    backLinkText: { fontSize: 13, fontWeight: '600' },
+    handleHitArea: {
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    dragHandle: {
+      width: 40,
+      height: 5,
+      borderRadius: 999,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    badgeGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      flexShrink: 1,
+    },
+    categoryBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    categoryBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    elementIcon: {
+      fontSize: 11,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+    },
+    statusBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    refCode: {
+      fontSize: 10.5,
+      fontWeight: '600',
+      fontFamily: Fonts.mono,
+      flexShrink: 0,
+    },
+    bodyRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    thumbnailBox: {
+      width: 76,
+      height: 76,
+      borderRadius: 12,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    thumbnailImage: {
+      width: '100%',
+      height: '100%',
+    },
+    placeholderThumb: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    photoCountBadge: {
+      position: 'absolute',
+      bottom: 4,
+      right: 4,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: `${theme.neutral800}D6`,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+      borderRadius: 5,
+    },
+    photoCountText: {
+      color: theme.neutral100,
+      fontSize: 9.5,
+      fontWeight: '700',
+      fontFamily: Fonts.mono,
+    },
+    bodyMeta: {
+      flex: 1,
+      minWidth: 0,
+      gap: 3,
+    },
+    issueTitle: {
+      fontSize: 15.5,
+      lineHeight: 20,
+      fontWeight: '700',
+    },
+    addressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    addressText: {
+      fontSize: 12,
+      flexShrink: 1,
+    },
+    subMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 1,
+    },
+    dateMeta: {
+      fontSize: 11,
+      opacity: 0.85,
+    },
+    dotSep: {
+      fontSize: 11,
+      opacity: 0.6,
+    },
+    boroughMeta: {
+      fontSize: 11,
+      fontWeight: '600',
+      flexShrink: 1,
+    },
+    officialCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 12,
+    },
+    officialAvatar: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    officialInitial: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    officialBody: {
+      flex: 1,
+      minWidth: 0,
+    },
+    officialHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    officialAuthor: {
+      fontSize: 12,
+      fontWeight: '700',
+      flexShrink: 1,
+    },
+    officialQuote: {
+      fontSize: 11.5,
+      lineHeight: 16,
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingTop: 2,
+    },
+    upvoteBtn: {
+      height: 44,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    upvoteText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    shareBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryCta: {
+      flex: 1,
+      height: 44,
+      borderRadius: 999,
+      backgroundColor: theme.neutral800,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    primaryCtaText: {
+      color: theme.neutral200,
+      fontSize: 13.5,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+    },
+    emptyContent: {
+      alignItems: 'center',
+      paddingVertical: 14,
+      gap: 12,
+    },
+    emptyTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    pressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.98 }],
+    },
+  });
