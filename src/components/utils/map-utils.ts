@@ -352,3 +352,29 @@ export function reserveBottom(region: MapRegion, fraction: number): MapRegion {
   const top = region.latitude + region.latitudeDelta / 2;
   return { ...region, latitude: top - latitudeDelta / 2, latitudeDelta };
 }
+
+/** Great-circle (haversine) distance in metres between two points. */
+export function distanceMeters(a: LatLng, b: LatLng): number {
+  const EARTH_RADIUS_M = 6_371_000;
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = rad(b.latitude - a.latitude);
+  const dLng = rad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+}
+
+/** The issue closest to `point` that is at most `maxMeters` away, or `null` when there is none. */
+export function nearestIssueWithin(
+  issues: readonly Issue[],
+  point: LatLng,
+  maxMeters: number,
+): { issue: Issue; meters: number } | null {
+  let nearest: { issue: Issue; meters: number } | null = null;
+  for (const issue of issues) {
+    const meters = distanceMeters(point, issue);
+    if (meters <= maxMeters && (!nearest || meters < nearest.meters)) nearest = { issue, meters };
+  }
+  return nearest;
+}
