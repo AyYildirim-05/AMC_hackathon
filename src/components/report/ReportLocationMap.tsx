@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { CATEGORY_ICONS, MapIcon } from '@/components/map/MapIcon';
+import { MapUnavailable, nativeMapsAvailable } from '@/components/map/map-availability';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { type LatLng, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -50,6 +51,9 @@ export function ReportLocationMap({
     if (pinMode) return;
     mapRef.current?.animateToRegion(region, 300);
   }, [region, pinMode]);
+
+  // Android without a Google Maps key: a note instead of a map that would crash the app.
+  if (!nativeMapsAvailable) return <MapUnavailable testID="report-location-map" />;
 
   return (
     <MapView

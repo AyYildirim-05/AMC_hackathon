@@ -323,6 +323,9 @@ const en = {
     },
   },
   map: {
+    unavailableTitle: 'Map unavailable on this device',
+    unavailableBody:
+      'This Android build has no Google Maps API key. Add GOOGLE_MAPS_ANDROID_API_KEY to .env and rebuild.',
     brandTitle: 'Montone',
     allBoroughs: 'All boroughs',
     searchPlaceholder: 'Search street, #311, park...',

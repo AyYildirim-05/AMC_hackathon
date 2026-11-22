@@ -10,6 +10,7 @@ import type { Roadwork } from '@/lib/api/roadworks';
 import type { Issue, IssueCategory } from '@/models/Issue';
 
 import { MapIcon, type MapIconName } from './MapIcon';
+import { MapUnavailable, nativeMapsAvailable } from './map-availability';
 import { ROADWORK_STYLE } from './roadwork-style';
 import {
   type MapLayerMode,
@@ -114,6 +115,15 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
     const handleRegionChangeComplete = (next: Region) => {
       regionRef.current = next;
     };
+
+    // Android without a Google Maps key: a note instead of a map that would crash the app.
+    if (!nativeMapsAvailable) {
+      return (
+        <View testID="montreal-map-canvas" style={styles.container}>
+          <MapUnavailable />
+        </View>
+      );
+    }
 
     return (
       <View testID="montreal-map-canvas" style={styles.container}>

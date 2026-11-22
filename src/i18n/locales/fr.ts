@@ -323,6 +323,9 @@ const fr: Translations = {
     },
   },
   map: {
+    unavailableTitle: 'Carte indisponible sur cet appareil',
+    unavailableBody:
+      "Cette version Android n'a pas de clé API Google Maps. Ajoutez GOOGLE_MAPS_ANDROID_API_KEY dans .env et recompilez.",
     brandTitle: 'Montone',
     allBoroughs: 'Tous les arrondissements',
     searchPlaceholder: 'Rechercher rue, #311, parc...',
