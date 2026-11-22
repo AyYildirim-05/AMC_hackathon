@@ -1,14 +1,17 @@
-import { setLanguage } from '@/i18n';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react-native';
+import type { ReactNode } from 'react';
+
+import { DistrictScreen } from '@/components/report/DistrictScreen';
+import { setLanguage } from '@/i18n';
+import type { AuthUser } from '@/lib/auth/auth-api';
 
 import { installMockBackendApi } from '../../../../test/fixtures';
 
-import { DistrictScreen } from '@/components/report/DistrictScreen';
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
-
-import type { AuthUser } from '@/lib/auth/auth-api';
+const mockNavigate = jest.fn();
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ navigate: mockNavigate }),
+}));
 
 // The header's profile button reads the signed-in user and opens the profile sheet.
 const mockUser: AuthUser = {
@@ -23,6 +26,7 @@ const mockUser: AuthUser = {
 jest.mock('@/providers/auth-provider', () => ({
   useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: async () => {} }),
 }));
+
 const mockRequestForegroundPermissions = jest.fn(async () => ({ status: 'denied' }));
 const mockGetCurrentPosition = jest.fn();
 const mockReverseGeocode = jest.fn();
@@ -31,6 +35,15 @@ jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: () => mockRequestForegroundPermissions(),
   getCurrentPositionAsync: (opts?: unknown) => mockGetCurrentPosition(opts),
   reverseGeocodeAsync: (coords?: unknown) => mockReverseGeocode(coords),
+}));
+
+const mockRequestCameraPermissions = jest.fn(async () => ({ granted: true }));
+const mockLaunchCamera = jest.fn();
+const mockLaunchImageLibrary = jest.fn();
+jest.mock('expo-image-picker', () => ({
+  requestCameraPermissionsAsync: () => mockRequestCameraPermissions(),
+  launchCameraAsync: (opts?: unknown) => mockLaunchCamera(opts),
+  launchImageLibraryAsync: (opts?: unknown) => mockLaunchImageLibrary(opts),
 }));
 
 // The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
@@ -62,14 +75,35 @@ const render = async (ui: React.ReactElement) => {
   return utils;
 };
 
+const fillRequiredFields = async () => {
+  await fireEvent.press(screen.getByTestId('category-card-traffic_safety'));
+  await fireEvent.changeText(
+    screen.getByTestId('location-address-input'),
+    '1250 Rue Rachel Est, Montréal, QC H2J 2J9',
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('report-title-input'),
+    'Piste cyclable bloquée sur Rachel Est',
+  );
+  await fireEvent.changeText(
+    screen.getByTestId('report-description-input'),
+    'Clôtures de chantier obstruant la piste cyclable.',
+  );
+};
+
 describe('DistrictScreen', () => {
   let restoreApi: (() => void) | undefined;
 
   beforeEach(async () => {
+    mockNavigate.mockReset();
     mockRequestForegroundPermissions.mockReset();
     mockRequestForegroundPermissions.mockResolvedValue({ status: 'denied' });
     mockGetCurrentPosition.mockReset();
     mockReverseGeocode.mockReset();
+    mockRequestCameraPermissions.mockReset();
+    mockRequestCameraPermissions.mockResolvedValue({ granted: true });
+    mockLaunchCamera.mockReset();
+    mockLaunchImageLibrary.mockReset();
     restoreApi = installMockBackendApi({ currentUsername: mockUser.username });
     await setLanguage('fr');
   });
@@ -82,7 +116,7 @@ describe('DistrictScreen', () => {
     await setLanguage('en');
   });
 
-  it('renders all sections and details matching screen 2.png in French', async () => {
+  it('renders all sections with empty initial fields and disabled publish button in French', async () => {
     const handleBack = jest.fn();
     const handleSubmit = jest.fn();
 
@@ -92,9 +126,9 @@ describe('DistrictScreen', () => {
     expect(screen.getByTestId('district-screen-profile-button')).toBeOnTheScreen();
     expect(screen.getByText('Municipalité')).toBeOnTheScreen();
 
-    // 2. Stepper / Progress Bar
-    expect(screen.getByText('• ÉTAPE 1 SUR 2')).toBeOnTheScreen();
-    expect(screen.getByText('Détails & Localisation')).toBeOnTheScreen();
+    // Stepper header has been removed
+    expect(screen.queryByText('• ÉTAPE 1 SUR 2')).toBeNull();
+    expect(screen.queryByText('Détails & Localisation')).toBeNull();
 
     // 3. OpenNorth Pipeline & Borough Card
     expect(screen.getByText('OPENNORTH PIPELINE • En direct')).toBeOnTheScreen();
@@ -105,79 +139,36 @@ describe('DistrictScreen', () => {
 
     // 4. Type d'incident civique (2x2 Grid)
     expect(screen.getByText("Type d'incident civique")).toBeOnTheScreen();
-    expect(screen.getByText('Requis')).toBeOnTheScreen();
-    expect(
-      screen.getByText('Sélectionnez la catégorie qui correspond au problème rencontré.'),
-    ).toBeOnTheScreen();
     expect(screen.getByText('Sécurité & Pistes cyclables')).toBeOnTheScreen();
-    expect(screen.getByText('Voies REV, feux, piétons')).toBeOnTheScreen();
     expect(screen.getByText('Nids-de-poule & Chaussée')).toBeOnTheScreen();
-    expect(screen.getByText('Asphalte, trottoirs cassés')).toBeOnTheScreen();
     expect(screen.getByText('Éclairage & Utilités')).toBeOnTheScreen();
-    expect(screen.getByText('Lampadaires, égouts, eau')).toBeOnTheScreen();
     expect(screen.getByText('Parcs & Propreté')).toBeOnTheScreen();
-    expect(screen.getByText('Dépôts sauvages, parcs')).toBeOnTheScreen();
 
-    // 5. Localisation précise
+    // 5. Localisation précise + Use current location button
     expect(screen.getByText('Localisation précise')).toBeOnTheScreen();
     expect(screen.getByText('ADRESSE DÉTECTÉE')).toBeOnTheScreen();
-    expect(screen.getByTestId('location-address-input')).toBeOnTheScreen();
-    expect(screen.getByTestId('address-search-button')).toBeOnTheScreen();
-    expect(screen.getByText(/45.529841, -73.575124 • Parc La Fontaine/)).toBeOnTheScreen();
+    expect(screen.getByTestId('location-address-input').props.value).toBe('');
+    expect(screen.getByTestId('use-current-location-button')).toBeOnTheScreen();
+    expect(screen.getByText('Utiliser ma position actuelle')).toBeOnTheScreen();
     expect(screen.getByTestId('map-adjust-pin-button')).toBeOnTheScreen();
-    expect(screen.getByText("Ajuster l'épingle")).toBeOnTheScreen();
 
-    // 6. Titre du signalement
-    expect(screen.getByText('Titre du signalement')).toBeOnTheScreen();
-    expect(screen.getByText('37/70')).toBeOnTheScreen();
-    const titleInput = screen.getByTestId('report-title-input');
-    expect(titleInput).toBeOnTheScreen();
-    expect(titleInput.props.value).toBe('Piste cyclable bloquée sur Rachel Est');
+    // 6 & 7. Empty title and description
+    expect(screen.getByText('0/70')).toBeOnTheScreen();
+    expect(screen.getByTestId('report-title-input').props.value).toBe('');
+    expect(screen.getByTestId('report-description-input').props.value).toBe('');
 
-    // 7. Description détaillée
-    expect(screen.getByText('Description détaillée')).toBeOnTheScreen();
-    expect(screen.getByText('Détour requis')).toBeOnTheScreen();
-    const descInput = screen.getByTestId('report-description-input');
-    expect(descInput).toBeOnTheScreen();
-    expect(descInput.props.value).toContain(
-      'Clôtures de chantier obstruant complètement le REV/piste cyclable',
-    );
-
-    // 8. Photos justificatives (max. 3)
+    // 8. Proof section: first option is camera, second is gallery
     expect(screen.getByText('Photos justificatives (max. 3)')).toBeOnTheScreen();
-    expect(screen.getByText('1 ajoutée')).toBeOnTheScreen();
-    expect(screen.getByText(/Photo jointe/)).toBeOnTheScreen();
-    expect(screen.getByTestId('remove-photo-0-button')).toBeOnTheScreen();
+    expect(screen.getByText('0 ajoutées')).toBeOnTheScreen();
+    expect(screen.getByTestId('photo-slot-empty-1')).toBeOnTheScreen();
+    expect(screen.getByText('Prendre photo')).toBeOnTheScreen();
     expect(screen.getByTestId('add-photo-button')).toBeOnTheScreen();
-    expect(screen.getByText('Ajouter photo')).toBeOnTheScreen();
+    expect(screen.getByText('Galerie')).toBeOnTheScreen();
     expect(screen.getByTestId('photo-slot-optional')).toBeOnTheScreen();
-    expect(screen.getByText('Optionnel')).toBeOnTheScreen();
 
-    // 9. Transmission MTL-311
-    expect(screen.getByText('Transmission MTL-311')).toBeOnTheScreen();
-    expect(screen.getByText('AUTO-TICKET')).toBeOnTheScreen();
-    expect(screen.getByTestId('mtl-311-switch')).toBeOnTheScreen();
-    expect(
-      screen.getByText(
-        'Transmettre automatiquement une requête officielle aux services municipaux de la Ville de Montréal.',
-      ),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByText(
-        'Numéro de suivi municipal officiel délivré après publication (ex. MTL-311-2026-XXXXX).',
-      ),
-    ).toBeOnTheScreen();
-
-    // 10. Action Buttons
-    expect(screen.getByTestId('publish-report-button')).toBeOnTheScreen();
-    expect(screen.getByText('Publier le signalement')).toBeOnTheScreen();
-    expect(screen.getByTestId('save-draft-button')).toBeOnTheScreen();
-    expect(screen.getByText('Enregistrer comme brouillon')).toBeOnTheScreen();
-
-    // 11. Footer
-    expect(
-      screen.getByText('Charte citoyenne CityPulse MTL • Données ouvertes OpenNorth'),
-    ).toBeOnTheScreen();
+    // 9 & 10. Publish button starts disabled until all required fields are filled
+    const publishBtn = screen.getByTestId('publish-report-button');
+    expect(publishBtn).toBeDisabled();
   });
 
   it('has no back button: it is the top-level Report tab', async () => {
@@ -189,59 +180,135 @@ describe('DistrictScreen', () => {
   it('allows switching categories when tapping category cards', async () => {
     await render(<DistrictScreen />);
 
-    // Initially 'traffic_safety' is selected
     expect(
       screen.getByTestId('category-card-traffic_safety').props.accessibilityState.selected,
-    ).toBe(true);
+    ).toBe(false);
 
-    // Tap potholes category
-    fireEvent.press(screen.getByTestId('category-card-roads_potholes'));
+    await fireEvent.press(screen.getByTestId('category-card-roads_potholes'));
 
     await waitFor(() => {
       expect(
         screen.getByTestId('category-card-roads_potholes').props.accessibilityState.selected,
       ).toBe(true);
-      expect(
-        screen.getByTestId('category-card-traffic_safety').props.accessibilityState.selected,
-      ).toBe(false);
     });
   });
 
   it('allows switching districts via modal when clicking Autre arrondissement', async () => {
     await render(<DistrictScreen />);
 
-    fireEvent.press(screen.getByTestId('tab-autre-arrondissement'));
+    await fireEvent.press(screen.getByTestId('tab-autre-arrondissement'));
 
-    // Modal opens with other districts
     const modalTitle = await screen.findByText('Sélectionner un arrondissement');
     expect(modalTitle).toBeOnTheScreen();
 
-    // Select Ville-Marie
-    fireEvent.press(screen.getByTestId('borough-option-11111111-1111-4111-8111-111111111102'));
+    await fireEvent.press(
+      screen.getByTestId('borough-option-11111111-1111-4111-8111-111111111102'),
+    );
 
-    // Verify district card updated
     await waitFor(() => {
       expect(screen.getByText('Ville-Marie')).toBeOnTheScreen();
       expect(screen.getByText(/Secteur électoral H2L 2C9/)).toBeOnTheScreen();
     });
   });
 
-  it('removes and updates photo count on remove button press', async () => {
+  it('opens the phone camera on the first proof option and gallery on the second option', async () => {
+    mockLaunchCamera.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///camera-shot-1.jpg' }],
+    });
+    mockLaunchImageLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///gallery-pick-1.jpg' }],
+    });
+
     await render(<DistrictScreen />);
 
-    expect(screen.getByText('1 ajoutée')).toBeOnTheScreen();
-    fireEvent.press(screen.getByTestId('remove-photo-0-button'));
+    // First option opens the camera
+    await fireEvent.press(screen.getByTestId('photo-slot-empty-1'));
+    await waitFor(() => {
+      expect(mockRequestCameraPermissions).toHaveBeenCalledTimes(1);
+      expect(mockLaunchCamera).toHaveBeenCalledTimes(1);
+      expect(mockLaunchImageLibrary).not.toHaveBeenCalled();
+    });
+    expect(await screen.findByText('1 ajoutée')).toBeOnTheScreen();
 
+    // Remove photo so both slots are empty again, then test the second option (gallery)
+    await fireEvent.press(screen.getByTestId('remove-photo-0-button'));
     expect(await screen.findByText('0 ajoutées')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('add-photo-button'));
+    await waitFor(() => {
+      expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(1);
+    });
+    expect(await screen.findByText('1 ajoutée')).toBeOnTheScreen();
+
+    // With 1 photo attached, the first remaining option (slot 2) opens camera and slot 3 opens gallery
+    await fireEvent.press(screen.getByTestId('add-photo-button'));
+    await waitFor(() => {
+      expect(mockLaunchCamera).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText('2 ajoutées')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('photo-slot-optional'));
+    await waitFor(() => {
+      expect(mockLaunchImageLibrary).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText('3 ajoutées')).toBeOnTheScreen();
   });
 
-  it('allows editing title and updates character counter', async () => {
+  it('uses the current location button to populate coordinates, address, and district', async () => {
     await render(<DistrictScreen />);
 
-    const titleInput = screen.getByTestId('report-title-input');
-    fireEvent.changeText(titleInput, 'Nid-de-poule dangereux');
+    // Grant location permission when the user explicitly taps the button
+    mockRequestForegroundPermissions.mockResolvedValue({ status: 'granted' });
+    mockGetCurrentPosition.mockResolvedValue({
+      coords: { latitude: 45.515218, longitude: -73.560412 },
+    });
+    mockReverseGeocode.mockResolvedValue([
+      {
+        streetNumber: '505',
+        street: 'Rue Sainte-Catherine Est',
+        city: 'Montréal',
+        region: 'QC',
+        postalCode: 'H2L 2C9',
+        district: 'Ville-Marie',
+      },
+    ]);
 
-    expect(await screen.findByText('22/70')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('use-current-location-button'));
+
+    expect(await screen.findByText('Ville-Marie')).toBeOnTheScreen();
+    expect(screen.getByTestId('location-address-input').props.value).toBe(
+      '505 Rue Sainte-Catherine Est, Montréal, QC H2L 2C9',
+    );
+    expect(screen.getByText(/45.515218, -73.560412 • Ville-Marie/)).toBeOnTheScreen();
+  });
+
+  it('disables the publish button until all required fields are filled', async () => {
+    await render(<DistrictScreen />);
+
+    const publishBtn = screen.getByTestId('publish-report-button');
+    expect(publishBtn).toBeDisabled();
+
+    // Only category
+    await fireEvent.press(screen.getByTestId('category-card-roads_potholes'));
+    expect(screen.getByTestId('publish-report-button')).toBeDisabled();
+
+    // Add address
+    await fireEvent.changeText(screen.getByTestId('location-address-input'), '100 Rue Saint-Denis');
+    expect(screen.getByTestId('publish-report-button')).toBeDisabled();
+
+    // Add title (still missing description)
+    await fireEvent.changeText(screen.getByTestId('report-title-input'), 'Nid-de-poule dangereux');
+    expect(screen.getByTestId('publish-report-button')).toBeDisabled();
+    expect(screen.getByText('22/70')).toBeOnTheScreen();
+
+    // Add description -> now all required fields are filled!
+    await fireEvent.changeText(
+      screen.getByTestId('report-description-input'),
+      'Grand nid-de-poule dans la voie de droite.',
+    );
+    expect(screen.getByTestId('publish-report-button')).not.toBeDisabled();
   });
 
   it('toggles 311 switch on press', async () => {
@@ -250,7 +317,7 @@ describe('DistrictScreen', () => {
     const switchComponent = screen.getByTestId('mtl-311-switch');
     expect(switchComponent.props.value).toBe(true);
 
-    fireEvent(switchComponent, 'valueChange', false);
+    await fireEvent(switchComponent, 'valueChange', false);
 
     await waitFor(() => {
       expect(screen.getByTestId('mtl-311-switch').props.value).toBe(false);
@@ -260,22 +327,35 @@ describe('DistrictScreen', () => {
   it('saves draft and shows toast feedback', async () => {
     await render(<DistrictScreen />);
 
-    fireEvent.press(screen.getByTestId('save-draft-button'));
+    await fireEvent.press(screen.getByTestId('save-draft-button'));
     expect(await screen.findByText('Brouillon enregistré avec succès.')).toBeOnTheScreen();
   });
 
-  it('submits report and shows official publication modal', async () => {
+  it('creates the issue, resets all fields to empty, and switches to the Issues tab', async () => {
     const handleSubmit = jest.fn();
     await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
 
+    await fillRequiredFields();
+    expect(screen.getByTestId('publish-report-button')).not.toBeDisabled();
+
     await fireEvent.press(screen.getByTestId('publish-report-button'));
 
-    expect(await screen.findByText('Signalement publié avec succès !')).toBeOnTheScreen();
-    expect(handleSubmit).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('published-ticket-ref')).toBeOnTheScreen();
+    await waitFor(() => {
+      expect(handleSubmit).toHaveBeenCalledTimes(1);
+    });
 
-    // Close modal
-    fireEvent.press(screen.getByTestId('close-success-modal-button'));
+    // All fields reset to empty and publish button disabled again
+    expect(screen.getByTestId('report-title-input').props.value).toBe('');
+    expect(screen.getByTestId('report-description-input').props.value).toBe('');
+    expect(screen.getByTestId('location-address-input').props.value).toBe('');
+    expect(
+      screen.getByTestId('category-card-traffic_safety').props.accessibilityState.selected,
+    ).toBe(false);
+    expect(screen.getByText('0 ajoutées')).toBeOnTheScreen();
+    expect(screen.getByTestId('publish-report-button')).toBeDisabled();
+
+    // Switches to the Issues tab ('/')
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('supports English locale when switched', async () => {
@@ -283,12 +363,16 @@ describe('DistrictScreen', () => {
     await render(<DistrictScreen />);
 
     expect(screen.getByText('District')).toBeOnTheScreen();
-    expect(screen.getByText('• STEP 1 OF 2')).toBeOnTheScreen();
-    expect(screen.getByText('Details & Location')).toBeOnTheScreen();
+    expect(screen.queryByText('• STEP 1 OF 2')).toBeNull();
+    expect(screen.queryByText('Details & Location')).toBeNull();
     expect(screen.getByText('My borough')).toBeOnTheScreen();
     expect(screen.getByText('Other borough')).toBeOnTheScreen();
     expect(screen.getByText('Safety & Bike paths')).toBeOnTheScreen();
+    expect(screen.getByText('Use my current location')).toBeOnTheScreen();
+    expect(screen.getByText('Take photo')).toBeOnTheScreen();
+    expect(screen.getByText('Gallery')).toBeOnTheScreen();
   });
+
   it("opens the signed-in user's profile from the header", async () => {
     await render(<DistrictScreen />);
 
