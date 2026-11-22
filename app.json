@@ -2,7 +2,7 @@
   "expo": {
     "name": "MonTone",
     "slug": "Montone",
-    "version": "1.0.0",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/montone-icon.png",
     "scheme": "montone",
@@ -10,6 +10,7 @@
     "ios": {
       "icon": "./assets/images/montone-icon.png",
       "bundleIdentifier": "com.yildirim.cuneyt.it.Montone",
+      "buildNumber": "3",
       "infoPlist": {
         "CFBundleLocalizations": ["en", "fr"]
       }
@@ -24,7 +25,8 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "package": "com.yildirim.cuneyt.it.Montone"
+      "package": "com.yildirim.cuneyt.it.Montone",
+      "versionCode": 3
     },
     "web": {
       "output": "server",
