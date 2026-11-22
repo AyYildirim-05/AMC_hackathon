@@ -1,12 +1,4 @@
-import districtsData from '../../dummy_data/districts.json';
-import commentsData from '../../dummy_data/issue_comments.json';
-import votesData from '../../dummy_data/issue_votes.json';
-import issuesData from '../../dummy_data/issues.json';
-import personsData from '../../dummy_data/person.json';
-
 import type { Id, Issue, IsoDateString, IssueStatus } from '@/models/Issue';
-
-// Field names match dummy_data/*.json (and the API) exactly, like `Issue` does.
 
 export interface Person {
   id: Id;
@@ -53,7 +45,7 @@ export interface IssueComment {
   created_at: IsoDateString;
 }
 
-/** The dummy data in one place, so tests and future API calls can swap it out. */
+/** Aggregated profile payload loaded from `GET /api/profile/me`. */
 export interface ProfileData {
   persons: Person[];
   districts: District[];
@@ -62,17 +54,16 @@ export interface ProfileData {
   votes: IssueVote[];
 }
 
-// Dummy data until the persons, districts and comments APIs are wired into the app.
-export const dummyProfileData: ProfileData = {
-  persons: personsData.persons as Person[],
-  districts: districtsData.districts as District[],
-  issues: issuesData.issues as Issue[],
-  comments: commentsData.issue_comments as IssueComment[],
-  votes: votesData.issue_votes as IssueVote[],
+export const EMPTY_PROFILE_DATA: ProfileData = {
+  persons: [],
+  districts: [],
+  issues: [],
+  comments: [],
+  votes: [],
 };
 
-/** The dummy person with this username, or null (e.g. an account created after the dummy data). */
-export const findPerson = (username: string, data: ProfileData = dummyProfileData) =>
+/** Finds the person with this username in the loaded profile data, or null. */
+export const findPerson = (username: string, data: ProfileData = EMPTY_PROFILE_DATA) =>
   data.persons.find((p) => p.username === username) ?? null;
 
 export interface Territory {
@@ -140,7 +131,7 @@ export const computeStats = (issues: Issue[], comments: IssueComment[]): Distric
 /** Everything the profile page shows for one district manager, or null if they manage nothing. */
 export const buildDistrictProfile = (
   username: string,
-  data: ProfileData = dummyProfileData,
+  data: ProfileData = EMPTY_PROFILE_DATA,
 ): DistrictProfile | null => {
   const manager = data.persons.find((p) => p.username === username);
   const district = manager && data.districts.find((d) => d.manager_id === manager.id);
@@ -208,7 +199,7 @@ export interface ResidentProfile {
 /** A resident's own activity: what they reported, upvoted, confirmed and commented. */
 export const buildResidentProfile = (
   username: string,
-  data: ProfileData = dummyProfileData,
+  data: ProfileData = EMPTY_PROFILE_DATA,
 ): ResidentProfile | null => {
   const person = findPerson(username, data);
   if (!person) return null;
@@ -252,7 +243,7 @@ export interface AdminProfile {
 /** An admin's city-wide view: every district, who manages it, and the overall numbers. */
 export const buildAdminProfile = (
   username: string,
-  data: ProfileData = dummyProfileData,
+  data: ProfileData = EMPTY_PROFILE_DATA,
 ): AdminProfile | null => {
   const person = findPerson(username, data);
   if (!person) return null;

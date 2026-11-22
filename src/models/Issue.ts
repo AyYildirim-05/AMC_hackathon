@@ -1,6 +1,6 @@
 /**
  * A problem reported by a resident (pothole, broken streetlight, blocked bike lane, …).
- * Field names match the API / `dummy_data/issues.json` exactly, so JSON can be used as-is.
+ * Normalized from the Express backend API into the frontend domain shape.
  */
 
 export const ISSUE_CATEGORIES = [

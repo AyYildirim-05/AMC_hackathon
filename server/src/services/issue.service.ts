@@ -4,6 +4,7 @@ import { isIssuePhotoUrl } from '../lib/cloudinary.js';
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type IssueStatus } from '../models/index.js';
+import { getIssueCommentSummaries } from '../repositories/comment.repository.js';
 import { districtExists, findDistrictManagerId } from '../repositories/district.repository.js';
 import {
   createIssue,
@@ -13,7 +14,7 @@ import {
   type IssueChanges,
   updateIssueById,
 } from '../repositories/issue.repository.js';
-import { personExists } from '../repositories/person.repository.js';
+import { findPersonsByIds, personExists } from '../repositories/person.repository.js';
 
 /** Mirrors MAX_ISSUE_PHOTOS in the app's photo-picker.tsx. */
 const MAX_ISSUE_PHOTOS = 5;
@@ -38,6 +39,7 @@ const issueFields = {
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   districtId: objectId,
+  external311Ref: z.string().trim().max(50).nullable().optional(),
 };
 
 /**
@@ -47,7 +49,6 @@ const issueFields = {
 export const reportIssueInput = z.object({
   ...issueFields,
   images: issueFields.images.default([]),
-  // No auth yet: the client says who reported the issue.
   createdById: objectId,
 });
 export type ReportIssueInput = z.infer<typeof reportIssueInput>;
@@ -56,7 +57,6 @@ export type ReportIssueInput = z.infer<typeof reportIssueInput>;
 export const updateIssueInput = z
   .object(issueFields)
   .partial()
-  // No auth yet: the client says who made the change.
   .extend({ updatedById: objectId })
   .refine(({ updatedById: _, ...changes }) => Object.keys(changes).length > 0, {
     message: 'Provide at least one field to update',
@@ -71,6 +71,95 @@ export type UpdateStatusInput = z.infer<typeof updateStatusInput>;
 
 /** Closed issues cannot be reopened or moved to another status; every other transition is allowed. */
 const FINAL_STATUSES: readonly IssueStatus[] = ['completed', 'cancelled'];
+
+const ROLE_LABELS: Record<string, string> = {
+  district_manager: 'Gestionnaire Arrondissement',
+  admin: 'Administration Montréal',
+  resident: 'Citoyen',
+};
+
+type SerializableDoc = { toJSON: () => Record<string, unknown> };
+
+export type EnrichedIssue = Record<string, unknown> & {
+  id: string;
+  author: {
+    username: string;
+    name: string;
+    avatarUrl: string | null;
+  } | null;
+  officialResponse: {
+    author: string;
+    role: string;
+    comment: string;
+    createdAt: string;
+  } | null;
+  commentsCount: number;
+};
+
+/**
+ * Attaches `author`, `officialResponse`, and `commentsCount` to a batch of issue documents
+ * using at most two database queries (one comment aggregation, one person batch lookup).
+ */
+export async function enrichIssues(docs: readonly SerializableDoc[]): Promise<EnrichedIssue[]> {
+  if (docs.length === 0) return [];
+
+  const rawIssues = docs.map((doc) => doc.toJSON());
+  const issueIds = rawIssues.map((issue) => String(issue.id));
+  const commentSummaries = await getIssueCommentSummaries(issueIds);
+
+  const personIds = new Set<string>();
+  for (const issue of rawIssues) {
+    if (issue.createdById) personIds.add(String(issue.createdById));
+    const summary = commentSummaries.get(String(issue.id));
+    if (summary?.latestOfficial?.userId) {
+      personIds.add(summary.latestOfficial.userId);
+    }
+  }
+
+  const persons = await findPersonsByIds(Array.from(personIds));
+  const personById = new Map(
+    persons.map((person) => {
+      const json = person.toJSON() as Record<string, unknown>;
+      return [String(json.id), json] as const;
+    }),
+  );
+
+  return rawIssues.map((issue) => {
+    const id = String(issue.id);
+    const creator = personById.get(String(issue.createdById));
+    const summary = commentSummaries.get(id);
+    const latestOfficial = summary?.latestOfficial ?? null;
+    const officialPerson = latestOfficial ? personById.get(latestOfficial.userId) : undefined;
+
+    return {
+      ...issue,
+      id,
+      author: creator
+        ? {
+            username: String(creator.username),
+            name: String(creator.displayName || creator.username),
+            avatarUrl: (creator.avatarUrl as string | null) ?? null,
+          }
+        : null,
+      officialResponse: latestOfficial
+        ? {
+            author: officialPerson ? String(officialPerson.username) : 'city_official',
+            role:
+              ROLE_LABELS[String(officialPerson?.role ?? 'district_manager')] ??
+              'Gestionnaire Arrondissement',
+            comment: latestOfficial.body,
+            createdAt: latestOfficial.createdAt.toISOString(),
+          }
+        : null,
+      commentsCount: summary?.count ?? 0,
+    };
+  });
+}
+
+export async function enrichIssue(doc: SerializableDoc): Promise<EnrichedIssue> {
+  const [enriched] = await enrichIssues([doc]);
+  return enriched;
+}
 
 const assertDistrictExists = async (id: string) => {
   if (!(await districtExists(id))) throw new HttpError(400, 'Unknown districtId');
@@ -97,7 +186,7 @@ const isDistrictManager = async (districtId: string, personId: string) => {
 const applyUpdate = async (id: string, changes: IssueChanges, expectedStatus?: IssueStatus) => {
   const updated = await updateIssueById(id, changes, expectedStatus);
   if (!updated) throw new HttpError(409, 'Issue changed while saving; reload and retry');
-  return updated;
+  return enrichIssue(updated);
 };
 
 export const reportIssue = async (input: ReportIssueInput) => {
@@ -105,16 +194,17 @@ export const reportIssue = async (input: ReportIssueInput) => {
     assertDistrictExists(input.districtId),
     assertPersonExists(input.createdById),
   ]);
-  return createIssue(input);
+  const created = await createIssue(input);
+  return enrichIssue(created);
 };
 
-export const allIssues = () => findAllIssues();
+export const allIssues = async () => enrichIssues(await findAllIssues());
 
-export const issueById = async (id: string) => orNotFound(await findIssueById(id));
+export const issueById = async (id: string) => enrichIssue(orNotFound(await findIssueById(id)));
 
 export const issueByDistrict = async (districtId: string) => {
   if (!(await districtExists(districtId))) throw new HttpError(404, 'District not found');
-  return findIssuesByDistrict(districtId);
+  return enrichIssues(await findIssuesByDistrict(districtId));
 };
 
 export const updateIssue = async (id: string, input: UpdateIssueInput) => {

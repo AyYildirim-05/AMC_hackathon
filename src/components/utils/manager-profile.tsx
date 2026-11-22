@@ -17,10 +17,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { computeStats, type DistrictProfile, TRIAGE_STATUSES } from '@/lib/profile';
 import type { Id, IssueStatus } from '@/models/Issue';
 
-export type ManagerProfileProps = { profile: DistrictProfile };
+export type ManagerProfileProps = {
+  profile: DistrictProfile;
+  onUpdateStatus?: (issueId: Id, status: IssueStatus) => void;
+};
 
 /** The district manager's part of a profile: territories, operations board, triage, OpenNorth. */
-export function ManagerProfile({ profile }: ManagerProfileProps) {
+export function ManagerProfile({ profile, onUpdateStatus }: ManagerProfileProps) {
   const { t, i18n } = useTranslation();
   // Status changes stay on this screen until the issues API is wired in.
   const [statusOverrides, setStatusOverrides] = useState<Record<Id, IssueStatus>>({});
@@ -126,9 +129,10 @@ export function ManagerProfile({ profile }: ManagerProfileProps) {
               reporterUsername={profile.reporterUsername[issue.id]}
               latestReply={profile.latestOfficialReply[issue.id]}
               districtName={districtName}
-              onStatusChange={(status) =>
-                setStatusOverrides((current) => ({ ...current, [issue.id]: status }))
-              }
+              onStatusChange={(status) => {
+                setStatusOverrides((current) => ({ ...current, [issue.id]: status }));
+                onUpdateStatus?.(issue.id, status);
+              }}
             />
           ))
         )}

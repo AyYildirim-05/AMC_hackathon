@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { TEST_PROFILE_DATA } from '../../../../test/fixtures';
+
 import '@/i18n';
 import { ManagerProfile } from '@/components/utils/manager-profile';
 import { buildDistrictProfile, type DistrictProfile } from '@/lib/profile';
@@ -24,8 +26,8 @@ jest.mock('expo-localization', () => ({
 }));
 
 const camille = (): DistrictProfile => {
-  const profile = buildDistrictProfile('camille_mtl');
-  if (!profile) throw new Error('dummy data has no profile for camille_mtl');
+  const profile = buildDistrictProfile('camille_mtl', TEST_PROFILE_DATA);
+  if (!profile) throw new Error('test fixtures have no profile for camille_mtl');
   return profile;
 };
 

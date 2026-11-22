@@ -1,9 +1,8 @@
 import '@/i18n';
 import { fireEvent, render as rtlRender, screen } from '@testing-library/react-native';
 
-import dummyIssues from '../../../../dummy_data/issues.json';
+import { installMockBackendApi, TEST_ISSUES } from '../../../../test/fixtures';
 import { IssueDetailScreen } from '@/components/layout/IssueDetailScreen';
-import { type Issue } from '@/models/Issue';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -50,12 +49,26 @@ const render = (ui: React.ReactElement) => {
   return rtlRender(ui, { wrapper });
 };
 
-const mockBikeIssue = dummyIssues.issues[0] as Issue;
+const mockBikeIssue = TEST_ISSUES[0];
 
 describe('IssueDetailScreen', () => {
+  let restoreApi: (() => void) | undefined;
+
+  beforeEach(() => {
+    restoreApi = installMockBackendApi({ currentUsername: mockUser.username });
+  });
+
+  afterEach(() => {
+    restoreApi?.();
+  });
+
   it('renders all sections and details matching screen.png example', async () => {
     const handleClose = jest.fn();
     await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={handleClose} />);
+
+    // Wait for districts & comments fetched from the API
+    expect(await screen.findByText('Le Plateau-Mont-Royal • Verified')).toBeOnTheScreen();
+    expect(await screen.findByText('3 updates')).toBeOnTheScreen();
 
     // 1. Navigation & Header
     expect(screen.getByTestId('issue-detail-back-button')).toBeOnTheScreen();
@@ -63,7 +76,6 @@ describe('IssueDetailScreen', () => {
 
     // 2. Badges & Metadata
     expect(screen.getByText('Traffic & Safety')).toBeOnTheScreen();
-    expect(screen.getByText('Le Plateau-Mont-Royal • Verified')).toBeOnTheScreen();
     expect(screen.getByText('# MTL-311-2026-88412')).toBeOnTheScreen();
     expect(
       screen.getAllByText('Blocked bike lane on Rue Rachel Est').length,
@@ -145,6 +157,7 @@ describe('IssueDetailScreen', () => {
 
   it('allows adding a new comment', async () => {
     await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);
+    await screen.findByText('3 updates');
 
     const input = screen.getByTestId('comment-input');
     const sendBtn = screen.getByTestId('comment-send-button');
@@ -152,8 +165,8 @@ describe('IssueDetailScreen', () => {
     await fireEvent.changeText(input, 'Inspected again this afternoon, clear now!');
     await fireEvent.press(sendBtn);
 
-    expect(screen.getByText('Inspected again this afternoon, clear now!')).toBeOnTheScreen();
-    expect(screen.getByText('4 updates')).toBeOnTheScreen();
+    expect(await screen.findByText('Inspected again this afternoon, clear now!')).toBeOnTheScreen();
+    expect(await screen.findByText('4 updates')).toBeOnTheScreen();
   });
   it("opens the signed-in user's profile from the header", async () => {
     await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);

@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
+import { TEST_PROFILE_DATA } from '../../../../test/fixtures';
+
 import i18n, { setLanguage } from '@/i18n';
 import { AppHeader } from '@/components/utils/app-header';
 import { apiClient } from '@/lib/api/client';
@@ -55,7 +57,48 @@ beforeEach(() => {
     const data =
       config.url === '/api/auth/me'
         ? { user: manager }
-        : { id: manager.homeDistrictId, nameFr: 'Le Plateau-Mont-Royal', nameEn: 'The Plateau' };
+        : config.url === '/api/profile/me'
+          ? {
+              person: {
+                id: TEST_PROFILE_DATA.persons[0].id,
+                username: 'camille_mtl',
+                displayName: 'Camille Tremblay',
+                avatarUrl: null,
+                email: manager.email,
+                postalCode: manager.postalCode,
+                homeDistrictId: TEST_PROFILE_DATA.districts[0].id,
+                role: 'district_manager',
+                isVerified: true,
+                isActivePost: true,
+                preferredLanguage: 'fr',
+              },
+              persons: TEST_PROFILE_DATA.persons.map((p) => ({
+                id: p.id,
+                username: p.username,
+                displayName: p.display_name,
+                avatarUrl: p.avatar_url,
+                email: p.email,
+                postalCode: p.postal_code,
+                homeDistrictId: p.home_district_id,
+                role: p.role,
+                isVerified: p.is_verified,
+                isActivePost: p.is_active_post,
+                preferredLanguage: p.preferred_language,
+              })),
+              districts: TEST_PROFILE_DATA.districts.map((d) => ({
+                id: d.id,
+                nameFr: d.name_fr,
+                nameEn: d.name_en,
+                openNorthSlug: d.open_north_slug,
+                districtType: d.district_type,
+                managerId: d.manager_id,
+                isClaimed: d.is_claimed,
+              })),
+              issues: TEST_PROFILE_DATA.issues,
+              comments: TEST_PROFILE_DATA.comments,
+              votes: TEST_PROFILE_DATA.votes,
+            }
+          : { id: manager.homeDistrictId, nameFr: 'Le Plateau-Mont-Royal', nameEn: 'The Plateau' };
     const response: AxiosResponse = { status: 200, data, statusText: '', headers: {}, config };
     return response;
   };
@@ -128,7 +171,7 @@ it("opens the user's profile from the avatar and closes it again", async () => {
   await fireEvent.press(screen.getByRole('button', { name: 'Open profile, @camille_mtl' }));
 
   expect(screen.getByRole('header', { name: 'Profile' })).toBeOnTheScreen();
-  expect(screen.getByText('Camille Tremblay')).toBeOnTheScreen();
+  expect(await screen.findByText('Camille Tremblay')).toBeOnTheScreen();
   expect(screen.getByText('Triage queue')).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByRole('button', { name: 'Close' }));

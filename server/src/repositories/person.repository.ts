@@ -8,3 +8,10 @@ export const findPersonRole = async (id: string) =>
 
 export const districtHasResidents = async (districtId: string) =>
   (await PersonModel.exists({ homeDistrictId: districtId })) !== null;
+
+export const findPersonById = (id: string) => PersonModel.findById(id);
+
+export const findPersonsByIds = (ids: string[]) => {
+  if (ids.length === 0) return Promise.resolve([]);
+  return PersonModel.find({ _id: { $in: ids } });
+};

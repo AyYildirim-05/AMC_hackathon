@@ -189,8 +189,7 @@ const fr: Translations = {
     title: 'Profil',
     open: 'Ouvrir le profil, @{{username}}',
     close: 'Fermer',
-    missingData:
-      'Aucune donnée d’activité pour @{{username}} : ce compte ne figure pas dans les données d’exemple (dummy_data).',
+    missingData: 'Aucune donnée d’activité pour @{{username}} pour le moment.',
     resident: {
       activity: 'Mon activité',
       reports_one: 'Signalement déposé',

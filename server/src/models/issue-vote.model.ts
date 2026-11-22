@@ -17,6 +17,8 @@ const issueVoteSchema = new Schema(
       transform: (_doc, ret: Record<string, unknown>) => {
         ret.id = String(ret._id);
         delete ret._id;
+        ret.issueId = ret.issueId ? String(ret.issueId) : ret.issueId;
+        ret.userId = ret.userId ? String(ret.userId) : ret.userId;
         return ret;
       },
     },

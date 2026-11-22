@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,9 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import dummyDistricts from '../../dummy_data/districts.json';
-import dummyIssues from '../../dummy_data/issues.json';
-
 import { IssueCard } from '@/components/layout/IssueCard';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
@@ -31,8 +28,6 @@ import {
   type MapLayerMode,
   MONTREAL_DEFAULT_REGION,
   nextLayerMode,
-  normalizeDistrict,
-  normalizeIssue,
   type StatusFilter,
 } from '@/components/utils/map-utils';
 import { ProfileSheet } from '@/components/utils/profile-sheet';
@@ -42,11 +37,10 @@ import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/the
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage } from '@/i18n';
-import { apiClient } from '@/lib/api/client';
+import { fetchDistricts } from '@/lib/api/districts';
+import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
-
-const FALLBACK_ISSUES = dummyIssues.issues as Issue[];
-const FALLBACK_DISTRICTS = dummyDistricts.districts as District[];
+import { useAuth } from '@/providers/auth-provider';
 
 function getCategoryChipIcon(category: IssueCategory): MapIconName {
   switch (category) {
@@ -67,42 +61,42 @@ export default function CardScreen() {
   const { t, i18n } = useTranslation();
   const theme = useTheme();
   const user = useCurrentUser();
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const isDark = theme.text !== '#1C211F';
   const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'fr';
 
   const mapRef = useRef<MontrealMapHandle>(null);
 
-  // Fetch issues from API when configured; normalize camelCase/snake_case and fall back to dummy_data.
-  const { data: issues = FALLBACK_ISSUES } = useQuery<Issue[]>({
-    queryKey: ['map-issues'],
-    queryFn: async () => {
-      if (!process.env.EXPO_PUBLIC_API_URL) return FALLBACK_ISSUES;
-      try {
-        const res = await apiClient.get<Record<string, unknown>[]>('/api/issues');
-        return Array.isArray(res.data) && res.data.length > 0
-          ? res.data.map(normalizeIssue)
-          : FALLBACK_ISSUES;
-      } catch {
-        return FALLBACK_ISSUES;
-      }
-    },
-    initialData: FALLBACK_ISSUES,
+  const { data: issues = [] } = useQuery<Issue[]>({
+    queryKey: ['issues'],
+    queryFn: fetchIssues,
   });
 
-  const { data: districts = FALLBACK_DISTRICTS } = useQuery<District[]>({
-    queryKey: ['map-districts'],
-    queryFn: async () => {
-      if (!process.env.EXPO_PUBLIC_API_URL) return FALLBACK_DISTRICTS;
-      try {
-        const res = await apiClient.get<Record<string, unknown>[]>('/api/districts');
-        return Array.isArray(res.data) && res.data.length > 0
-          ? res.data.map(normalizeDistrict)
-          : FALLBACK_DISTRICTS;
-      } catch {
-        return FALLBACK_DISTRICTS;
-      }
+  const { data: districts = [] } = useQuery<District[]>({
+    queryKey: ['districts'],
+    queryFn: fetchDistricts,
+  });
+
+  const { data: myVotes } = useQuery({
+    queryKey: ['votes', 'me'],
+    queryFn: fetchMyVotes,
+    enabled: isAuthenticated,
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: ({
+      issueId,
+      voteType,
+    }: {
+      issueId: string;
+      voteType: 'upvote' | 'confirm_resolved';
+    }) => toggleIssueVote(issueId, voteType),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['votes', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     },
-    initialData: FALLBACK_DISTRICTS,
   });
 
   // Search & filter state
@@ -116,17 +110,13 @@ export default function CardScreen() {
   const [layerMode, setLayerMode] = useState<MapLayerMode>('standard');
 
   // Selection, modal, and local interaction state
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(
-    FALLBACK_ISSUES[0]?.id ?? null,
-  );
-  const [upvotedIds, setUpvotedIds] = useState<Record<string, boolean>>({});
-  const [confirmedIds, setConfirmedIds] = useState<Record<string, boolean>>({});
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [boroughModalVisible, setBoroughModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [justShared, setJustShared] = useState(false);
   const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevFocusedIssueIdRef = useRef<string | null>(FALLBACK_ISSUES[0]?.id ?? null);
+  const prevFocusedIssueIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -178,6 +168,10 @@ export default function CardScreen() {
   // Smoothly focus the map whenever filtering/searching switches the active issue
   useEffect(() => {
     if (!selectedIssue) return;
+    if (prevFocusedIssueIdRef.current === null) {
+      prevFocusedIssueIdRef.current = selectedIssue.id;
+      return;
+    }
     if (prevFocusedIssueIdRef.current === selectedIssue.id) return;
     prevFocusedIssueIdRef.current = selectedIssue.id;
     mapRef.current?.focusRegion({
@@ -199,23 +193,28 @@ export default function CardScreen() {
     ? getDistrictName(selectedIssue.district_id, districts, currentLang)
     : null;
 
-  const isSelectedUpvoted = selectedIssue ? Boolean(upvotedIds[selectedIssue.id]) : false;
-  const selectedUpvoteCount = selectedIssue
-    ? selectedIssue.upvote_count + (isSelectedUpvoted ? 1 : 0)
-    : 0;
-  const isSelectedConfirmed = selectedIssue ? Boolean(confirmedIds[selectedIssue.id]) : false;
-  const selectedConfirmCount = selectedIssue
-    ? selectedIssue.resolution_confirmations + (isSelectedConfirmed ? 1 : 0)
-    : 0;
+  const serverUpvotedSet = useMemo(
+    () => new Set(myVotes?.upvotedIssueIds ?? []),
+    [myVotes?.upvotedIssueIds],
+  );
+  const serverConfirmedSet = useMemo(
+    () => new Set(myVotes?.confirmedIssueIds ?? []),
+    [myVotes?.confirmedIssueIds],
+  );
+
+  const isSelectedUpvoted = selectedIssue ? serverUpvotedSet.has(selectedIssue.id) : false;
+  const selectedUpvoteCount = selectedIssue ? selectedIssue.upvote_count : 0;
+  const isSelectedConfirmed = selectedIssue ? serverConfirmedSet.has(selectedIssue.id) : false;
+  const selectedConfirmCount = selectedIssue ? selectedIssue.resolution_confirmations : 0;
 
   const userInitials = computeInitials(user?.username ?? user?.email ?? 'Citoyen');
 
   const handleToggleUpvote = (issueId: string) => {
-    setUpvotedIds((prev) => ({ ...prev, [issueId]: !prev[issueId] }));
+    voteMutation.mutate({ issueId, voteType: 'upvote' });
   };
 
   const handleToggleConfirm = (issueId: string) => {
-    setConfirmedIds((prev) => ({ ...prev, [issueId]: !prev[issueId] }));
+    voteMutation.mutate({ issueId, voteType: 'confirm_resolved' });
   };
 
   const handleShareIssue = async () => {

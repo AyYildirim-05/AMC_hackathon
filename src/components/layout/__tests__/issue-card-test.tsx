@@ -2,14 +2,14 @@ import i18n from '@/i18n';
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import dummyIssues from '../../../../dummy_data/issues.json';
+import { TEST_ISSUES } from '../../../../test/fixtures';
 import { IssueCard } from '@/components/layout/IssueCard';
 import { computeInitials, formatAddress, formatIssueDate } from '@/components/utils/formatter';
 import { type Issue } from '@/models/Issue';
 
-const mockBikeIssue = dummyIssues.issues[0] as Issue;
-const mockElevatorIssue = dummyIssues.issues[1] as Issue;
-const mockPotholeIssue = dummyIssues.issues[2] as Issue;
+const mockBikeIssue = TEST_ISSUES[0];
+const mockElevatorIssue = TEST_ISSUES[1];
+const mockPotholeIssue = TEST_ISSUES[2];
 
 describe('IssueCard', () => {
   beforeEach(async () => {
