@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -264,6 +264,9 @@ export function IssueDetailScreen({
   } | null>(null);
   const [newCommentText, setNewCommentText] = useState<string>('');
   const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
+  const commentPhotoMetaRef = useRef<
+    Record<string, { base64?: string | null; mimeType?: string | null; fileName?: string | null }>
+  >({});
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
@@ -368,10 +371,17 @@ export function IssueDetailScreen({
     try {
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.7,
+        quality: 0.6,
+        base64: true,
       });
       if (!res.canceled && res.assets?.[0]?.uri) {
-        setPendingPhotos((prev) => [...prev, res.assets[0].uri].slice(0, MAX_COMMENT_PHOTOS));
+        const asset = res.assets[0];
+        commentPhotoMetaRef.current[asset.uri] = {
+          base64: asset.base64,
+          mimeType: asset.mimeType,
+          fileName: asset.fileName,
+        };
+        setPendingPhotos((prev) => [...prev, asset.uri].slice(0, MAX_COMMENT_PHOTOS));
       }
     } catch {
       Alert.alert('Error', 'Unable to open your photo library.');
@@ -379,7 +389,11 @@ export function IssueDetailScreen({
   };
 
   const handleRemovePendingPhoto = (index: number) => {
-    setPendingPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPendingPhotos((prev) => {
+      const removed = prev[index];
+      if (removed) delete commentPhotoMetaRef.current[removed];
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleAddComment = async () => {
@@ -399,7 +413,17 @@ export function IssueDetailScreen({
           /^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//i.test(uri),
         );
         const localUris = pendingPhotos.filter((uri) => !/^https?:\/\//i.test(uri));
-        const newlyUploaded = localUris.length > 0 ? await uploadIssuePhotos(localUris) : [];
+        const newlyUploaded =
+          localUris.length > 0
+            ? await uploadIssuePhotos(
+                localUris.map((uri) => {
+                  const meta = commentPhotoMetaRef.current[uri];
+                  return meta && (meta.base64 || meta.mimeType || meta.fileName)
+                    ? { uri, ...meta }
+                    : uri;
+                }),
+              )
+            : [];
         uploadedImages = [...existingRemote, ...newlyUploaded];
       }
 
@@ -410,6 +434,7 @@ export function IssueDetailScreen({
       });
       setNewCommentText('');
       setPendingPhotos([]);
+      commentPhotoMetaRef.current = {};
     } catch (err) {
       Alert.alert('Error', getApiErrorMessage(err, 'Unable to post comment. Please try again.'));
     } finally {

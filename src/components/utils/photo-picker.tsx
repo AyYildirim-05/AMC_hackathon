@@ -17,7 +17,11 @@ export const MAX_ISSUE_PHOTOS = 5;
 export type PickedPhoto = Extract<UploadableImage, { uri: string }>;
 
 /** Compressed before upload; issue photos don't need full sensor resolution. */
-const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.6 };
+const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
+  mediaTypes: ['images'],
+  quality: 0.6,
+  base64: true,
+};
 
 const THUMBNAIL_SIZE = 88;
 
@@ -27,10 +31,16 @@ export type PhotoPickerProps = {
   max?: number;
 };
 
-const toPickedPhoto = ({ uri, mimeType, fileName }: ImagePicker.ImagePickerAsset): PickedPhoto => ({
+const toPickedPhoto = ({
   uri,
   mimeType,
   fileName,
+  base64,
+}: ImagePicker.ImagePickerAsset): PickedPhoto => ({
+  uri,
+  mimeType,
+  fileName,
+  base64,
 });
 
 /**
