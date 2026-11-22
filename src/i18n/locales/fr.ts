@@ -326,7 +326,7 @@ const fr: Translations = {
   },
   reportMap: {
     reportPoint: 'Votre signalement',
-    issueMarker: '{{title}}, {{status}}',
+    issueMarker: '{{title}}, {{category}}, {{status}}',
     legendTitle: 'Autres signalements dans {{district}}',
     noIssues: 'Aucun autre signalement dans cet arrondissement pour le moment.',
   },

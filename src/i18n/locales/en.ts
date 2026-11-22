@@ -327,7 +327,7 @@ const en = {
   },
   reportMap: {
     reportPoint: 'Your report',
-    issueMarker: '{{title}}, {{status}}',
+    issueMarker: '{{title}}, {{category}}, {{status}}',
     legendTitle: 'Other issues in {{district}}',
     noIssues: 'No other issues reported in this district yet.',
   },
