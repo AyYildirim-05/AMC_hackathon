@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
+import { CATEGORY_ICONS, MapIcon } from '@/components/map/MapIcon';
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
 import { type LatLng, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 import type { Issue } from '@/models/Issue';
@@ -16,7 +17,7 @@ export const OVERLAY_FRACTION = 0.35;
 export type ReportLocationMapProps = {
   /** Where the new issue will be reported (the device's location). */
   point: LatLng;
-  /** Other issues in the same district, drawn as dots colored by status. */
+  /** Other issues in the same district: a category icon on a dot colored by status. */
   issues: readonly Issue[];
 };
 
@@ -45,19 +46,26 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
     >
       {issues.map((issue) => {
         const status = t(`issue.status.${issue.status}`);
+        const category = t(`issue.category.${issue.category}`);
         return (
           <Marker
             key={issue.id}
             testID={`report-map-issue-${issue.id}`}
             coordinate={{ latitude: issue.latitude, longitude: issue.longitude }}
             title={issue.title}
-            description={status}
+            description={`${category} • ${status}`}
             tracksViewChanges={false}
           >
             <View
-              accessibilityLabel={t('reportMap.issueMarker', { title: issue.title, status })}
+              accessibilityLabel={t('reportMap.issueMarker', {
+                title: issue.title,
+                category,
+                status,
+              })}
               style={[styles.issueDot, { backgroundColor: ISSUE_STATUS_COLORS[issue.status] }]}
-            />
+            >
+              <MapIcon name={CATEGORY_ICONS[issue.category]} size={13} color="#FFFFFF" />
+            </View>
           </Marker>
         );
       })}
@@ -79,13 +87,15 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
 
 const styles = StyleSheet.create({
   issueDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  // The report point: larger, dark and ringed, so it stands apart from the status dots.
+  // The report point: larger, dark and ringed, so it stands apart from the issue dots.
   pointRing: {
     width: 28,
     height: 28,
