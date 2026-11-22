@@ -423,7 +423,7 @@ export default function CardScreen() {
           <View pointerEvents="box-none" style={styles.topControlsOverlay}>
             <View style={styles.searchRow}>
               <View style={[styles.searchBar, { backgroundColor: pillSurface }]}>
-                <MapIcon name="search" size={18} color={isDark ? '#C6EBD3' : '#39473F'} />
+                <MapIcon name="search" size={16} color={isDark ? '#C6EBD3' : '#39473F'} />
                 <TextInput
                   testID="map-search-input"
                   value={searchQuery}
@@ -458,7 +458,7 @@ export default function CardScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <MapIcon name="tune" size={18} color="#FFFFFF" />
+                <MapIcon name="tune" size={16} color="#FFFFFF" />
               </Pressable>
 
               <Pressable
@@ -475,7 +475,7 @@ export default function CardScreen() {
               >
                 <MapIcon
                   name="roadwork"
-                  size={18}
+                  size={16}
                   color={showRoadworks ? '#FFFFFF' : isDark ? '#FDBA74' : '#C2410C'}
                 />
               </Pressable>
@@ -998,20 +998,23 @@ const styles = StyleSheet.create({
     gap: 8,
     zIndex: 1005,
   },
+  // Search, filters and roadworks must share one row even on narrow phones (iPhone SE / mini):
+  // the buttons keep their size and the search field takes whatever width is left.
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     paddingHorizontal: Spacing.three,
   },
   searchBar: {
     flex: 1,
-    height: 46,
+    minWidth: 0,
+    height: 40,
     borderRadius: 999,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     shadowColor: '#1C211F',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.1,
@@ -1020,20 +1023,22 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    minWidth: 0,
+    fontSize: 13.5,
     paddingVertical: 0,
   },
   clearBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tuneButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    flexShrink: 0,
     backgroundColor: '#39473F',
     alignItems: 'center',
     justifyContent: 'center',
