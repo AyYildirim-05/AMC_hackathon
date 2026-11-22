@@ -19,6 +19,7 @@ export type ApiIssueComment = {
   issueId: string;
   userId: string;
   body: string;
+  images: string[];
   isOfficialResponse: boolean;
   createdAt: string;
   updatedAt: string;
@@ -86,10 +87,11 @@ export async function createIssueComment(
   issueId: string,
   body: string,
   isOfficialResponse = false,
+  images: string[] = [],
 ): Promise<ApiIssueComment> {
   const { data } = await apiClient.post<ApiIssueComment>(
     `/api/issues/${encodeURIComponent(issueId)}/comments`,
-    { body, isOfficialResponse },
+    { body, isOfficialResponse, images },
   );
   return data;
 }

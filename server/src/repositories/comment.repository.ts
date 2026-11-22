@@ -6,6 +6,7 @@ export type NewComment = {
   issueId: string;
   userId: string;
   body: string;
+  images: string[];
   isOfficialResponse: boolean;
 };
 

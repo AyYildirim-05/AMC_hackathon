@@ -462,6 +462,7 @@ function toServerComment(c: IssueComment, persons: Person[]) {
     issueId: c.issue_id,
     userId: c.user_id,
     body: c.body,
+    images: c.images ?? [],
     isOfficialResponse: c.is_official_response,
     createdAt: c.created_at,
     updatedAt: c.created_at,
@@ -601,6 +602,7 @@ export function installMockBackendApi(options?: {
           issue_id: issueId,
           user_id: current?.id ?? 'current-user',
           body: String(body.body ?? ''),
+          images: Array.isArray(body.images) ? body.images.map(String) : [],
           is_official_response: Boolean(body.isOfficialResponse),
           created_at: new Date().toISOString(),
         };
