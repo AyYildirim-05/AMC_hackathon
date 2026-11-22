@@ -59,7 +59,7 @@ describe('SplashScreenOverlay', () => {
     jest.useRealTimers();
   });
 
-  it('renders the branded Montone splash screen, hides native splash, and calls onFinish when ready', async () => {
+  it('renders the branded MonTone splash screen, hides native splash, and calls onFinish when ready', async () => {
     const onFinish = jest.fn();
 
     await render(<SplashScreenOverlay ready={true} minimumDurationMs={1000} onFinish={onFinish} />);
@@ -67,7 +67,7 @@ describe('SplashScreenOverlay', () => {
     expect(SplashScreen.hideAsync).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('splash-screen-overlay')).toBeOnTheScreen();
     expect(screen.getByTestId('splash-logo-image')).toBeOnTheScreen();
-    expect(screen.getByText('Montone')).toBeOnTheScreen();
+    expect(screen.getByText('MonTone')).toBeOnTheScreen();
     expect(
       screen.getByText('Report, track, and resolve neighborhood issues together.'),
     ).toBeOnTheScreen();
@@ -133,6 +133,15 @@ describe('OnboardingPresentationModal', () => {
 
     await fireEvent.press(screen.getByTestId('onboarding-start-button'));
     expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('promises only the 311 hand-off the app has: email, and a MonTone reference', async () => {
+    await render(<OnboardingPresentationModal visible={true} onComplete={jest.fn()} />);
+
+    expect(screen.getByText('MonTone #A1B2C3')).toBeOnTheScreen();
+    expect(screen.getByText(/send it to 311 by email/)).toBeOnTheScreen();
+    // No made-up official 311 number or "311 tracking".
+    expect(screen.queryByText(/MTL-311/)).toBeNull();
   });
 
   it('dismisses immediately when Skip is pressed', async () => {

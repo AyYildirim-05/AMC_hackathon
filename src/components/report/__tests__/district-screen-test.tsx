@@ -8,6 +8,7 @@ import {
   within,
 } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
+import { Alert, Linking } from 'react-native';
 
 import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { DistrictScreen } from '@/components/report/DistrictScreen';
@@ -352,6 +353,75 @@ describe('DistrictScreen', () => {
 
     await fireEvent.press(screen.getByTestId('save-draft-button'));
     expect(await screen.findByText('Brouillon enregistré avec succès.')).toBeOnTheScreen();
+  });
+
+  describe('send to 311', () => {
+    const publish = async () => {
+      await render(<DistrictScreen />);
+      await screen.findByTestId(`report-map-issue-${TEST_ISSUES[0].id}`);
+      await fillRequiredFields();
+    };
+    const pressPublish = async () => {
+      await fireEvent.press(screen.getByTestId('publish-report-button'));
+      await fireEvent.press(await screen.findByTestId('duplicate-publish-anyway-button'));
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('offers to email 311 after publishing, with the report filled in, and no fake ticket', async () => {
+      const alert = jest.spyOn(Alert, 'alert');
+      const openUrl = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+      await publish();
+      expect(screen.getByTestId('mtl-311-switch').props.value).toBe(true);
+      await pressPublish();
+
+      await waitFor(() =>
+        expect(alert).toHaveBeenCalledWith(
+          'Envoyer ce signalement au 311 ?',
+          expect.stringContaining('votre application de courriel'),
+          expect.any(Array),
+        ),
+      );
+      const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+      expect(buttons.map((b) => b.text)).toEqual([
+        'Plus tard',
+        'Appeler le 311',
+        'Courriel au 311',
+      ]);
+
+      await act(async () => {
+        buttons.find((b) => b.text === 'Courriel au 311')?.onPress?.();
+      });
+      const url = decodeURIComponent(openUrl.mock.calls[0][0]);
+      expect(url).toMatch(/^mailto:\?subject=\[MonTone #[A-Z0-9]{6}\] /);
+      expect(url).toContain('Adresse : 1250 Rue Rachel Est, Montréal, QC H2J 2J9');
+      expect(url).toContain('Envoyé avec MonTone.');
+      expect(url).not.toContain('MTL-311');
+    });
+
+    it('calls 311 from the same prompt', async () => {
+      const alert = jest.spyOn(Alert, 'alert');
+      const openUrl = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+      await publish();
+      await pressPublish();
+      await waitFor(() => expect(alert).toHaveBeenCalled());
+      const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+      await act(async () => {
+        buttons.find((b) => b.text === 'Appeler le 311')?.onPress?.();
+      });
+      expect(openUrl).toHaveBeenCalledWith('tel:5148720311');
+    });
+
+    it('does not prompt when 311 is switched off', async () => {
+      const alert = jest.spyOn(Alert, 'alert');
+      await publish();
+      await fireEvent(screen.getByTestId('mtl-311-switch'), 'valueChange', false);
+      await pressPublish();
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
+      expect(alert).not.toHaveBeenCalled();
+    });
   });
 
   it('creates the issue, resets all fields to empty, and switches to the Issues tab', async () => {

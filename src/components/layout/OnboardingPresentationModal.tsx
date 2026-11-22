@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { brand, brandLogo } from '@/brand';
 import { ThemedButton } from '@/components/utils/themed-button';
 import { ThemedText } from '@/components/utils/themed-text';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -154,7 +155,9 @@ export function OnboardingPresentationModal({
             <View style={[styles.chip, { backgroundColor: theme.backgroundSelected }]}>
               <Text style={[styles.chipMono, { color: theme.text }]}>OPENNORTH ✓</Text>
             </View>
-            <Text style={[styles.metaMono, { color: theme.textSecondary }]}>MTL-311-2026</Text>
+            <Text style={[styles.metaMono, { color: theme.textSecondary }]}>
+              {`${brand.name} #A1B2C3`}
+            </Text>
           </View>
           <Text style={[styles.previewHeading, { color: theme.text }]}>Le Plateau-Mont-Royal</Text>
           <Text style={[styles.previewSub, { color: theme.textSecondary }]}>
@@ -340,13 +343,9 @@ export function OnboardingPresentationModal({
                   },
                 ]}
               >
-                <Image
-                  source={require('@/assets/images/montone-icon.png')}
-                  style={styles.miniLogo}
-                  contentFit="cover"
-                />
+                <Image source={brandLogo} style={styles.miniLogo} contentFit="cover" />
               </View>
-              <Text style={[styles.brandWordmark, { color: theme.text }]}>Montone</Text>
+              <Text style={[styles.brandWordmark, { color: theme.text }]}>{brand.name}</Text>
             </View>
 
             <Pressable

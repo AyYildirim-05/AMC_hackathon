@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Montone",
+    "name": "MonTone",
     "slug": "Montone",
-    "version": "2.0.0",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/montone-icon.png",
     "scheme": "montone",
@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/images/montone-icon.png",
       "bundleIdentifier": "com.yildirim.cuneyt.it.Montone",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "CFBundleLocalizations": ["en", "fr"]
       }
@@ -26,7 +26,7 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "package": "com.yildirim.cuneyt.it.Montone",
-      "versionCode": 2
+      "versionCode": 3
     },
     "web": {
       "output": "server",
@@ -59,15 +59,15 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Montone uses your camera to photograph the issues you report.",
-          "photosPermission": "Montone uses your photo library to attach photos to the issues you report.",
+          "cameraPermission": "MonTone uses your camera to photograph the issues you report.",
+          "photosPermission": "MonTone uses your photo library to attach photos to the issues you report.",
           "microphonePermission": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Montone uses your location to pinpoint civic issues and identify your Montreal borough."
+          "locationWhenInUsePermission": "MonTone uses your location to pinpoint civic issues and identify your Montreal borough."
         }
       ],
       "expo-status-bar",

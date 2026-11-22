@@ -11,7 +11,7 @@ const fr: Translations = {
     card: 'Carte',
     report: 'Signaler',
     district: 'Arrondissement',
-    brand: 'Montone',
+    brand: '{{appName}}',
   },
   feed: {
     boroughSearch: 'Rechercher un arrondissement',
@@ -28,7 +28,7 @@ const fr: Translations = {
     reset: 'Réinitialiser les filtres',
   },
   home: {
-    title: 'Bienvenue sur Montone',
+    title: 'Bienvenue sur {{appName}}',
     getStarted: 'pour commencer',
     tryEditing: 'Modifiez',
     devTools: 'Outils de dév.',
@@ -194,15 +194,15 @@ const fr: Translations = {
     optional: 'Optionnel',
     photoAddedSingle: '1 ajoutée',
     photoAddedPlural: '{{count}} ajoutées',
-    mtl311Title: 'Transmission MTL-311',
-    autoTicket: 'AUTO-TICKET',
+    mtl311Title: 'Envoi au 311',
+    autoTicket: 'COURRIEL',
     mtl311Desc:
-      'Transmettre automatiquement une requête officielle aux services municipaux de la Ville de Montréal.',
+      'Après la publication, envoyez le signalement au 311 de Montréal depuis votre propre application de courriel, avec l’adresse, la position GPS, les photos et la description déjà remplies.',
     mtl311Tracking:
-      'Numéro de suivi municipal officiel délivré après publication (ex. MTL-311-2026-XXXXX).',
+      'Vous relisez et envoyez le courriel vous-même. Votre signalement reçoit une référence {{appName}} ; l’arrondissement pourra y lier le numéro 311 officiel plus tard.',
     publishButton: 'Publier le signalement',
     draftButton: 'Enregistrer comme brouillon',
-    charterFooter: 'Charte citoyenne Montone • Données ouvertes OpenNorth',
+    charterFooter: 'Charte citoyenne {{appName}} • Données ouvertes OpenNorth',
     publishedSuccessTitle: 'Signalement publié avec succès !',
     publishedSuccessMessage:
       'Votre signalement a été transmis à la Ville de Montréal avec le numéro de référence officiel.',
@@ -342,7 +342,7 @@ const fr: Translations = {
     unavailableTitle: 'Carte indisponible sur cet appareil',
     unavailableBody:
       "Cette version Android n'a pas de clé API Google Maps. Ajoutez GOOGLE_MAPS_ANDROID_API_KEY dans .env et recompilez.",
-    brandTitle: 'Montone',
+    brandTitle: '{{appName}}',
     allBoroughs: 'Tous les arrondissements',
     searchPlaceholder: 'Rechercher rue, #311, parc...',
     clearSearch: 'Effacer la recherche',
@@ -415,11 +415,11 @@ const fr: Translations = {
     noIssues: 'Aucun autre signalement dans cet arrondissement pour le moment.',
   },
   splash: {
-    badge: 'Montréal • Pouls Civique',
-    title: 'Montone',
+    badge: 'Montréal • {{appName}}',
+    title: '{{appName}}',
     tagline: 'Signalez, suivez et résolvez les enjeux de quartier ensemble.',
-    footer: 'Limites OpenNorth • Sync MTL-311',
-    loadingLabel: 'Chargement de Montone',
+    footer: 'Limites OpenNorth • 311 par courriel',
+    loadingLabel: 'Chargement de {{appName}}',
   },
   onboarding: {
     skip: 'Passer',
@@ -434,7 +434,7 @@ const fr: Translations = {
         description:
           'Ajoutez jusqu’à 3 photos, détectez automatiquement votre arrondissement montréalais par GPS et soumettez un dossier géolocalisé.',
         point1: 'Arrondissement détecté automatiquement via l’API OpenNorth',
-        point2: 'Jusqu’à 3 photos jointes avec suivi MTL-311 optionnel',
+        point2: 'Jusqu’à 3 photos, puis envoi au 311 par courriel en un geste',
       },
       map: {
         eyebrow: 'Carte citoyenne en direct',
@@ -465,6 +465,31 @@ const fr: Translations = {
         step3: 'Résolution finale et confirmation citoyenne',
       },
     },
+  },
+  report311: {
+    greeting: 'Bonjour,',
+    intro: 'Je souhaite signaler le problème suivant au service 311 de la Ville de Montréal :',
+    separator: ' : ',
+    fields: {
+      category: 'Catégorie',
+      title: 'Titre',
+      description: 'Description',
+      address: 'Adresse',
+      borough: 'Arrondissement',
+      gps: 'Coordonnées GPS',
+      map: 'Carte',
+      photos: 'Photos',
+      reference: 'Référence {{appName}}',
+    },
+    closing: 'Envoyé avec {{appName}}. Merci de votre aide.',
+    promptTitle: 'Envoyer ce signalement au 311 ?',
+    promptBody:
+      'Le 311 de Montréal ne reçoit pas les signalements des applications directement. Envoyez-le vous-même : votre application de courriel s’ouvre avec tout le contenu rempli, ou appelez le 311.',
+    email: 'Courriel au 311',
+    call: 'Appeler le 311',
+    later: 'Plus tard',
+    noMailApp:
+      'Aucune application de courriel n’est configurée sur cet appareil. Appelez plutôt le 311 au 514-872-0311.',
   },
 };
 

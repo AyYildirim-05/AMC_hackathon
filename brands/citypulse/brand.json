@@ -1,0 +1,85 @@
+{
+  "id": "citypulse",
+  "name": "CityPulse",
+  "slug": "CityPulse",
+  "scheme": "citypulse",
+  "ios": {
+    "bundleIdentifier": "com.yildirim.cuneyt.it.CityPulse"
+  },
+  "android": {
+    "package": "com.yildirim.cuneyt.it.CityPulse",
+    "adaptiveIconBackground": "#2563EB"
+  },
+  "icon": "./brands/citypulse/icon.png",
+  "splash": {
+    "image": "./brands/citypulse/icon.png",
+    "light": "#F2F4F7",
+    "dark": "#12161C"
+  },
+  "palette": {
+    "light": {
+      "neutral": {
+        "100": "#f4f6f9",
+        "200": "#e6eaf0",
+        "300": "#d2d8e1",
+        "400": "#b3bcc9",
+        "500": "#929cab",
+        "600": "#747e8d",
+        "700": "#575f6c",
+        "800": "#3c434d",
+        "900": "#262b33"
+      },
+      "accent": {
+        "100": "#eef4ff",
+        "200": "#dbe7ff",
+        "300": "#bcd2ff",
+        "400": "#8ab1ff",
+        "500": "#2563eb",
+        "600": "#1d55d6",
+        "700": "#1742a8",
+        "800": "#123278",
+        "900": "#0e2350"
+      },
+      "bg": "#f2f4f7",
+      "surface": "#e7ebf0",
+      "ink": "#161b22"
+    },
+    "dark": {
+      "neutral": {
+        "100": "#262b33",
+        "200": "#22272e",
+        "300": "#30363f",
+        "400": "#575f6c",
+        "500": "#747e8d",
+        "600": "#929cab",
+        "700": "#b3bcc9",
+        "800": "#d2d8e1",
+        "900": "#f2f4f7"
+      },
+      "accent": {
+        "100": "#0f1d3d",
+        "200": "#0e2350",
+        "300": "#123278",
+        "400": "#1742a8",
+        "500": "#3b82f6",
+        "600": "#60a5fa",
+        "700": "#93c5fd",
+        "800": "#bfdbfe",
+        "900": "#eff6ff"
+      },
+      "bg": "#12161c",
+      "surface": "#1b2028",
+      "ink": "#f2f4f7"
+    }
+  },
+  "statusColors": {
+    "light": {
+      "success": "#161b22",
+      "danger": "#b42318"
+    },
+    "dark": {
+      "success": "#f2f4f7",
+      "danger": "#fda29b"
+    }
+  }
+}

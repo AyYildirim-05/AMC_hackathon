@@ -13,7 +13,7 @@ const en = {
     card: 'Map',
     report: 'Report',
     district: 'District',
-    brand: 'Montone',
+    brand: '{{appName}}',
   },
   feed: {
     boroughSearch: 'Search a borough',
@@ -30,7 +30,7 @@ const en = {
     reset: 'Reset filters',
   },
   home: {
-    title: 'Welcome to Montone',
+    title: 'Welcome to {{appName}}',
     getStarted: 'get started',
     tryEditing: 'Try editing',
     devTools: 'Dev tools',
@@ -194,15 +194,15 @@ const en = {
     optional: 'Optional',
     photoAddedSingle: '1 added',
     photoAddedPlural: '{{count}} added',
-    mtl311Title: 'Transmission MTL-311',
-    autoTicket: 'AUTO-TICKET',
+    mtl311Title: 'Send to 311',
+    autoTicket: 'EMAIL',
     mtl311Desc:
-      'Automatically transmit an official request to City of Montréal municipal services.',
+      'After publishing, send the report to Montréal’s 311 from your own mail app, with the address, GPS position, photos and description filled in.',
     mtl311Tracking:
-      'Official municipal tracking number issued after publication (e.g. MTL-311-2026-XXXXX).',
+      'You review and send the email yourself. Your report gets a {{appName}} reference; the borough can link the official 311 number later.',
     publishButton: 'Publish report',
     draftButton: 'Save as draft',
-    charterFooter: 'Montone Citizen Charter • OpenNorth Open Data',
+    charterFooter: '{{appName}} Citizen Charter • OpenNorth Open Data',
     publishedSuccessTitle: 'Report published successfully!',
     publishedSuccessMessage:
       'Your report has been forwarded to the City of Montréal with an official reference number.',
@@ -342,7 +342,7 @@ const en = {
     unavailableTitle: 'Map unavailable on this device',
     unavailableBody:
       'This Android build has no Google Maps API key. Add GOOGLE_MAPS_ANDROID_API_KEY to .env and rebuild.',
-    brandTitle: 'Montone',
+    brandTitle: '{{appName}}',
     allBoroughs: 'All boroughs',
     searchPlaceholder: 'Search street, #311, park...',
     clearSearch: 'Clear search',
@@ -415,11 +415,11 @@ const en = {
     noIssues: 'No other issues reported in this district yet.',
   },
   splash: {
-    badge: 'Montréal • Civic Pulse',
-    title: 'Montone',
+    badge: 'Montréal • {{appName}}',
+    title: '{{appName}}',
     tagline: 'Report, track, and resolve neighborhood issues together.',
-    footer: 'OpenNorth Boundaries • MTL-311 Sync',
-    loadingLabel: 'Loading Montone',
+    footer: 'OpenNorth Boundaries • 311 by email',
+    loadingLabel: 'Loading {{appName}}',
   },
   onboarding: {
     skip: 'Skip',
@@ -434,7 +434,7 @@ const en = {
         description:
           'Snap up to 3 photos, auto-detect your exact Montréal borough from your device GPS, and file a geo-verified civic report.',
         point1: 'Automatic borough matching via OpenNorth Represent API',
-        point2: 'Attach up to 3 photos with optional MTL-311 tracking',
+        point2: 'Attach up to 3 photos, then send it to 311 by email in one tap',
       },
       map: {
         eyebrow: 'Live Neighborhood Map',
@@ -465,6 +465,30 @@ const en = {
         step3: 'Final resolution & community confirmation',
       },
     },
+  },
+  report311: {
+    greeting: 'Hello,',
+    intro: 'I would like to report the following problem to the City of Montréal 311 service:',
+    separator: ': ',
+    fields: {
+      category: 'Category',
+      title: 'Title',
+      description: 'Description',
+      address: 'Address',
+      borough: 'Borough',
+      gps: 'GPS coordinates',
+      map: 'Map',
+      photos: 'Photos',
+      reference: '{{appName}} reference',
+    },
+    closing: 'Sent with {{appName}}. Thank you for your help.',
+    promptTitle: 'Send this report to 311?',
+    promptBody:
+      'Montréal’s 311 does not take reports from apps directly. You can send it yourself: your mail app opens with everything filled in, or call 311.',
+    email: 'Email 311',
+    call: 'Call 311',
+    later: 'Not now',
+    noMailApp: 'No mail app is set up on this device. Call 311 at 514-872-0311 instead.',
   },
 };
 

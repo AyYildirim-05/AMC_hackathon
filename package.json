@@ -1,6 +1,6 @@
 {
   "name": "montone",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/ui": "~58.0.29",
@@ -9,6 +9,7 @@
     "axios": "^1.21.1",
     "eslint-config-expo": "~58.0.4",
     "expo": "~58.0.22",
+    "expo-build-properties": "~58.0.12",
     "expo-constants": "~58.0.14",
     "expo-device": "~58.0.5",
     "expo-font": "~58.0.11",
