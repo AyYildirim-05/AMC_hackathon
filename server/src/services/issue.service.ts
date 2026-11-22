@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { isIssuePhotoUrl } from '../lib/cloudinary.js';
-import { analyzeIssueSeverity } from '../lib/gemini.js';
+import { analyzeIssueSeverity, estimateFallbackSeverity } from '../lib/gemini.js';
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
 import {
@@ -141,10 +141,24 @@ export async function enrichIssues(docs: readonly SerializableDoc[]): Promise<En
     const summary = commentSummaries.get(id);
     const latestOfficial = summary?.latestOfficial ?? null;
     const officialPerson = latestOfficial ? personById.get(latestOfficial.userId) : undefined;
+    const fallbackSeverity =
+      typeof issue.severityScore === 'number'
+        ? null
+        : estimateFallbackSeverity({
+            title: String(issue.title ?? ''),
+            description: String(issue.description ?? ''),
+            category: typeof issue.category === 'string' ? issue.category : undefined,
+            elements: Array.isArray(issue.elements) ? issue.elements.map(String) : undefined,
+          });
 
     return {
       ...issue,
       id,
+      severityScore:
+        typeof issue.severityScore === 'number'
+          ? issue.severityScore
+          : (fallbackSeverity?.severityScore ?? null),
+      urgency: issue.urgency ?? fallbackSeverity?.urgency ?? null,
       author: creator
         ? {
             username: String(creator.username),

@@ -9,6 +9,81 @@ export interface SeverityBadgePalette {
   accentBorderColor: string;
 }
 
+export interface ResolvedIssueSeverity {
+  score: number;
+  urgency: IssueUrgency;
+}
+
+/**
+ * Deterministic client fallback for legacy issues saved before AI severity scoring was added,
+ * matching the server's fallback rubric. Whenever the backend provides `severity_score`, that
+ * Gemini score is always used directly.
+ */
+export function estimateIssueSeverity(
+  issue: Partial<Pick<Issue, 'title' | 'description' | 'category' | 'elements'>>,
+): ResolvedIssueSeverity {
+  const text = `${issue.title ?? ''} ${issue.description ?? ''}`.toLowerCase();
+  let score = 5;
+
+  if (
+    /\b(downed|live wire|power line|exposed wire|sinkhole|collapse|collapsed|fire|gas leak|flooded|flooding|electr|fil électrique|effondr|fuite de gaz|inond|danger mortel|urgent)\b/i.test(
+      text,
+    )
+  ) {
+    score = 9;
+  } else if (
+    /\b(blocked|blocking|obstruct|barriers?|broken glass|fallen tree|no light|traffic light|signal out|bloqué|obstru|barrière|clôture|arbre tombé|feu de circulation|dangereux|dangerous)\b/i.test(
+      text,
+    )
+  ) {
+    score = 8;
+  } else if (
+    /\b(pothole|nid-de-poule|sunken|manhole|elevator|ascenseur|streetlight|lampadaire|light|éclair|sidewalk|trottoir|crack|fissur)\b/i.test(
+      text,
+    )
+  ) {
+    score = 6;
+  } else if (
+    /\b(graffiti|litter|trash|déchet|peinture|faded|bench|banc|weed|herbe)\b/i.test(text)
+  ) {
+    score = 2;
+  } else if (issue.category === 'traffic_safety') {
+    score = 7;
+  } else if (issue.category === 'streetlights_utilities') {
+    score = 6;
+  }
+
+  if (
+    issue.elements &&
+    (issue.elements.includes('freezing_rain') ||
+      issue.elements.includes('high_wind') ||
+      issue.elements.includes('rain_flooding'))
+  ) {
+    score = Math.min(10, score + 1);
+  }
+
+  return { score, urgency: severityScoreToUrgency(score) };
+}
+
+/**
+ * Always returns a 1–10 severity score and urgency level for an issue: uses the server/Gemini
+ * `severity_score` when present, and falls back to `estimateIssueSeverity` for legacy records.
+ */
+export function getIssueSeverity(
+  issue: Partial<
+    Pick<Issue, 'severity_score' | 'urgency' | 'title' | 'description' | 'category' | 'elements'>
+  >,
+): ResolvedIssueSeverity {
+  if (typeof issue.severity_score === 'number' && Number.isFinite(issue.severity_score)) {
+    const score = Math.min(10, Math.max(1, Math.round(issue.severity_score)));
+    return {
+      score,
+      urgency: issue.urgency ?? severityScoreToUrgency(score),
+    };
+  }
+  return estimateIssueSeverity(issue);
+}
+
 export function getIssueUrgency(
   issue: Pick<Issue, 'severity_score' | 'urgency'>,
 ): IssueUrgency | null {

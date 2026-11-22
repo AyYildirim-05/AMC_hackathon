@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { computeInitials, formatAddress, formatIssueDate } from '@/components/utils/formatter';
+import { getIssueSeverity, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -119,6 +120,13 @@ export function IncidentPreviewSheet({
   const categoryIcon = getCategoryIcon(issue.category);
   const categoryLabel = t(`issue.category.${issue.category}`);
   const statusColors = getStatusPillColors(issue.status, theme);
+  const severity = getIssueSeverity(issue);
+  const severityPalette = getSeverityBadgePalette(severity.urgency, theme);
+  const severityLabel = t('issue.severityBadge', {
+    urgency: t(`issue.urgency.${severity.urgency}`, { defaultValue: severity.urgency }),
+    score: severity.score,
+    defaultValue: `${severity.urgency} • ${severity.score}/10`,
+  });
   const statusLabel =
     issue.status === 'in_progress' && issue.official_response
       ? t('map.teamNotified')
@@ -180,6 +188,23 @@ export function IncidentPreviewSheet({
             <View style={[styles.statusDot, { backgroundColor: statusColors.dot }]} />
             <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
               {statusLabel}
+            </Text>
+          </View>
+
+          <View
+            testID="map-preview-severity-badge"
+            style={[
+              styles.categoryBadge,
+              {
+                backgroundColor: severityPalette.backgroundColor,
+                borderWidth: 1,
+                borderColor: severityPalette.borderColor,
+              },
+            ]}
+          >
+            <Text style={styles.elementIcon}>{severityPalette.icon}</Text>
+            <Text style={[styles.categoryBadgeText, { color: severityPalette.textColor }]}>
+              {severityLabel}
             </Text>
           </View>
 

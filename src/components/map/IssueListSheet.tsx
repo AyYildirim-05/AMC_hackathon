@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
+import { getIssueSeverity, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { shortStreetLabel } from '@/components/utils/map-utils';
 import { Spacing } from '@/constants/theme';
@@ -102,6 +103,8 @@ export function IssueListSheet({
             renderItem={({ item }) => {
               const district = districtNameFor(item);
               const street = shortStreetLabel(item.address);
+              const severity = getIssueSeverity(item);
+              const severityPalette = getSeverityBadgePalette(severity.urgency, theme);
               return (
                 <Pressable
                   testID={`map-list-row-${item.id}`}
@@ -123,6 +126,23 @@ export function IssueListSheet({
                     </Text>
                     <Text numberOfLines={1} style={[styles.rowMeta, { color: secondaryText }]}>
                       {district ? `${street} • ${district}` : street}
+                    </Text>
+                  </View>
+                  <View
+                    testID={`map-list-severity-${item.id}`}
+                    style={[
+                      styles.severityPill,
+                      {
+                        backgroundColor: severityPalette.backgroundColor,
+                        borderColor: severityPalette.borderColor,
+                      },
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.severityPillText, { color: severityPalette.textColor }]}
+                    >
+                      {`${severityPalette.icon} ${severity.score}/10`}
                     </Text>
                   </View>
                   <View style={styles.statusCol}>
@@ -182,6 +202,13 @@ const createStyles = (theme: Theme) =>
     rowText: { flex: 1, minWidth: 0, gap: 2 },
     rowTitle: { fontSize: 14, fontWeight: '600' },
     rowMeta: { fontSize: 12 },
+    severityPill: {
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    severityPillText: { fontSize: 11, fontWeight: '700' },
     statusCol: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: 110 },
     statusDot: { width: 8, height: 8, borderRadius: 4 },
     statusText: { fontSize: 11.5, fontWeight: '600', flexShrink: 1 },
