@@ -65,17 +65,22 @@ export function RoadworksFilterBar({
               onPress={() => onToggleType(type)}
               style={[
                 styles.chip,
+                // Same theme colors as the roadwork markers: filled when selected.
                 selected
-                  ? { backgroundColor: style.color }
-                  : { backgroundColor: surface, borderColor: style.color },
+                  ? { backgroundColor: theme.text, borderColor: theme.text }
+                  : { backgroundColor: surface, borderColor: theme.text },
               ]}
             >
-              <MapIcon name={style.icon} size={13} color={selected ? '#FFFFFF' : style.color} />
-              <Text style={[styles.chipLabel, { color: selected ? '#FFFFFF' : text }]}>
+              <MapIcon
+                name={style.icon}
+                size={13}
+                color={selected ? theme.background : theme.text}
+              />
+              <Text style={[styles.chipLabel, { color: selected ? theme.background : text }]}>
                 {t(`map.roadworks.types.${type}`)}
               </Text>
               {typeCounts ? (
-                <Text style={[styles.chipCount, { color: selected ? '#FFFFFF' : text }]}>
+                <Text style={[styles.chipCount, { color: selected ? theme.background : text }]}>
                   {typeCounts[type] ?? 0}
                 </Text>
               ) : null}

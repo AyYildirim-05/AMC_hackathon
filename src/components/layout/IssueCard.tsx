@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/utils/themed-text';
+import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -327,6 +328,29 @@ export function IssueCard({
             </Text>
           </View>
         ) : null}
+
+        {/* Weather Element Pills */}
+        {(issue.elements ?? []).map((el) => {
+          const meta = WEATHER_ELEMENT_META[el];
+          return (
+            <View
+              key={el}
+              testID={`issue-element-pill-${el}`}
+              style={[
+                styles.tagPill,
+                {
+                  backgroundColor: isDark ? '#1B3142' : '#EBF5FF',
+                  borderColor: isDark ? '#2C4D66' : '#BFDBFE',
+                },
+              ]}
+            >
+              <Text style={styles.tagIcon}>{meta.icon}</Text>
+              <Text style={[styles.tagText, { color: isDark ? '#BAE6FD' : '#1E40AF' }]}>
+                {translateSafe(`issue.elements.${el}`, meta.fallbackLabel)}
+              </Text>
+            </View>
+          );
+        })}
       </View>
 
       {/* ─── Footer: Upvote, Confirmations & Comments ─── */}

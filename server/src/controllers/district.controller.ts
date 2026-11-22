@@ -4,6 +4,7 @@ import { optionalAuth } from '../middleware/auth.js';
 import { parseParams, validateBody } from '../middleware/validate.js';
 import {
   allDistricts,
+  allMontrealDistricts,
   createDistrict,
   createDistrictInput,
   deleteDistrict,
@@ -43,6 +44,11 @@ districtRouter.post(
     res.status(201).json(await createDistrict(req.body));
   },
 );
+
+/** Every district, including all 19 City of Montréal boroughs (added from OpenNorth if missing). */
+districtRouter.get('/montreal', async (_req, res) => {
+  res.json(await allMontrealDistricts());
+});
 
 districtRouter.get('/locate', async (req, res) => {
   const { lat, lng } = parseParams(locateDistrictQuery, req.query);

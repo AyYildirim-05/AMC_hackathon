@@ -115,7 +115,7 @@ export const TEST_PERSONS: Person[] = [
     username: 'admin_mtl',
     display_name: 'Admin MTL',
     avatar_url: null,
-    email: 'admin@citypulse-mtl.example.ca',
+    email: 'admin@montone.example.ca',
     postal_code: 'H2S2A9',
     home_district_id: '11111111-1111-4111-8111-111111111103',
     role: 'admin',
@@ -438,6 +438,7 @@ function toServerIssue(i: Issue) {
     description: i.description,
     category: i.category,
     status: i.status,
+    elements: i.elements ?? [],
     images: i.images,
     address: i.address,
     latitude: i.latitude,
@@ -590,6 +591,7 @@ export function installMockBackendApi(options?: {
         description: String(body.description ?? ''),
         category: (body.category as Issue['category']) ?? 'traffic_safety',
         status: 'not_started',
+        elements: Array.isArray(body.elements) ? (body.elements as Issue['elements']) : [],
         images: Array.isArray(body.images) ? body.images.map(String) : [],
         address: String(body.address ?? ''),
         latitude: Number(body.latitude ?? 45.5),
@@ -708,6 +710,26 @@ export function installMockBackendApi(options?: {
 
     if (method === 'get' && url === '/api/districts') {
       return reply(districts.map(toServerDistrict));
+    }
+
+    // Like the server: every known district plus the Montréal boroughs it adds from OpenNorth.
+    if (method === 'get' && url === '/api/districts/montreal') {
+      if (!districts.some((d) => d.open_north_slug === 'verdun')) {
+        districts.push({
+          id: '11111111-1111-4111-8111-111111111199',
+          name_fr: 'Verdun',
+          name_en: 'Verdun',
+          open_north_slug: 'verdun',
+          district_type: 'borough',
+          postal_code: null,
+          manager_id: null,
+          manager_username: null,
+          is_claimed: false,
+          created_at: '2026-11-22T00:00:00.000Z',
+        });
+      }
+      const sorted = [...districts].sort((a, b) => a.name_fr.localeCompare(b.name_fr, 'fr'));
+      return reply(sorted.map(toServerDistrict));
     }
 
     if (method === 'get' && url.startsWith('/api/districts/locate')) {

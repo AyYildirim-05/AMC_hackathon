@@ -11,10 +11,10 @@ const fr: Translations = {
     card: 'Carte',
     report: 'Signaler',
     district: 'Arrondissement',
-    brand: 'Expo Starter',
+    brand: 'Montone',
   },
   home: {
-    title: 'Bienvenue sur Expo',
+    title: 'Bienvenue sur Montone',
     getStarted: 'pour commencer',
     tryEditing: 'Modifiez',
     devTools: 'Outils de dév.',
@@ -61,6 +61,13 @@ const fr: Translations = {
       roads_potholes: 'Nids-de-poule',
       streetlights_utilities: 'Éclairage public',
       traffic_safety: 'Sécurité cycliste',
+    },
+    elements: {
+      snow_ice: 'Neige & Glace',
+      rain_flooding: 'Pluie & Inondation',
+      high_wind: 'Vents forts',
+      freezing_rain: 'Pluie verglaçante',
+      extreme_heat: 'Chaleur extrême',
     },
     photo: '{{count}} photo',
     photos: '{{count}} photos',
@@ -133,6 +140,8 @@ const fr: Translations = {
       parks: 'Parcs & Propreté',
       parksSub: 'Dépôts sauvages, parcs',
     },
+    weatherElementsTitle: 'Météo & Éléments',
+    weatherElementsSub: 'Indiquez les conditions météo liées à cet incident (optionnel).',
     locationTitle: 'Localisation précise',
     detectedAddress: 'ADRESSE DÉTECTÉE',
     useCurrentLocation: 'Utiliser ma position actuelle',
@@ -160,12 +169,15 @@ const fr: Translations = {
       'Numéro de suivi municipal officiel délivré après publication (ex. MTL-311-2026-XXXXX).',
     publishButton: 'Publier le signalement',
     draftButton: 'Enregistrer comme brouillon',
-    charterFooter: 'Charte citoyenne CityPulse MTL • Données ouvertes OpenNorth',
+    charterFooter: 'Charte citoyenne Montone • Données ouvertes OpenNorth',
     publishedSuccessTitle: 'Signalement publié avec succès !',
     publishedSuccessMessage:
       'Votre signalement a été transmis à la Ville de Montréal avec le numéro de référence officiel.',
     draftSavedToast: 'Brouillon enregistré avec succès.',
     selectBorough: 'Sélectionner un arrondissement',
+    searchBorough: 'Rechercher un arrondissement',
+    boroughCount_one: '{{count}} arrondissement',
+    boroughCount_other: '{{count}} arrondissements',
     close: 'Fermer',
     duplicate: {
       prompt:
@@ -294,7 +306,7 @@ const fr: Translations = {
     },
   },
   map: {
-    brandTitle: 'CityPulse MTL',
+    brandTitle: 'Montone',
     allBoroughs: 'Tous les arrondissements',
     searchPlaceholder: 'Rechercher rue, #311, parc...',
     clearSearch: 'Effacer la recherche',
@@ -328,6 +340,12 @@ const fr: Translations = {
     clusterLabel: '{{count}} signalements',
     profileLabel: 'Profil citoyen',
     coordinates: 'Coordonnées',
+    list: {
+      title_one: '{{count}} signalement sur la carte',
+      title_other: '{{count}} signalements sur la carte',
+      hint: 'Touchez un signalement ou un marqueur pour voir les détails.',
+      back: 'Tous les signalements',
+    },
     roadworks: {
       toggle: 'Travaux de la Ville',
       types: {
@@ -359,6 +377,58 @@ const fr: Translations = {
     issueMarker: '{{title}}, {{category}}, {{status}}',
     legendTitle: 'Autres signalements dans {{district}}',
     noIssues: 'Aucun autre signalement dans cet arrondissement pour le moment.',
+  },
+  splash: {
+    badge: 'Montréal • Pouls Civique',
+    title: 'Montone',
+    tagline: 'Signalez, suivez et résolvez les enjeux de quartier ensemble.',
+    footer: 'Limites OpenNorth • Sync MTL-311',
+    loadingLabel: 'Chargement de Montone',
+  },
+  onboarding: {
+    skip: 'Passer',
+    back: 'Retour',
+    next: 'Suivant',
+    getStarted: 'Commencer',
+    slideIndicator: 'Diapositive {{current}} sur {{total}}',
+    slides: {
+      report: {
+        eyebrow: 'Détection GPS + OpenNorth',
+        title: 'Signalez en quelques secondes',
+        description:
+          'Ajoutez jusqu’à 3 photos, détectez automatiquement votre arrondissement montréalais par GPS et soumettez un dossier géolocalisé.',
+        point1: 'Arrondissement détecté automatiquement via l’API OpenNorth',
+        point2: 'Jusqu’à 3 photos jointes avec suivi MTL-311 optionnel',
+      },
+      map: {
+        eyebrow: 'Carte citoyenne en direct',
+        title: 'Explorez votre quartier en temps réel',
+        description:
+          'Consultez les signalements partout à Montréal, filtrez par catégorie ou statut et évitez les doublons automatiquement.',
+        point1: 'Filtres par Vélo & REV, Chaussée, Éclairage et statut',
+        point2: 'Détection intelligente des doublons à proximité',
+      },
+      community: {
+        eyebrow: 'Validation citoyenne',
+        title: 'Appuyez et commentez en photo',
+        description:
+          'Mobilisez vos voisins sur les enjeux prioritaires, partagez des photos dans les commentaires et confirmez les réparations sur le terrain.',
+        point1: 'Ajoutez des photos de suivi directement dans les commentaires',
+        point2: 'Confirmez la résolution sur place en un geste',
+        sampleComment: 'Clôtures retirées de la piste cyclable — passage sécuritaire !',
+      },
+      timeline: {
+        eyebrow: 'Transparence municipale',
+        title: 'Suivez chaque étape jusqu’à la résolution',
+        description:
+          'Consultez le suivi des interventions municipales et lisez les réponses officielles vérifiées de votre gestionnaire d’arrondissement.',
+        point1: 'Chronologie d’intervention en temps réel par arrondissement',
+        point2: 'Réponses vérifiées des gestionnaires municipaux',
+        step1: 'Signalement citoyen transmis et géolocalisé',
+        step2: 'Équipe d’inspection dépêchée par l’arrondissement',
+        step3: 'Résolution finale et confirmation citoyenne',
+      },
+    },
   },
 };
 

@@ -7,7 +7,8 @@ import CardScreen from '@/app/card';
 import { setLanguage } from '@/i18n';
 import { DistrictScreen } from '@/components/report/DistrictScreen';
 import { OVERLAY_FRACTION, ReportLocationMap } from '@/components/report/ReportLocationMap';
-import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
+import { issueStatusColors } from '@/components/utils/issue-status';
+import { Colors } from '@/constants/theme';
 import { regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 import type { AuthUser } from '@/lib/auth/auth-api';
 import type { Issue } from '@/models/Issue';
@@ -109,12 +110,14 @@ describe('ReportLocationMap', () => {
       latitude: 45.532,
       longitude: -73.58,
     });
-    expect(dotColor(/Issue a, Cycling safety, To do/)).toBe(ISSUE_STATUS_COLORS.not_started);
+    expect(dotColor(/Issue a, Cycling safety, To do/)).toBe(
+      issueStatusColors(Colors.light).not_started,
+    );
     expect(dotColor(/Issue b, Potholes & roads, In progress/)).toBe(
-      ISSUE_STATUS_COLORS.in_progress,
+      issueStatusColors(Colors.light).in_progress,
     );
     expect(dotColor(/Issue c, Streetlights & utilities, Resolved/)).toBe(
-      ISSUE_STATUS_COLORS.resolved,
+      issueStatusColors(Colors.light).resolved,
     );
     const marker = (id: string) => within(screen.getByTestId(`report-map-issue-${id}`));
     expect(marker('a').getByTestId('map-icon-bike')).toBeOnTheScreen();

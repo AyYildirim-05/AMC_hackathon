@@ -4,8 +4,9 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { CATEGORY_ICONS, MapIcon } from '@/components/map/MapIcon';
-import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
+import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { type LatLng, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
+import { useTheme } from '@/hooks/use-theme';
 import type { Issue } from '@/models/Issue';
 
 /**
@@ -24,6 +25,8 @@ export type ReportLocationMapProps = {
 /** Real map for the report form: the report point plus the district's existing issues. */
 export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const statusColors = useIssueStatusColors();
   const mapRef = useRef<MapView>(null);
   const region = useMemo(
     () => reserveBottom(regionForPoints([point, ...issues]), OVERLAY_FRACTION),
@@ -62,9 +65,12 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
                 category,
                 status,
               })}
-              style={[styles.issueDot, { backgroundColor: ISSUE_STATUS_COLORS[issue.status] }]}
+              style={[
+                styles.issueDot,
+                { backgroundColor: statusColors[issue.status], borderColor: theme.background },
+              ]}
             >
-              <MapIcon name={CATEGORY_ICONS[issue.category]} size={13} color="#FFFFFF" />
+              <MapIcon name={CATEGORY_ICONS[issue.category]} size={13} color={theme.background} />
             </View>
           </Marker>
         );
@@ -77,8 +83,16 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
         zIndex={50}
         tracksViewChanges={false}
       >
-        <View accessibilityLabel={t('reportMap.reportPoint')} style={styles.pointRing}>
-          <View style={styles.pointCore} />
+        <View
+          accessibilityLabel={t('reportMap.reportPoint')}
+          style={[styles.pointRing, { backgroundColor: theme.backgroundSelected }]}
+        >
+          <View
+            style={[
+              styles.pointCore,
+              { backgroundColor: theme.accent, borderColor: theme.background },
+            ]}
+          />
         </View>
       </Marker>
     </MapView>
@@ -91,16 +105,15 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // The report point: larger, dark and ringed, so it stands apart from the issue dots.
+  // The report point: larger, accent-colored and ringed, so it stands apart from the issue dots.
+  // Colors come from the theme at render time.
   pointRing: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(57, 71, 63, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -108,8 +121,6 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#39473F',
     borderWidth: 3,
-    borderColor: '#FFFFFF',
   },
 });

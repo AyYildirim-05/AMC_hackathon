@@ -19,13 +19,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
+import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { nearestIssueWithin, type District } from '@/components/utils/map-utils';
 import { ProfileButton } from '@/components/utils/profile-button';
+import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
+import { fetchMontrealDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
 import {
   createIssue,
   fetchIssuesByDistrict,
@@ -34,11 +35,16 @@ import {
 } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
 import { detectDeviceLocation } from '@/lib/location';
-import { ISSUE_STATUSES } from '@/models/Issue';
+import {
+  ISSUE_STATUSES,
+  WEATHER_ELEMENTS,
+  type Issue,
+  type IssueCategory,
+  type WeatherElement,
+} from '@/models/Issue';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 
 import { ReportLocationMap } from './ReportLocationMap';
-import { type Issue, type IssueCategory } from '@/models/Issue';
 
 /** A new report this close to an open issue is probably a duplicate of it. */
 const DUPLICATE_RADIUS_METERS = 50;
@@ -94,6 +100,8 @@ export interface DistrictItem {
   id: string;
   name: string;
   postalCode: string;
+  /** False when `postalCode` is only the Plateau fallback, so it is not shown as the district's. */
+  hasPostalCode?: boolean;
   status: string;
   isClaimed: boolean;
 }
@@ -110,6 +118,7 @@ function toDistrictItem(d: District): DistrictItem {
     id: d.id,
     name: d.name_fr || d.name_en,
     postalCode: d.postal_code || POSTAL_CODES_BY_SLUG[d.open_north_slug] || 'H2J 1S4',
+    hasPostalCode: Boolean(d.postal_code || POSTAL_CODES_BY_SLUG[d.open_north_slug]),
     status: d.district_type === 'borough' ? 'Arrondissement validé' : 'Municipalité liée',
     isClaimed: Boolean(d.is_claimed),
   };
@@ -124,6 +133,8 @@ export interface DistrictScreenProps {
   initialDistrictId?: string;
   /** Initial selected category. */
   initialCategory?: CivicCategoryKey | null;
+  /** Initial selected weather elements. */
+  initialElements?: WeatherElement[];
   /** Initial report address. */
   initialAddress?: string;
   /** Initial report title. */
@@ -149,6 +160,7 @@ export function DistrictScreen({
   onSubmitSuccess,
   initialDistrictId = '11111111-1111-4111-8111-111111111101',
   initialCategory = null,
+  initialElements = [],
   initialAddress = '',
   initialTitle = '',
   initialDescription = '',
@@ -159,14 +171,21 @@ export function DistrictScreen({
   const router = useRouter();
   const { t } = useTranslation();
   const theme = useTheme();
+  const statusColors = useIssueStatusColors();
   const user = useCurrentUser();
   const queryClient = useQueryClient();
   const isDark = theme.text !== '#1C211F';
 
+  // Every Montréal borough (the server adds missing ones from OpenNorth), so a report can be filed
+  // anywhere on the island, not only in districts someone created before.
   const { data: apiDistricts } = useQuery<District[]>({
-    queryKey: ['districts'],
-    queryFn: fetchDistricts,
+    queryKey: ['districts', 'montreal'],
+    queryFn: fetchMontrealDistricts,
   });
+  // Boroughs just added on the server should show up on the other screens' district lists too.
+  useEffect(() => {
+    if (apiDistricts) void queryClient.invalidateQueries({ queryKey: ['districts'], exact: true });
+  }, [apiDistricts, queryClient]);
 
   const districtOptions = useMemo<DistrictItem[]>(
     () => (apiDistricts ?? []).map(toDistrictItem),
@@ -211,6 +230,16 @@ export function DistrictScreen({
   const selectedDistrict = pickedDistrict ?? homeDistrictItem;
   const [districtTab, setDistrictTab] = useState<'my' | 'other'>('my');
   const [isBoroughModalVisible, setIsBoroughModalVisible] = useState(false);
+  const [boroughSearch, setBoroughSearch] = useState('');
+  const visibleDistrictOptions = useMemo(() => {
+    const fold = (text: string) =>
+      text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    const query = fold(boroughSearch.trim());
+    return query ? districtOptions.filter((d) => fold(d.name).includes(query)) : districtOptions;
+  }, [districtOptions, boroughSearch]);
 
   const [selectedCategory, setSelectedCategory] = useState<CivicCategoryKey | null>(
     initialCategory,
@@ -222,6 +251,7 @@ export function DistrictScreen({
       : selectedCategory === 'parks_cleanliness'
         ? 'traffic_safety'
         : selectedCategory;
+  const [selectedElements, setSelectedElements] = useState<WeatherElement[]>(initialElements);
   const [address, setAddress] = useState(initialAddress);
   const [coordinates, setCoordinates] = useState(DEFAULT_COORDINATES);
   const [isAdjustingPin, setIsAdjustingPin] = useState(false);
@@ -265,6 +295,13 @@ export function DistrictScreen({
   const handleSelectDistrict = (item: DistrictItem) => {
     setPickedDistrict(item);
     setIsBoroughModalVisible(false);
+    setBoroughSearch('');
+  };
+
+  const handleToggleElement = (element: WeatherElement) => {
+    setSelectedElements((prev) =>
+      prev.includes(element) ? prev.filter((item) => item !== element) : [...prev, element],
+    );
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -470,6 +507,7 @@ export function DistrictScreen({
 
   const resetForm = () => {
     setSelectedCategory(null);
+    setSelectedElements([]);
     setAddress('');
     setTitle('');
     setDescription('');
@@ -557,6 +595,7 @@ export function DistrictScreen({
         title: title.trim(),
         description: description.trim(),
         category: issueCategory,
+        elements: selectedElements,
         address: address.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
@@ -597,7 +636,8 @@ export function DistrictScreen({
   return (
     <SafeAreaView
       testID={testID}
-      style={[styles.safeArea, { backgroundColor: isDark ? '#141E18' : '#F6F9F7' }]}
+      // Same page background as every other tab (TabScreen / ThemedView).
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
       edges={['top', 'left', 'right']}
     >
       <KeyboardAvoidingView
@@ -609,8 +649,8 @@ export function DistrictScreen({
           style={[
             styles.navHeader,
             {
-              backgroundColor: isDark ? '#1A2620' : '#FFFFFF',
-              borderBottomColor: isDark ? '#26382F' : '#E5ECE8',
+              backgroundColor: theme.background,
+              borderBottomColor: theme.backgroundElement,
             },
           ]}
         >
@@ -852,6 +892,63 @@ export function DistrictScreen({
             </View>
           </View>
 
+          {/* ─── 4b. Météo & Éléments (Optionnel) ─── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: isDark ? '#E5F2EA' : '#141E18' }]}>
+                {tText('districtScreen.weatherElementsTitle', 'Météo & Éléments')}
+              </Text>
+              <Text style={[styles.optionalHeaderBadge, { color: isDark ? '#8EA699' : '#64748B' }]}>
+                {tText('districtScreen.optional', 'Optionnel')}
+              </Text>
+            </View>
+
+            <Text style={[styles.sectionSubtitle, { color: isDark ? '#8EA699' : '#57685F' }]}>
+              {tText(
+                'districtScreen.weatherElementsSub',
+                'Indiquez les conditions météo liées à cet incident (optionnel).',
+              )}
+            </Text>
+
+            <View style={styles.elementsChipsWrap}>
+              {WEATHER_ELEMENTS.map((el) => {
+                const meta = WEATHER_ELEMENT_META[el];
+                const isSelected = selectedElements.includes(el);
+                return (
+                  <Pressable
+                    key={el}
+                    testID={`weather-element-chip-${el}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    onPress={() => handleToggleElement(el)}
+                    style={({ pressed }) => [
+                      styles.elementChip,
+                      isSelected
+                        ? styles.elementChipSelected
+                        : {
+                            backgroundColor: isDark ? '#1F2C24' : '#F1F6FA',
+                            borderColor: isDark ? '#2D3E33' : '#D9E4EE',
+                          },
+                      pressed && styles.pressedOpacity,
+                    ]}
+                  >
+                    <Text style={styles.elementChipIcon}>{meta.icon}</Text>
+                    <Text
+                      style={[
+                        styles.elementChipText,
+                        isSelected
+                          ? styles.elementChipTextSelected
+                          : { color: isDark ? '#D5E8DD' : '#1E3A5F' },
+                      ]}
+                    >
+                      {tText(`issue.elements.${el}`, meta.fallbackLabel)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           {/* ─── 5. Localisation précise ─── */}
           <View style={styles.sectionBlock}>
             <View style={styles.sectionHeaderRow}>
@@ -1000,10 +1097,7 @@ export function DistrictScreen({
                   {ISSUE_STATUSES.map((status) => (
                     <View key={status} style={styles.mapLegendItem}>
                       <View
-                        style={[
-                          styles.mapLegendDot,
-                          { backgroundColor: ISSUE_STATUS_COLORS[status] },
-                        ]}
+                        style={[styles.mapLegendDot, { backgroundColor: statusColors[status] }]}
                       />
                       <Text
                         style={[styles.mapLegendText, { color: isDark ? '#A6C2B2' : '#434844' }]}
@@ -1332,7 +1426,7 @@ export function DistrictScreen({
             <Text style={[styles.footerText, { color: isDark ? '#7E988A' : '#687B70' }]}>
               {tText(
                 'districtScreen.charterFooter',
-                'Charte citoyenne CityPulse MTL • Données ouvertes OpenNorth',
+                'Charte citoyenne Montone • Données ouvertes OpenNorth',
               )}
             </Text>
           </View>
@@ -1360,35 +1454,64 @@ export function DistrictScreen({
               {tText('districtScreen.selectBorough', 'Sélectionner un arrondissement')}
             </Text>
 
-            {districtOptions.map((d) => (
-              <Pressable
-                key={d.id}
-                testID={`borough-option-${d.id}`}
-                accessibilityRole="button"
-                onPress={() => handleSelectDistrict(d)}
-                style={({ pressed }) => [
-                  styles.boroughOptionRow,
-                  selectedDistrict.id === d.id && {
-                    backgroundColor: isDark ? '#283C30' : '#E8F5EE',
-                  },
-                  pressed && styles.pressedOpacity,
-                ]}
-              >
-                <View>
-                  <Text
-                    style={[styles.boroughOptionName, { color: isDark ? '#E5F2EA' : '#141E18' }]}
-                  >
-                    {d.name}
-                  </Text>
-                  <Text
-                    style={[styles.boroughOptionSub, { color: isDark ? '#8EA699' : '#57685F' }]}
-                  >
-                    {`Secteur ${d.postalCode} • ${d.status}`}
-                  </Text>
-                </View>
-                {selectedDistrict.id === d.id && <Text style={styles.boroughCheckmark}>✓</Text>}
-              </Pressable>
-            ))}
+            <TextInput
+              testID="borough-search-input"
+              value={boroughSearch}
+              onChangeText={setBoroughSearch}
+              placeholder={tText('districtScreen.searchBorough', 'Rechercher un arrondissement')}
+              placeholderTextColor={isDark ? '#8EA699' : '#6A7D73'}
+              autoCorrect={false}
+              style={[
+                styles.boroughSearchInput,
+                {
+                  color: isDark ? '#E5F2EA' : '#141E18',
+                  backgroundColor: isDark ? '#22332A' : '#F1F6F3',
+                },
+              ]}
+            />
+            <Text style={[styles.boroughOptionSub, { color: isDark ? '#8EA699' : '#57685F' }]}>
+              {tText('districtScreen.boroughCount', `${visibleDistrictOptions.length}`, {
+                count: visibleDistrictOptions.length,
+              })}
+            </Text>
+
+            <ScrollView
+              testID="borough-options-list"
+              style={styles.boroughOptionsScroll}
+              keyboardShouldPersistTaps="handled"
+            >
+              {visibleDistrictOptions.map((d) => (
+                <Pressable
+                  key={d.id}
+                  testID={`borough-option-${d.id}`}
+                  accessibilityRole="button"
+                  onPress={() => handleSelectDistrict(d)}
+                  style={({ pressed }) => [
+                    styles.boroughOptionRow,
+                    selectedDistrict.id === d.id && {
+                      backgroundColor: isDark ? '#283C30' : '#E8F5EE',
+                    },
+                    pressed && styles.pressedOpacity,
+                  ]}
+                >
+                  <View>
+                    <Text
+                      style={[styles.boroughOptionName, { color: isDark ? '#E5F2EA' : '#141E18' }]}
+                    >
+                      {d.name}
+                    </Text>
+                    <Text
+                      style={[styles.boroughOptionSub, { color: isDark ? '#8EA699' : '#57685F' }]}
+                    >
+                      {d.hasPostalCode === false
+                        ? d.status
+                        : `Secteur ${d.postalCode} • ${d.status}`}
+                    </Text>
+                  </View>
+                  {selectedDistrict.id === d.id && <Text style={styles.boroughCheckmark}>✓</Text>}
+                </Pressable>
+              ))}
+            </ScrollView>
 
             <Pressable
               testID="close-borough-modal-button"
@@ -1737,6 +1860,40 @@ const styles = StyleSheet.create({
     color: '#A4C5E6',
   },
   categorySubUnselected: {},
+
+  // 4b. Weather Elements Chips
+  optionalHeaderBadge: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  elementsChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  elementChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  elementChipSelected: {
+    backgroundColor: '#0A2540',
+    borderColor: '#0A2540',
+  },
+  elementChipIcon: {
+    fontSize: 14,
+  },
+  elementChipText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  elementChipTextSelected: {
+    color: '#FFFFFF',
+  },
 
   // 5. Precise Location
   addressCard: {
@@ -2134,6 +2291,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     marginBottom: Spacing.one,
+  },
+  boroughSearchInput: {
+    height: 40,
+    borderRadius: 10,
+    paddingHorizontal: Spacing.two,
+    fontSize: 15,
+  },
+  // About seven rows; the rest of the island's districts scroll.
+  boroughOptionsScroll: {
+    maxHeight: 380,
   },
   boroughOptionRow: {
     flexDirection: 'row',

@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
+import { useIssueStatusColors } from '@/components/utils/issue-status';
 import { useTheme } from '@/hooks/use-theme';
 import type { IssueCategory } from '@/models/Issue';
 
@@ -54,18 +55,6 @@ function getCategoryGlyph(category: IssueCategory): string {
   }
 }
 
-function getCategoryBorderColor(category: IssueCategory): string {
-  switch (category) {
-    case 'roads_potholes':
-      return '#BA1A1A';
-    case 'streetlights_utilities':
-      return '#446552';
-    case 'traffic_safety':
-    default:
-      return '#39473F';
-  }
-}
-
 /**
  * Interactive Web Montreal street map powered by Leaflet with real OpenStreetMap / CARTO / CyclOSM tiles,
  * REV bike corridor polylines, user beacon, and custom interactive issue markers.
@@ -86,6 +75,10 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
     const { t } = useTranslation();
     const theme = useTheme();
     const isDark = theme.text !== '#1C211F';
+    // Markers use theme colors only: status colors for reports, the text color for roadworks.
+    const statusColors = useIssueStatusColors();
+    /** Theme shadow color at ~30% opacity (8-digit hex), for marker shadows. */
+    const markerShadow = `${theme.shadow}4D`;
 
     const containerRef = useRef<HTMLDivElement | null>(null);
     const mapInstanceRef = useRef<import('leaflet').Map | null>(null);
@@ -156,7 +149,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         // Add user geolocation beacon at Métro Mont-Royal
         const userIcon = L.divIcon({
           className: 'citypulse-user-beacon',
-          html: `<div style="width:18px;height:18px;border-radius:9999px;background:#446552;border:3px solid #fff;box-shadow:0 0 0 8px rgba(171,207,183,0.45),0 2px 6px rgba(0,0,0,0.25);"></div>`,
+          html: `<div style="width:18px;height:18px;border-radius:9999px;background:${theme.accent};border:3px solid ${theme.background};box-shadow:0 0 0 8px ${theme.backgroundSelected}73,0 2px 6px ${markerShadow};"></div>`,
           iconSize: [18, 18],
           iconAnchor: [9, 9],
         });
@@ -229,7 +222,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         const size = isSelected ? 32 : 22;
         const icon = L.divIcon({
           className: 'citypulse-roadwork',
-          html: `<div style="width:${size}px;height:${size}px;border-radius:${isSelected ? 8 : 6}px;background:${style.color};border:${isSelected ? 3 : 1.5}px solid #fff;display:flex;align-items:center;justify-content:center;font-size:${isSelected ? 15 : 11}px;box-shadow:0 1px 4px rgba(0,0,0,0.3);cursor:pointer;">${style.glyph}</div>`,
+          html: `<div style="width:${size}px;height:${size}px;border-radius:${isSelected ? 8 : 6}px;background:${theme.text};border:${isSelected ? 3 : 1.5}px solid ${theme.background};display:flex;align-items:center;justify-content:center;font-size:${isSelected ? 15 : 11}px;box-shadow:0 1px 4px ${markerShadow};cursor:pointer;">${style.glyph}</div>`,
           iconSize: [size, size],
           iconAnchor: [size / 2, size / 2],
         });
@@ -241,7 +234,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         marker.on('click', () => onSelectRoadworkRef.current?.(work));
         marker.addTo(layer);
       }
-    }, [mapReady, roadworks, selectedRoadworkId]);
+    }, [mapReady, roadworks, selectedRoadworkId, theme, markerShadow]);
 
     // Sync issue markers whenever issues, selection, language, or mapReady changes
     useEffect(() => {
@@ -257,31 +250,32 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         const glyph = getCategoryGlyph(issue.category);
         const statusLabel = escapeHtml(t(`issue.status.${issue.status}`));
         const street = escapeHtml(shortStreetLabel(issue.address));
-        const borderColor = getCategoryBorderColor(issue.category);
+        // Colored by status, with the category glyph inside (like the report screen's map).
+        const statusColor = statusColors[issue.status];
 
         const icon = isSelected
           ? L.divIcon({
-              className: 'citypulse-active-pin',
+              className: 'montone-active-pin',
               html: `
                 <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%);cursor:pointer;">
-                  <div style="display:flex;align-items:center;gap:6px;background:#39473F;color:#fff;padding:5px 10px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.28);margin-bottom:5px;white-space:nowrap;font-family:Inter,system-ui,sans-serif;">
-                    <span style="width:7px;height:7px;border-radius:50%;background:#C6EBD3;display:inline-block;"></span>
+                  <div style="display:flex;align-items:center;gap:6px;background:${theme.text};color:${theme.background};padding:5px 10px;border-radius:12px;box-shadow:0 4px 12px ${markerShadow};margin-bottom:5px;white-space:nowrap;font-family:Inter,system-ui,sans-serif;">
+                    <span style="width:7px;height:7px;border-radius:50%;background:${statusColor};display:inline-block;"></span>
                     <span style="font-size:11.5px;font-weight:700;">${street}</span>
-                    <span style="font-size:9.5px;font-weight:600;background:#446552;color:#C6EBD3;padding:2px 6px;border-radius:6px;">${statusLabel}</span>
+                    <span style="font-size:9.5px;font-weight:600;background:${statusColor};color:${theme.background};padding:2px 6px;border-radius:6px;">${statusLabel}</span>
                   </div>
-                  <div style="width:42px;height:42px;border-radius:9999px;background:#39473F;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                  <div style="width:42px;height:42px;border-radius:9999px;background:${statusColor};border:3px solid ${theme.background};display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px ${markerShadow};">
                     ${glyph}
                   </div>
-                  <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #39473F;margin-top:-1px;"></div>
+                  <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid ${statusColor};margin-top:-1px;"></div>
                 </div>
               `,
               iconSize: [0, 0],
               iconAnchor: [0, 0],
             })
           : L.divIcon({
-              className: 'citypulse-pin',
+              className: 'montone-pin',
               html: `
-                <div style="width:34px;height:34px;border-radius:9999px;background:#ffffff;border:2.5px solid ${borderColor};display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,0.22);cursor:pointer;">
+                <div style="width:34px;height:34px;border-radius:9999px;background:${statusColor};border:2.5px solid ${theme.background};display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px ${markerShadow};cursor:pointer;">
                   ${glyph}
                 </div>
               `,
@@ -301,7 +295,7 @@ export const MontrealMapCanvas = forwardRef<MontrealMapHandle, MontrealMapCanvas
         });
         marker.addTo(layer);
       }
-    }, [mapReady, issues, selectedIssueId, t]);
+    }, [mapReady, issues, selectedIssueId, t, theme, statusColors, markerShadow]);
 
     return (
       <View testID="montreal-map-canvas" style={styles.container}>
