@@ -30,6 +30,7 @@ Express 5 + MongoDB (Mongoose) API server written in TypeScript (ESM).
 | `PATCH`  | `/api/districts/:id`               | Details: its manager, or an admin while it has none. `managerId` (assign, reassign, `null` to remove): admin only. A manager manages at most one district                           |
 | `DELETE` | `/api/districts/:id`               | Delete: its manager, or an admin while it has none; `409` while issues or residents reference it                                                                                    |
 | `POST`   | `/api/uploads/signature`           | Signed-in users: signed fields for uploading one image straight to Cloudinary (`folder`: `issues` or `avatars`; JPG, PNG, HEIC or WebP only). `503` if Cloudinary is not configured |
+| `POST`   | `/api/ai/describe-image`           | Signed-in users: generates an issue description in the current app language (`en` or `fr`) from 1–3 submitted photos using the Gemini API. `503` if Gemini is not configured        |
 
 District writes take an `actorId` in the body: the person acting (no auth yet).
 
@@ -64,8 +65,8 @@ in `.env` (on a physical device use your machine's LAN IP; on the Android emulat
 | `CLOUDINARY_API_KEY`             | _(optional)_                    | Cloudinary API key                                                    |
 | `CLOUDINARY_API_SECRET`          | _(optional)_                    | Cloudinary API secret (kept server-side only in `server/.env`)        |
 | `CLOUDINARY_UPLOAD_FOLDER`       | `issues`                        | Default Cloudinary folder for uploaded images                         |
-| `GEMINI_API_KEY`                 | _(optional)_                    | Google Gemini API key for AI severity scoring (`POST /api/issues`)    |
-| `GEMINI_MODEL`                   | `gemini-3.1-flash-lite`         | Primary Gemini model ID (auto-falls back on 503/429)                  |
+| `GEMINI_API_KEY`                 | _(optional)_                    | Google Gemini API key for AI photo-to-description generation          |
+| `GEMINI_MODEL`                   | `gemini-3.8-flash`              | Gemini model ID used for image description generation                 |
 | `JWT_SECRET`                     | _(required)_                    | Secret key (≥32 chars) in `server/.env` used to sign HS256 JWT tokens |
 | `JWT_ACCESS_EXPIRES_IN_SECONDS`  | `3600`                          | Access token lifetime in seconds                                      |
 | `JWT_REFRESH_EXPIRES_IN_SECONDS` | `604800`                        | Refresh token lifetime in seconds                                     |

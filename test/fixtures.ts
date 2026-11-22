@@ -772,6 +772,19 @@ export function installMockBackendApi(options?: {
       return reply(toServerDistrict(found));
     }
 
+    if (method === 'post' && url === '/api/ai/describe-image') {
+      const language = body.language === 'fr' ? 'fr' : 'en';
+      const description =
+        language === 'fr'
+          ? 'Un nid-de-poule profond et de l’asphalte fissuré endommagent la chaussée, posant un risque pour les cyclistes et les véhicules.'
+          : 'A deep pothole and cracked asphalt are damaging the roadway, creating a hazard for cyclists and vehicles.';
+      return reply({
+        description,
+        language,
+        model: 'gemini-3.8-flash',
+      });
+    }
+
     if (method === 'get' && url === '/api/profile/me') {
       const current = persons.find((p) => p.username === options?.currentUsername) ?? null;
       return reply({
