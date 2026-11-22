@@ -617,6 +617,31 @@ export function installMockBackendApi(options?: {
       return reply(districts.map(toServerDistrict));
     }
 
+    if (method === 'get' && url.startsWith('/api/districts/locate')) {
+      const queryPart = url.split('?')[1] ?? '';
+      const params = new URLSearchParams(queryPart);
+      const lat = Number(params.get('lat') ?? 45.5298);
+      const lng = Number(params.get('lng') ?? -73.5751);
+      // Map sample Montreal coordinates to their corresponding test district.
+      let matched = districts[0];
+      if (lat < 45.495) {
+        matched = districts[3] ?? districts[0]; // Westmount
+      } else if (lat < 45.52 && lng > -73.57) {
+        matched = districts[1] ?? districts[0]; // Ville-Marie
+      } else if (lat > 45.535) {
+        matched = districts[2] ?? districts[0]; // Rosemont
+      }
+      return reply({
+        district: toServerDistrict(matched),
+        openNorth: {
+          name: matched.name_fr,
+          slug: matched.open_north_slug,
+          boundarySet:
+            matched.district_type === 'borough' ? 'montreal-boroughs' : 'census-subdivisions',
+        },
+      });
+    }
+
     const districtMatch = url.match(/^\/api\/districts\/([^/]+)$/);
     if (method === 'get' && districtMatch) {
       const id = decodeURIComponent(districtMatch[1]);

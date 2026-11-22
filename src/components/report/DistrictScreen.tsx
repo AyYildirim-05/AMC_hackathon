@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -24,9 +24,10 @@ import { ProfileButton } from '@/components/utils/profile-button';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchDistricts } from '@/lib/api/districts';
+import { fetchDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
 import { createIssue } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
+import { detectDeviceLocation } from '@/lib/location';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 import { type Issue } from '@/models/Issue';
 
@@ -246,14 +247,125 @@ export function DistrictScreen({
     }
   };
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    setFeedbackToast(message);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setFeedbackToast(null), 2500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  /**
+   * Reads the device's GPS coordinates and resolves the matching Montreal district via the
+   * backend's OpenNorth Represent API endpoint (`GET /api/districts/locate`).
+   */
+  const locateAndResolveDistrict = useCallback(
+    async (options?: { notifyOnFallback?: boolean }) => {
+      const detected = await detectDeviceLocation();
+      if (!detected) {
+        if (options?.notifyOnFallback) {
+          showToast('Recherche de localisation activée');
+        }
+        return false;
+      }
+
+      setCoordinates((prev) => ({
+        latitude: detected.latitude,
+        longitude: detected.longitude,
+        place: detected.place ?? prev.place,
+      }));
+      if (detected.address) {
+        setAddress(detected.address);
+      }
+
+      try {
+        const { district } = await locateDistrictByCoordinates(
+          detected.latitude,
+          detected.longitude,
+        );
+        const item = toDistrictItem(district);
+        if (detected.postalCode && !district.postal_code) {
+          item.postalCode = detected.postalCode;
+        }
+        setPickedDistrict(item);
+        setCoordinates((prev) => ({
+          ...prev,
+          place: detected.place ?? item.name,
+        }));
+        void queryClient.invalidateQueries({ queryKey: ['districts'] });
+        if (options?.notifyOnFallback) {
+          showToast(`Localisation détectée : ${item.name}`);
+        }
+        return true;
+      } catch {
+        if (options?.notifyOnFallback) {
+          showToast('Position GPS détectée');
+        }
+        return false;
+      }
+    },
+    [queryClient, showToast],
+  );
+
+  // Automatically localize via device GPS + OpenNorth when opening the report screen.
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      const detected = await detectDeviceLocation();
+      if (!active || !detected) return;
+
+      setCoordinates((prev) => ({
+        latitude: detected.latitude,
+        longitude: detected.longitude,
+        place: detected.place ?? prev.place,
+      }));
+      if (detected.address) {
+        setAddress(detected.address);
+      }
+
+      try {
+        const { district } = await locateDistrictByCoordinates(
+          detected.latitude,
+          detected.longitude,
+        );
+        if (!active) return;
+        const item = toDistrictItem(district);
+        if (detected.postalCode && !district.postal_code) {
+          item.postalCode = detected.postalCode;
+        }
+        setPickedDistrict(item);
+        setCoordinates((prev) => ({
+          ...prev,
+          place: detected.place ?? item.name,
+        }));
+        void queryClient.invalidateQueries({ queryKey: ['districts'] });
+      } catch {
+        // Keep detected GPS coordinates even if OpenNorth is unavailable or outside Montreal.
+      }
+    };
+    void run();
+    return () => {
+      active = false;
+    };
+  }, [queryClient]);
+
   const handleAdjustPin = () => {
     setIsAdjustingPin((prev) => !prev);
-    // Tweak micro coordinate for feedback
-    setCoordinates((prev) => ({
-      ...prev,
-      latitude: Number((prev.latitude + (Math.random() - 0.5) * 0.0005).toFixed(6)),
-      longitude: Number((prev.longitude + (Math.random() - 0.5) * 0.0005).toFixed(6)),
-    }));
+    void locateAndResolveDistrict({ notifyOnFallback: false }).then((located) => {
+      if (!located) {
+        setCoordinates((prev) => ({
+          ...prev,
+          latitude: Number((prev.latitude + (Math.random() - 0.5) * 0.0005).toFixed(6)),
+          longitude: Number((prev.longitude + (Math.random() - 0.5) * 0.0005).toFixed(6)),
+        }));
+      }
+    });
   };
 
   const handleSaveDraft = () => {
@@ -656,8 +768,7 @@ export function DistrictScreen({
                 accessibilityRole="button"
                 accessibilityLabel="Rechercher adresse"
                 onPress={() => {
-                  setFeedbackToast('Recherche de localisation activée');
-                  setTimeout(() => setFeedbackToast(null), 2500);
+                  void locateAndResolveDistrict({ notifyOnFallback: true });
                 }}
                 style={({ pressed }) => [
                   styles.searchIconButton,

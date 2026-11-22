@@ -12,6 +12,8 @@ import {
   districtByName,
   districtIdParams,
   districtNameParams,
+  locateDistrictByCoordinates,
+  locateDistrictQuery,
   updateDistrict,
   updateDistrictInput,
 } from '../services/district.service.js';
@@ -41,6 +43,11 @@ districtRouter.post(
     res.status(201).json(await createDistrict(req.body));
   },
 );
+
+districtRouter.get('/locate', async (req, res) => {
+  const { lat, lng } = parseParams(locateDistrictQuery, req.query);
+  res.json(await locateDistrictByCoordinates(lat, lng));
+});
 
 districtRouter.get('/name/:name', async (req, res) => {
   const { name } = parseParams(districtNameParams, req.params);

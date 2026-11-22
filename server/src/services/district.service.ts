@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { HttpError } from '../lib/http-error.js';
 import { objectId } from '../lib/object-id.js';
+import { lookupBoundaryByCoordinates } from '../lib/opennorth.js';
 import { DISTRICT_TYPES } from '../models/index.js';
 import {
   createDistrict as insertDistrict,
@@ -9,6 +10,7 @@ import {
   findAllDistricts,
   findDistrictById,
   findDistrictByName,
+  findDistrictBySlugOrName,
   findDistrictIdManagedBy,
   updateDistrictById,
 } from '../repositories/district.repository.js';
@@ -21,6 +23,10 @@ import {
 
 export const districtIdParams = z.object({ id: objectId });
 export const districtNameParams = z.object({ name: z.string().trim().min(1).max(120) });
+export const locateDistrictQuery = z.object({
+  lat: z.coerce.number().min(-90, 'Latitude must be between -90 and 90').max(90),
+  lng: z.coerce.number().min(-180, 'Longitude must be between -180 and 180').max(180),
+});
 
 const districtFields = {
   nameFr: z.string().trim().min(1).max(120),
@@ -122,6 +128,48 @@ export const districtById = async (id: string) =>
 
 export const districtByName = async (name: string) =>
   enrichDistrict(orNotFound(await findDistrictByName(name)));
+
+/**
+ * Resolves the district containing `(lat, lng)` via OpenNorth Represent API.
+ * Matches an existing district in MongoDB or auto-creates an unclaimed one so any valid Montreal
+ * borough or municipality works out of the box.
+ */
+export const locateDistrictByCoordinates = async (lat: number, lng: number) => {
+  const boundary = await lookupBoundaryByCoordinates(lat, lng);
+  if (!boundary) {
+    throw new HttpError(404, 'No district found for these coordinates');
+  }
+
+  let doc = await findDistrictBySlugOrName(boundary.slug, boundary.name);
+  if (!doc) {
+    try {
+      doc = await insertDistrict({
+        nameFr: boundary.name,
+        nameEn: boundary.name,
+        openNorthSlug: boundary.slug,
+        districtType: boundary.districtType,
+        managerId: null,
+        isClaimed: false,
+      });
+    } catch (err) {
+      // Handle concurrent auto-creation on the unique openNorthSlug index.
+      if ((err as { code?: number })?.code === 11000) {
+        doc = await findDistrictBySlugOrName(boundary.slug, boundary.name);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (!doc) {
+    throw new HttpError(404, 'District could not be resolved');
+  }
+
+  return {
+    district: await enrichDistrict(doc),
+    openNorth: boundary,
+  };
+};
 
 export const createDistrict = async ({ actorId, ...fields }: CreateDistrictInput) => {
   await assertIsAdmin(actorId, 'create a district');

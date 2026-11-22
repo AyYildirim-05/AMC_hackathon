@@ -52,6 +52,12 @@
           "microphonePermission": false
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Montone uses your location to pinpoint civic issues and identify your Montreal borough."
+        }
+      ],
       "expo-status-bar",
       "expo-web-browser"
     ],
