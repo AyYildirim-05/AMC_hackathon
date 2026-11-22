@@ -178,6 +178,8 @@ export const TEST_ISSUES: Issue[] = [
     resolution_confirmations: 1,
     comments_count: 3,
     external_311_ref: 'MTL-311-2026-88412',
+    severity_score: 9,
+    urgency: 'high',
     created_at: '2026-11-18T08:00:00.000Z',
     updated_at: '2026-11-18T17:10:12.000Z',
   },
@@ -205,6 +207,8 @@ export const TEST_ISSUES: Issue[] = [
     resolution_confirmations: 0,
     comments_count: 2,
     external_311_ref: 'MTL-311-2026-89004',
+    severity_score: 7,
+    urgency: 'medium',
     created_at: '2026-11-20T14:15:00.000Z',
     updated_at: '2026-11-20T15:05:19.000Z',
   },
@@ -452,6 +456,8 @@ function toServerIssue(i: Issue) {
     resolutionConfirmations: i.resolution_confirmations,
     commentsCount: i.comments_count ?? 0,
     external311Ref: i.external_311_ref,
+    severityScore: i.severity_score ?? null,
+    urgency: i.urgency ?? null,
     createdAt: i.created_at,
     updatedAt: i.updated_at,
   };
@@ -605,6 +611,8 @@ export function installMockBackendApi(options?: {
         resolution_confirmations: 0,
         comments_count: 0,
         external_311_ref: (body.external311Ref as string | null) ?? null,
+        severity_score: 7,
+        urgency: 'medium',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -762,6 +770,19 @@ export function installMockBackendApi(options?: {
       const id = decodeURIComponent(districtMatch[1]);
       const found = districts.find((d) => d.id === id) ?? districts[0];
       return reply(toServerDistrict(found));
+    }
+
+    if (method === 'post' && url === '/api/ai/describe-image') {
+      const language = body.language === 'fr' ? 'fr' : 'en';
+      const description =
+        language === 'fr'
+          ? 'Un nid-de-poule profond et de l’asphalte fissuré endommagent la chaussée, posant un risque pour les cyclistes et les véhicules.'
+          : 'A deep pothole and cracked asphalt are damaging the roadway, creating a hazard for cyclists and vehicles.';
+      return reply({
+        description,
+        language,
+        model: 'gemini-3.8-flash',
+      });
     }
 
     if (method === 'get' && url === '/api/profile/me') {

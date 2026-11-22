@@ -22,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/hooks/use-theme';
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
+import { getIssueUrgency, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { type District } from '@/components/utils/map-utils';
 import { ProfilePanelProvider } from '@/components/layout/profile-panel';
 import { ProfileButton } from '@/components/utils/profile-button';
@@ -608,6 +609,35 @@ export function IssueDetailScreen({
                       </View>
                     );
                   })}
+                  {(() => {
+                    const urgency = getIssueUrgency(issue);
+                    if (!urgency) return null;
+                    const palette = getSeverityBadgePalette(urgency, theme);
+                    const urgencyLabel = t(`issue.urgency.${urgency}`, { defaultValue: urgency });
+                    const label =
+                      issue.severity_score != null
+                        ? t('issue.severityBadge', {
+                            urgency: urgencyLabel,
+                            score: issue.severity_score,
+                            defaultValue: `${urgencyLabel} • ${issue.severity_score}/10`,
+                          })
+                        : urgencyLabel;
+                    return (
+                      <View
+                        testID="detail-severity-badge"
+                        style={[
+                          styles.pillBadge,
+                          {
+                            backgroundColor: palette.backgroundColor,
+                            borderColor: palette.borderColor,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.pillIcon}>{palette.icon}</Text>
+                        <Text style={[styles.pillText, { color: palette.textColor }]}>{label}</Text>
+                      </View>
+                    );
+                  })()}
                 </View>
 
                 {/* Large Issue Title */}

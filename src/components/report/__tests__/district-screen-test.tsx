@@ -571,4 +571,65 @@ describe('DistrictScreen', () => {
     );
     expect(screen.getByText(/45.515218, -73.560412 • Ville-Marie/)).toBeOnTheScreen();
   });
+
+  it('fills the description from the submitted photo in French when app language is French', async () => {
+    mockLaunchImageLibrary.mockResolvedValue({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///pothole.jpg',
+          base64: '/9j/4AAQSkZJRg==',
+          mimeType: 'image/jpeg',
+          fileName: 'pothole.jpg',
+        },
+      ],
+    });
+
+    await render(<DistrictScreen />);
+
+    // Disabled until at least one photo is attached.
+    expect(screen.getByTestId('ai-generate-description-button')).toBeDisabled();
+
+    await fireEvent.press(screen.getByTestId('add-photo-button'));
+    expect(await screen.findByText('1 ajoutée')).toBeOnTheScreen();
+    expect(screen.getByTestId('ai-generate-description-button')).not.toBeDisabled();
+
+    await fireEvent.press(screen.getByTestId('ai-generate-description-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('report-description-input').props.value).toBe(
+        'Un nid-de-poule profond et de l’asphalte fissuré endommagent la chaussée, posant un risque pour les cyclistes et les véhicules.',
+      );
+    });
+    expect(screen.getByText('Description remplie à partir de votre photo.')).toBeOnTheScreen();
+  });
+
+  it('fills the description in English when app language is switched to English', async () => {
+    await setLanguage('en');
+    mockLaunchCamera.mockResolvedValue({
+      canceled: false,
+      assets: [
+        {
+          uri: 'file:///sidewalk.png',
+          base64: 'iVBORw0KGgo=',
+          mimeType: 'image/png',
+          fileName: 'sidewalk.png',
+        },
+      ],
+    });
+
+    await render(<DistrictScreen />);
+
+    await fireEvent.press(screen.getByTestId('photo-slot-empty-1'));
+    expect(await screen.findByText('1 added')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('ai-generate-description-button'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('report-description-input').props.value).toBe(
+        'A deep pothole and cracked asphalt are damaging the roadway, creating a hazard for cyclists and vehicles.',
+      );
+    });
+    expect(screen.getByText('Description filled from your photo.')).toBeOnTheScreen();
+  });
 });

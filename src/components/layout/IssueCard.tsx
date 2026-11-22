@@ -16,6 +16,7 @@ import Reanimated, {
 
 import { type Theme, useThemedStyles } from '@/hooks/use-themed-styles';
 import { CARD_SHADOW } from '@/components/utils/themed-card';
+import { getIssueUrgency, getSeverityBadgePalette } from '@/components/utils/issue-severity';
 import { ThemedText } from '@/components/utils/themed-text';
 import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
@@ -227,6 +228,17 @@ export function IssueCard({
 
   // 6. Category styling & icon
   const categoryConfig = getCategoryConfig(issue.category, translateSafe);
+  const urgency = getIssueUrgency(issue);
+  const severityPalette = urgency ? getSeverityBadgePalette(urgency, theme) : null;
+  const severityText = urgency
+    ? issue.severity_score != null
+      ? t('issue.severityBadge', {
+          urgency: translateSafe(`issue.urgency.${urgency}`, urgency),
+          score: issue.severity_score,
+          defaultValue: `${translateSafe(`issue.urgency.${urgency}`, urgency)} • ${issue.severity_score}/10`,
+        })
+      : translateSafe(`issue.urgency.${urgency}`, urgency)
+    : null;
 
   // 7. Interactive wrappers
   const [expanded, setExpanded] = useState(false);
@@ -375,6 +387,22 @@ export function IssueCard({
   ) : null;
   const tagsPart = (
     <View style={styles.tagsRow}>
+      {/* AI severity / urgency */}
+      {severityPalette && severityText ? (
+        <View
+          testID="issue-severity-badge"
+          style={[
+            styles.tagPill,
+            {
+              backgroundColor: severityPalette.backgroundColor,
+              borderColor: severityPalette.borderColor,
+            },
+          ]}
+        >
+          <Text style={styles.tagIcon}>{severityPalette.icon}</Text>
+          <Text style={[styles.tagText, { color: severityPalette.textColor }]}>{severityText}</Text>
+        </View>
+      ) : null}
       {/* Category Pill */}
       <View
         style={[

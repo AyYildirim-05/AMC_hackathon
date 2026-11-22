@@ -30,6 +30,16 @@ export const WEATHER_ELEMENTS = [
 ] as const;
 export type WeatherElement = (typeof WEATHER_ELEMENTS)[number];
 
+export const ISSUE_URGENCIES = ['low', 'medium', 'high'] as const;
+export type IssueUrgency = (typeof ISSUE_URGENCIES)[number];
+
+/** Maps a 1–10 severity score to a low / medium / high safety hazard urgency bucket. */
+export function severityScoreToUrgency(score: number): IssueUrgency {
+  if (score >= 8) return 'high';
+  if (score >= 4) return 'medium';
+  return 'low';
+}
+
 const issueSchema = new Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 150 },
@@ -47,6 +57,8 @@ const issueSchema = new Schema(
     upvoteCount: { type: Number, required: true, default: 0, min: 0 },
     resolutionConfirmations: { type: Number, required: true, default: 0, min: 0 },
     external311Ref: { type: String, trim: true, maxlength: 50, default: null },
+    severityScore: { type: Number, min: 1, max: 10, default: null },
+    urgency: { type: String, enum: ISSUE_URGENCIES, default: null },
   },
   {
     collection: 'issues',
@@ -61,6 +73,12 @@ const issueSchema = new Schema(
         ret.updatedById = ret.updatedById ? String(ret.updatedById) : null;
         ret.external311Ref = ret.external311Ref ?? null;
         ret.elements = Array.isArray(ret.elements) ? ret.elements : [];
+        ret.severityScore = typeof ret.severityScore === 'number' ? ret.severityScore : null;
+        ret.urgency =
+          ret.urgency ??
+          (typeof ret.severityScore === 'number'
+            ? severityScoreToUrgency(ret.severityScore)
+            : null);
         return ret;
       },
     },

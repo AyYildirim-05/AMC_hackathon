@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -29,6 +30,8 @@ import { WEATHER_ELEMENT_META } from '@/components/utils/weather-elements';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
+import type { Language } from '@/i18n';
+import { describeIssueImages, type AiImageSource } from '@/lib/api/ai';
 import { fetchMontrealDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
 import {
   createIssue,
@@ -172,7 +175,7 @@ export function DistrictScreen({
   testID = 'district-screen',
 }: DistrictScreenProps) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useTheme();
   const styles = useThemedStyles(createStyles);
   const statusColors = useIssueStatusColors();
@@ -279,6 +282,9 @@ export function DistrictScreen({
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
+  const photoMetaRef = useRef<Record<string, Omit<AiImageSource, 'uri'>>>({});
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [aiDescriptionError, setAiDescriptionError] = useState<string | null>(null);
   const [mtl311Enabled, setMtl311Enabled] = useState(initialMtl311);
   const [isPublishing, setIsPublishing] = useState(false);
   const [duplicate, setDuplicate] = useState<{ issue: Issue; meters: number } | null>(null);
@@ -310,7 +316,12 @@ export function DistrictScreen({
   };
 
   const handleRemovePhoto = (index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setAiDescriptionError(null);
+    setPhotos((prev) => {
+      const removedUri = prev[index];
+      if (removedUri) delete photoMetaRef.current[removedUri];
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleTakePhoto = async () => {
@@ -336,10 +347,18 @@ export function DistrictScreen({
       }
       const res = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        quality: 0.7,
+        quality: 0.6,
+        base64: true,
       });
       if (!res.canceled && res.assets?.[0]?.uri) {
-        setPhotos((prev) => [...prev, res.assets[0].uri].slice(0, 3));
+        const asset = res.assets[0];
+        photoMetaRef.current[asset.uri] = {
+          base64: asset.base64,
+          mimeType: asset.mimeType,
+          fileName: asset.fileName,
+        };
+        setAiDescriptionError(null);
+        setPhotos((prev) => [...prev, asset.uri].slice(0, 3));
       }
     } catch {
       Alert.alert(
@@ -361,10 +380,18 @@ export function DistrictScreen({
     try {
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.7,
+        quality: 0.6,
+        base64: true,
       });
       if (!res.canceled && res.assets?.[0]?.uri) {
-        setPhotos((prev) => [...prev, res.assets[0].uri].slice(0, 3));
+        const asset = res.assets[0];
+        photoMetaRef.current[asset.uri] = {
+          base64: asset.base64,
+          mimeType: asset.mimeType,
+          fileName: asset.fileName,
+        };
+        setAiDescriptionError(null);
+        setPhotos((prev) => [...prev, asset.uri].slice(0, 3));
       }
     } catch {
       Alert.alert(
@@ -381,6 +408,56 @@ export function DistrictScreen({
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setFeedbackToast(null), 2500);
   }, []);
+
+  const handleGenerateDescription = async () => {
+    if (photos.length === 0 || isGeneratingDescription) return;
+
+    const currentLanguage: Language = (i18n.resolvedLanguage ?? i18n.language ?? 'en')
+      .toLowerCase()
+      .startsWith('fr')
+      ? 'fr'
+      : 'en';
+
+    setIsGeneratingDescription(true);
+    setAiDescriptionError(null);
+    try {
+      const images: AiImageSource[] = photos.map((uri) => ({
+        uri,
+        ...photoMetaRef.current[uri],
+      }));
+      const result = await describeIssueImages({
+        images,
+        language: currentLanguage,
+        context: {
+          category: selectedCategory ?? undefined,
+          address: address.trim() || undefined,
+          districtName: selectedDistrict.name || undefined,
+          elements: selectedElements.length > 0 ? selectedElements : undefined,
+        },
+      });
+      if (result.description) {
+        setDescription(result.description);
+        showToast(
+          tText(
+            'districtScreen.aiDescription.generatedToast',
+            'Description remplie à partir de votre photo.',
+          ),
+        );
+      }
+    } catch (err) {
+      setAiDescriptionError(
+        getApiErrorMessage(
+          err,
+          tText(
+            'districtScreen.aiDescription.error',
+            'Impossible de générer une description pour le moment. Veuillez réessayer.',
+          ),
+        ),
+      );
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -547,6 +624,8 @@ export function DistrictScreen({
     setTitle('');
     setDescription('');
     setPhotos([]);
+    photoMetaRef.current = {};
+    setAiDescriptionError(null);
     setIsAdjustingPin(false);
     setMtl311Enabled(initialMtl311);
     if (districtTab === 'other') {
@@ -1232,6 +1311,68 @@ export function DistrictScreen({
               placeholder="Expliquez en détail le problème observé..."
               placeholderTextColor={theme.neutral500}
             />
+
+            <View style={styles.aiAssistContainer}>
+              <Pressable
+                testID="ai-generate-description-button"
+                accessibilityRole="button"
+                accessibilityState={{
+                  disabled: photos.length === 0 || isGeneratingDescription,
+                  busy: isGeneratingDescription,
+                }}
+                disabled={photos.length === 0 || isGeneratingDescription}
+                onPress={() => {
+                  void handleGenerateDescription();
+                }}
+                style={({ pressed }) => [
+                  styles.aiAssistBtn,
+                  {
+                    backgroundColor: theme.accent100,
+                    borderColor: theme.accent300,
+                  },
+                  (photos.length === 0 || isGeneratingDescription) && styles.disabledOpacity,
+                  pressed && photos.length > 0 && !isGeneratingDescription && styles.pressedOpacity,
+                ]}
+              >
+                {isGeneratingDescription ? (
+                  <ActivityIndicator size="small" color={theme.accent700} />
+                ) : (
+                  <Text style={styles.aiAssistBtnIcon}>✨</Text>
+                )}
+                <Text style={[styles.aiAssistBtnText, { color: theme.accent700 }]}>
+                  {isGeneratingDescription
+                    ? tText('districtScreen.aiDescription.generating', 'Analyse de la photo...')
+                    : description.trim().length > 0 && photos.length > 0
+                      ? tText(
+                          'districtScreen.aiDescription.regenerateButton',
+                          'Régénérer depuis la photo (IA)',
+                        )
+                      : tText(
+                          'districtScreen.aiDescription.generateButton',
+                          'Remplir depuis la photo (IA)',
+                        )}
+                </Text>
+              </Pressable>
+
+              {photos.length === 0 && (
+                <Text style={[styles.aiAssistHint, { color: theme.textSecondary }]}>
+                  {tText(
+                    'districtScreen.aiDescription.addPhotoHint',
+                    'Ajoutez une photo ci-dessous pour préremplir la description avec Gemini IA.',
+                  )}
+                </Text>
+              )}
+
+              {aiDescriptionError && (
+                <Text
+                  testID="ai-description-error"
+                  accessibilityRole="alert"
+                  style={[styles.aiAssistError, { color: theme.danger }]}
+                >
+                  {aiDescriptionError}
+                </Text>
+              )}
+            </View>
           </View>
 
           {/* ─── 8. Photos justificatives (max. 3) ─── */}
@@ -2106,6 +2247,35 @@ const createStyles = (theme: Theme) =>
       fontSize: 14,
       lineHeight: 20,
       textAlignVertical: 'top',
+    },
+    aiAssistContainer: {
+      gap: 6,
+    },
+    aiAssistBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.three,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    aiAssistBtnIcon: {
+      fontSize: 15,
+    },
+    aiAssistBtnText: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    aiAssistHint: {
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    aiAssistError: {
+      fontSize: 12,
+      fontWeight: '600',
+      lineHeight: 16,
     },
 
     // 8. Photo Slots

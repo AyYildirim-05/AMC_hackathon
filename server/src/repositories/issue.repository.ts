@@ -1,4 +1,4 @@
-import { type Issue, IssueModel, type IssueStatus } from '../models/index.js';
+import { type Issue, IssueModel, type IssueStatus, type IssueUrgency } from '../models/index.js';
 
 /** Reporter-supplied fields; everything else takes its schema default. Ids are cast by Mongoose. */
 export type NewIssue = Pick<
@@ -15,6 +15,8 @@ export type NewIssue = Pick<
   districtId: string;
   createdById: string;
   external311Ref?: string | null;
+  severityScore?: number | null;
+  urgency?: IssueUrgency | null;
 };
 
 /** Any subset of the editable fields, plus who made the change. */
