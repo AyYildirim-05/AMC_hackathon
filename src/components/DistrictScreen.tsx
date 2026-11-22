@@ -176,20 +176,6 @@ export function DistrictScreen({
     borough: string;
   } | null>(null);
 
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      try {
-        if (router.canGoBack()) {
-          router.back();
-        }
-      } catch {
-        // fallback
-      }
-    }
-  };
-
   const handleSelectDistrict = (item: DistrictItem) => {
     setSelectedDistrict(item);
     setIsBoroughModalVisible(false);
