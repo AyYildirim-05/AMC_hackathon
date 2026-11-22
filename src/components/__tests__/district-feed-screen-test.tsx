@@ -2,17 +2,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { installMockBackendApi, TEST_DISTRICTS } from '../../../test/fixtures';
+
 import { setLanguage } from '@/i18n';
 import { DistrictFeedScreen } from '@/components/district-feed-screen';
 import type { AuthUser } from '@/lib/auth/auth-api';
 
-// camille_mtl lives in Le Plateau-Mont-Royal in dummy_data/person.json.
 const mockUser: AuthUser = {
   id: '64b7f0c2a1b2c3d4e5f60719',
   username: 'camille_mtl',
   email: 'camille.tremblay@example.ca',
   postalCode: 'H2J1S4',
-  homeDistrictId: null,
+  homeDistrictId: TEST_DISTRICTS[0].id,
   role: 'district_manager',
   preferredLanguage: 'fr',
 };
@@ -46,12 +47,12 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: async () => {},
 }));
 
-const renderFeed = () => {
+const renderFeed = async () => {
   // gcTime: Infinity schedules no cache-cleanup timer, which would keep Jest alive for 5 minutes.
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
   });
-  return render(
+  const utils = await render(
     <SafeAreaProvider
       initialMetrics={{
         frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -63,11 +64,19 @@ const renderFeed = () => {
       </QueryClientProvider>
     </SafeAreaProvider>,
   );
+  await screen.findByText('le-plateau-mont-royal');
+  await screen.findByTestId('district-feed-alert');
+  return utils;
 };
 
+let restoreApi: (() => void) | undefined;
 beforeEach(async () => {
+  restoreApi = installMockBackendApi({ currentUsername: mockUser.username });
   mockNavigate.mockClear();
   await setLanguage('fr');
+});
+afterEach(() => {
+  restoreApi?.();
 });
 afterAll(async () => {
   await setLanguage('en');

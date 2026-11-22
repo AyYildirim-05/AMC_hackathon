@@ -137,8 +137,8 @@ function normalizeStatus(raw: unknown): IssueStatus {
 }
 
 /**
- * Normalizes an issue record from either the camelCase Express/MongoDB backend
- * or the snake_case `dummy_data/issues.json` format into the frontend `Issue` shape.
+ * Normalizes an issue record from the camelCase Express/MongoDB backend
+ * (or snake_case payloads) into the frontend `Issue` shape.
  */
 export function normalizeIssue(raw: Record<string, unknown>): Issue {
   const id = String(raw.id ?? raw._id ?? '');
@@ -180,8 +180,8 @@ export function normalizeIssue(raw: Record<string, unknown>): Issue {
 }
 
 /**
- * Normalizes a district record from either the camelCase Express/MongoDB backend
- * or the snake_case `dummy_data/districts.json` format.
+ * Normalizes a district record from the camelCase Express/MongoDB backend
+ * (or snake_case payloads) into the frontend `District` shape.
  */
 export function normalizeDistrict(raw: Record<string, unknown>): District {
   const managerRaw = raw.manager_id ?? raw.managerId ?? null;

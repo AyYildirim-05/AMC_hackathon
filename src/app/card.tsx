@@ -14,9 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import dummyDistricts from '../../dummy_data/districts.json';
-import dummyIssues from '../../dummy_data/issues.json';
-
 import { IssueCard } from '@/components/IssueCard';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
@@ -41,18 +38,9 @@ import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupportedLanguage, setLanguage } from '@/i18n';
 import { fetchDistricts } from '@/lib/api/districts';
-import {
-  fetchIssues,
-  fetchMyVotes,
-  isLiveApiEnabled,
-  isServerObjectId,
-  toggleIssueVote,
-} from '@/lib/api/issues';
+import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
-
-const FALLBACK_ISSUES = dummyIssues.issues as Issue[];
-const FALLBACK_DISTRICTS = dummyDistricts.districts as District[];
 
 function getCategoryChipIcon(category: IssueCategory): MapIconName {
   switch (category) {
@@ -75,28 +63,25 @@ export default function CardScreen() {
   const user = useCurrentUser();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const liveApi = isLiveApiEnabled();
   const isDark = theme.text !== '#1C211F';
   const currentLang = isSupportedLanguage(i18n.language) ? i18n.language : 'fr';
 
   const mapRef = useRef<MontrealMapHandle>(null);
 
-  const { data: issues = liveApi ? [] : FALLBACK_ISSUES } = useQuery<Issue[]>({
+  const { data: issues = [] } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
-    enabled: liveApi,
   });
 
-  const { data: districts = liveApi ? [] : FALLBACK_DISTRICTS } = useQuery<District[]>({
+  const { data: districts = [] } = useQuery<District[]>({
     queryKey: ['districts'],
     queryFn: fetchDistricts,
-    enabled: liveApi,
   });
 
   const { data: myVotes } = useQuery({
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
-    enabled: liveApi && isAuthenticated,
+    enabled: isAuthenticated,
   });
 
   const voteMutation = useMutation({
@@ -125,19 +110,13 @@ export default function CardScreen() {
   const [layerMode, setLayerMode] = useState<MapLayerMode>('standard');
 
   // Selection, modal, and local interaction state
-  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(
-    liveApi ? null : (FALLBACK_ISSUES[0]?.id ?? null),
-  );
-  const [upvotedIds, setUpvotedIds] = useState<Record<string, boolean>>({});
-  const [confirmedIds, setConfirmedIds] = useState<Record<string, boolean>>({});
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [boroughModalVisible, setBoroughModalVisible] = useState(false);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [justShared, setJustShared] = useState(false);
   const shareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevFocusedIssueIdRef = useRef<string | null>(
-    liveApi ? null : (FALLBACK_ISSUES[0]?.id ?? null),
-  );
+  const prevFocusedIssueIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -189,6 +168,10 @@ export default function CardScreen() {
   // Smoothly focus the map whenever filtering/searching switches the active issue
   useEffect(() => {
     if (!selectedIssue) return;
+    if (prevFocusedIssueIdRef.current === null) {
+      prevFocusedIssueIdRef.current = selectedIssue.id;
+      return;
+    }
     if (prevFocusedIssueIdRef.current === selectedIssue.id) return;
     prevFocusedIssueIdRef.current = selectedIssue.id;
     mapRef.current?.focusRegion({
@@ -219,46 +202,19 @@ export default function CardScreen() {
     [myVotes?.confirmedIssueIds],
   );
 
-  const isSelectedServerIssue = selectedIssue
-    ? liveApi && isServerObjectId(selectedIssue.id)
-    : false;
-  const isSelectedUpvoted = selectedIssue
-    ? isSelectedServerIssue
-      ? serverUpvotedSet.has(selectedIssue.id)
-      : Boolean(upvotedIds[selectedIssue.id])
-    : false;
-  const selectedUpvoteCount = selectedIssue
-    ? isSelectedServerIssue
-      ? selectedIssue.upvote_count
-      : selectedIssue.upvote_count + (isSelectedUpvoted ? 1 : 0)
-    : 0;
-  const isSelectedConfirmed = selectedIssue
-    ? isSelectedServerIssue
-      ? serverConfirmedSet.has(selectedIssue.id)
-      : Boolean(confirmedIds[selectedIssue.id])
-    : false;
-  const selectedConfirmCount = selectedIssue
-    ? isSelectedServerIssue
-      ? selectedIssue.resolution_confirmations
-      : selectedIssue.resolution_confirmations + (isSelectedConfirmed ? 1 : 0)
-    : 0;
+  const isSelectedUpvoted = selectedIssue ? serverUpvotedSet.has(selectedIssue.id) : false;
+  const selectedUpvoteCount = selectedIssue ? selectedIssue.upvote_count : 0;
+  const isSelectedConfirmed = selectedIssue ? serverConfirmedSet.has(selectedIssue.id) : false;
+  const selectedConfirmCount = selectedIssue ? selectedIssue.resolution_confirmations : 0;
 
   const userInitials = computeInitials(user?.username ?? user?.email ?? 'Citoyen');
 
   const handleToggleUpvote = (issueId: string) => {
-    if (liveApi && isServerObjectId(issueId)) {
-      voteMutation.mutate({ issueId, voteType: 'upvote' });
-      return;
-    }
-    setUpvotedIds((prev) => ({ ...prev, [issueId]: !prev[issueId] }));
+    voteMutation.mutate({ issueId, voteType: 'upvote' });
   };
 
   const handleToggleConfirm = (issueId: string) => {
-    if (liveApi && isServerObjectId(issueId)) {
-      voteMutation.mutate({ issueId, voteType: 'confirm_resolved' });
-      return;
-    }
-    setConfirmedIds((prev) => ({ ...prev, [issueId]: !prev[issueId] }));
+    voteMutation.mutate({ issueId, voteType: 'confirm_resolved' });
   };
 
   const handleShareIssue = async () => {

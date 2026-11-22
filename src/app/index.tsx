@@ -3,40 +3,28 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet } from 'react-native';
 
-import dummyIssues from '../../dummy_data/issues.json';
-
 import { IssueCard } from '@/components/IssueCard';
 import { IssueDetailScreen } from '@/components/IssueDetailScreen';
 import { TabScreen } from '@/components/tab-screen';
 import { Spacing } from '@/constants/theme';
-import {
-  fetchIssues,
-  fetchMyVotes,
-  isLiveApiEnabled,
-  isServerObjectId,
-  toggleIssueVote,
-} from '@/lib/api/issues';
+import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import type { Issue } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
-
-const FALLBACK_ISSUES = dummyIssues.issues as Issue[];
 
 export default function IssuesScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuth();
-  const liveApi = isLiveApiEnabled();
 
-  const { data: issues = liveApi ? [] : FALLBACK_ISSUES } = useQuery<Issue[]>({
+  const { data: issues = [] } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
-    enabled: liveApi,
   });
 
   const { data: myVotes } = useQuery({
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
-    enabled: liveApi && isAuthenticated,
+    enabled: isAuthenticated,
   });
 
   const voteMutation = useMutation({
@@ -72,15 +60,9 @@ export default function IssuesScreen() {
             issue={item}
             isUpvoted={upvotedSet.has(item.id)}
             isConfirmed={confirmedSet.has(item.id)}
-            onUpvote={
-              liveApi && isServerObjectId(item.id)
-                ? () => voteMutation.mutate({ issueId: item.id, voteType: 'upvote' })
-                : undefined
-            }
-            onConfirmResolution={
-              liveApi && isServerObjectId(item.id)
-                ? () => voteMutation.mutate({ issueId: item.id, voteType: 'confirm_resolved' })
-                : undefined
+            onUpvote={() => voteMutation.mutate({ issueId: item.id, voteType: 'upvote' })}
+            onConfirmResolution={() =>
+              voteMutation.mutate({ issueId: item.id, voteType: 'confirm_resolved' })
             }
             onPress={() => setSelectedIssueId(item.id)}
             onCommentsPress={() => setSelectedIssueId(item.id)}

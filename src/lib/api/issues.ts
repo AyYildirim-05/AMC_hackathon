@@ -2,21 +2,6 @@ import { normalizeIssue } from '@/components/map/map-utils';
 import { apiClient } from '@/lib/api/client';
 import type { Issue, IssueCategory, IssueStatus } from '@/models/Issue';
 
-const OBJECT_ID_REGEX = /^[0-9a-f]{24}$/i;
-
-/**
- * True in all non-test environments (dev/prod app runtime). Keeps UI-only Jest tests isolated
- * from the network while ensuring 100% live backend fetching in the running app.
- */
-export function isLiveApiEnabled(): boolean {
-  return process.env.NODE_ENV !== 'test';
-}
-
-/** True when `id` is a 24-hex MongoDB ObjectId (as opposed to a UUID test fixture). */
-export function isServerObjectId(id: string | null | undefined): id is string {
-  return typeof id === 'string' && OBJECT_ID_REGEX.test(id);
-}
-
 export type CreateIssuePayload = {
   title: string;
   description: string;

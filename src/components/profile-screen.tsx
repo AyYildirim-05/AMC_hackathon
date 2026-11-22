@@ -10,14 +10,14 @@ import { ResidentProfile } from '@/components/resident-profile';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { fetchDistrict } from '@/lib/api/districts';
-import { isLiveApiEnabled, isServerObjectId, updateIssueStatus } from '@/lib/api/issues';
+import { updateIssueStatus } from '@/lib/api/issues';
 import { fetchMyProfile } from '@/lib/api/profile';
 import type { AuthUser } from '@/lib/auth/auth-api';
 import {
   buildAdminProfile,
   buildDistrictProfile,
   buildResidentProfile,
-  dummyProfileData,
+  EMPTY_PROFILE_DATA,
   findPerson,
   type ProfileData,
 } from '@/lib/profile';
@@ -29,22 +29,13 @@ export type ProfileScreenProps = {
   data?: ProfileData;
 };
 
-const EMPTY_PROFILE_DATA: ProfileData = {
-  persons: [],
-  districts: [],
-  issues: [],
-  comments: [],
-  votes: [],
-};
-
 /**
  * The signed-in user's profile. Fetches live role-scoped profile data from `GET /api/profile/me`
- * when running against the backend (or uses an explicitly passed `data` prop in tests).
+ * (or uses an explicitly passed `data` prop in tests).
  */
 export function ProfileScreen({ user, data }: ProfileScreenProps) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const liveApi = isLiveApiEnabled();
 
   // Same query as the header, so the home district is fetched once.
   const { data: homeDistrict } = useQuery({
@@ -56,7 +47,7 @@ export function ProfileScreen({ user, data }: ProfileScreenProps) {
   const { data: fetchedProfile } = useQuery<ProfileData>({
     queryKey: ['profile', 'me', user.id],
     queryFn: fetchMyProfile,
-    enabled: data === undefined && liveApi,
+    enabled: data === undefined,
   });
 
   const statusMutation = useMutation({
@@ -68,7 +59,7 @@ export function ProfileScreen({ user, data }: ProfileScreenProps) {
     },
   });
 
-  const profileData = data ?? (liveApi ? (fetchedProfile ?? EMPTY_PROFILE_DATA) : dummyProfileData);
+  const profileData = data ?? fetchedProfile ?? EMPTY_PROFILE_DATA;
 
   const homeName = homeDistrict
     ? i18n.language.startsWith('en')
@@ -106,9 +97,7 @@ export function ProfileScreen({ user, data }: ProfileScreenProps) {
         <ManagerProfile
           profile={profile}
           onUpdateStatus={(issueId, status) => {
-            if (liveApi && isServerObjectId(issueId)) {
-              statusMutation.mutate({ issueId, status });
-            }
+            statusMutation.mutate({ issueId, status });
           }}
         />
       );

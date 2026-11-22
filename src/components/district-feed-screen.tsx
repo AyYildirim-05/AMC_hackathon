@@ -4,10 +4,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import dummyDistricts from '../../dummy_data/districts.json';
-import dummyIssues from '../../dummy_data/issues.json';
-import dummyPersons from '../../dummy_data/person.json';
-
 import { IssueCard } from '@/components/IssueCard';
 import { IssueDetailScreen } from '@/components/IssueDetailScreen';
 import { type District } from '@/components/map/map-utils';
@@ -18,18 +14,9 @@ import { Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts } from '@/lib/api/districts';
-import {
-  fetchIssues,
-  fetchMyVotes,
-  isLiveApiEnabled,
-  isServerObjectId,
-  toggleIssueVote,
-} from '@/lib/api/issues';
+import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, type Issue, type IssueCategory } from '@/models/Issue';
 import { useAuth } from '@/providers/auth-provider';
-
-const FALLBACK_ISSUES = dummyIssues.issues as Issue[];
-const FALLBACK_DISTRICTS = dummyDistricts.districts as District[];
 
 type CategoryFilter = 'all' | IssueCategory;
 type SortMode = 'recent' | 'popular';
@@ -47,15 +34,6 @@ const ALERT_COLORS = {
 };
 
 /**
- * The user's home district in the sample data: matched by username, falling back to the first
- * district (used only in UI-only test mode when the live API is not active).
- */
-function homeDistrictIdFor(username: string | undefined): string {
-  const person = dummyPersons.persons.find((p) => p.username === username);
-  return person?.home_district_id ?? FALLBACK_DISTRICTS[0].id;
-}
-
-/**
  * The borough feed (District tab): live sync strip, category filters, the current works alert,
  * recent reports in and around the selected district, and a call to report a new problem.
  */
@@ -67,24 +45,21 @@ export function DistrictFeedScreen() {
   const user = useCurrentUser();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const liveApi = isLiveApiEnabled();
 
-  const { data: issues = liveApi ? [] : FALLBACK_ISSUES } = useQuery<Issue[]>({
+  const { data: issues = [] } = useQuery<Issue[]>({
     queryKey: ['issues'],
     queryFn: fetchIssues,
-    enabled: liveApi,
   });
 
-  const { data: districts = liveApi ? [] : FALLBACK_DISTRICTS } = useQuery<District[]>({
+  const { data: districts = [] } = useQuery<District[]>({
     queryKey: ['districts'],
     queryFn: fetchDistricts,
-    enabled: liveApi,
   });
 
   const { data: myVotes } = useQuery({
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
-    enabled: liveApi && isAuthenticated,
+    enabled: isAuthenticated,
   });
 
   const voteMutation = useMutation({
@@ -100,16 +75,14 @@ export function DistrictFeedScreen() {
   const [category, setCategory] = useState<CategoryFilter>('all');
   const [sort, setSort] = useState<SortMode>('recent');
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [localUpvoted, setLocalUpvoted] = useState<Set<string>>(new Set());
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
   const defaultDistrictId = useMemo(() => {
     if (user?.homeDistrictId && districts.some((d) => d.id === user.homeDistrictId)) {
       return user.homeDistrictId;
     }
-    if (!liveApi) return homeDistrictIdFor(user?.username);
     return districts[0]?.id ?? '';
-  }, [user?.homeDistrictId, user?.username, districts, liveApi]);
+  }, [user?.homeDistrictId, districts]);
 
   const activeDistrictId = pickedDistrictId ?? defaultDistrictId;
   const district: District = districts.find((d) => d.id === activeDistrictId) ??
@@ -128,10 +101,10 @@ export function DistrictFeedScreen() {
     ? (issues.find((i) => i.id === selectedIssueId) ?? null)
     : null;
 
-  const upvoted = useMemo(() => {
-    if (liveApi && myVotes) return new Set(myVotes.upvotedIssueIds);
-    return localUpvoted;
-  }, [liveApi, myVotes, localUpvoted]);
+  const upvoted = useMemo(
+    () => new Set(myVotes?.upvotedIssueIds ?? []),
+    [myVotes?.upvotedIssueIds],
+  );
 
   const language = i18n.language === 'fr' ? 'fr' : 'en';
   const districtName = (d: District) => (language === 'fr' ? d.name_fr : d.name_en);
@@ -164,16 +137,7 @@ export function DistrictFeedScreen() {
     issues.filter((i) => filter === 'all' || i.category === filter).length;
 
   const toggleUpvote = (id: string) => {
-    if (liveApi && isServerObjectId(id)) {
-      voteMutation.mutate(id);
-      return;
-    }
-    setLocalUpvoted((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    voteMutation.mutate(id);
   };
 
   const alertColors = ALERT_COLORS[isDark ? 'dark' : 'light'];
@@ -370,7 +334,6 @@ export function DistrictFeedScreen() {
           const isUpvoted = upvoted.has(item.id);
           const other = districts.find((d) => d.id === item.district_id);
           const outside = Boolean(district.id) && item.district_id !== district.id;
-          const isServerItem = liveApi && isServerObjectId(item.id);
           return (
             <View>
               {outside && other ? (
@@ -387,11 +350,7 @@ export function DistrictFeedScreen() {
                 </View>
               ) : null}
               <IssueCard
-                issue={
-                  isServerItem
-                    ? item
-                    : { ...item, upvote_count: item.upvote_count + (isUpvoted ? 1 : 0) }
-                }
+                issue={item}
                 isUpvoted={isUpvoted}
                 onUpvote={() => toggleUpvote(item.id)}
                 onPress={() => setSelectedIssueId(item.id)}

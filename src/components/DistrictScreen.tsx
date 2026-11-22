@@ -19,15 +19,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import dummyDistricts from '../../dummy_data/districts.json';
-
 import { type District } from '@/components/map/map-utils';
 import { ProfileButton } from '@/components/profile-button';
 import { Fonts, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchDistricts } from '@/lib/api/districts';
-import { createIssue, isLiveApiEnabled, isServerObjectId } from '@/lib/api/issues';
+import { createIssue } from '@/lib/api/issues';
 import { getApiErrorMessage } from '@/lib/auth/auth-api';
 import { uploadIssuePhotos } from '@/lib/uploads/cloudinary';
 import { type Issue } from '@/models/Issue';
@@ -87,13 +85,6 @@ export interface DistrictItem {
   isClaimed: boolean;
 }
 
-const POSTAL_CODES: Record<string, string> = {
-  '11111111-1111-4111-8111-111111111101': 'H2J 1S4',
-  '11111111-1111-4111-8111-111111111102': 'H2L 2C9',
-  '11111111-1111-4111-8111-111111111103': 'H1Y 2A1',
-  '11111111-1111-4111-8111-111111111104': 'H3Z 1A1',
-};
-
 const POSTAL_CODES_BY_SLUG: Record<string, string> = {
   'le-plateau-mont-royal': 'H2J 1S4',
   'ville-marie': 'H2L 2C9',
@@ -105,16 +96,11 @@ function toDistrictItem(d: District): DistrictItem {
   return {
     id: d.id,
     name: d.name_fr || d.name_en,
-    postalCode:
-      d.postal_code || POSTAL_CODES_BY_SLUG[d.open_north_slug] || POSTAL_CODES[d.id] || 'H2J 1S4',
+    postalCode: d.postal_code || POSTAL_CODES_BY_SLUG[d.open_north_slug] || 'H2J 1S4',
     status: d.district_type === 'borough' ? 'Arrondissement validé' : 'Municipalité liée',
     isClaimed: Boolean(d.is_claimed),
   };
 }
-
-export const DISTRICT_PRESETS: DistrictItem[] = (dummyDistricts.districts as District[]).map(
-  toDistrictItem,
-);
 
 export interface DistrictScreenProps {
   /** Optional callback when back button is pressed. */
@@ -156,21 +142,17 @@ export function DistrictScreen({
   const theme = useTheme();
   const user = useCurrentUser();
   const queryClient = useQueryClient();
-  const liveApi = isLiveApiEnabled();
   const isDark = theme.text !== '#1C211F';
 
   const { data: apiDistricts } = useQuery<District[]>({
     queryKey: ['districts'],
     queryFn: fetchDistricts,
-    enabled: liveApi,
   });
 
-  const districtOptions = useMemo<DistrictItem[]>(() => {
-    if (liveApi) {
-      return (apiDistricts ?? []).map(toDistrictItem);
-    }
-    return DISTRICT_PRESETS;
-  }, [liveApi, apiDistricts]);
+  const districtOptions = useMemo<DistrictItem[]>(
+    () => (apiDistricts ?? []).map(toDistrictItem),
+    [apiDistricts],
+  );
 
   const homeDistrictItem = useMemo<DistrictItem>(() => {
     if (user?.homeDistrictId) {
@@ -292,67 +274,45 @@ export function DistrictScreen({
     const normalizedCategory =
       selectedCategory === 'parks_cleanliness' ? 'traffic_safety' : selectedCategory;
 
-    if (liveApi && isServerObjectId(selectedDistrict.id)) {
-      setIsPublishing(true);
-      try {
-        const localUris = photos.filter((uri) => !/^https?:\/\//i.test(uri));
-        const existingCloudinaryUrls = photos.filter((uri) =>
-          /^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//i.test(uri),
-        );
-        let uploadedUrls: string[] = [];
-        if (localUris.length > 0) {
-          uploadedUrls = await uploadIssuePhotos(localUris);
-        }
-        const issueImages = [...existingCloudinaryUrls, ...uploadedUrls];
-
-        const created = await createIssue({
-          title: title.trim(),
-          description: description.trim() || title.trim(),
-          category: normalizedCategory,
-          address: address.trim(),
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-          districtId: selectedDistrict.id,
-          images: issueImages,
-          external311Ref: mtl311Enabled ? ticketNumber : null,
-        });
-
-        void queryClient.invalidateQueries({ queryKey: ['issues'] });
-        void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
-
-        setPublishedTicket({
-          ticketRef: created.external_311_ref ?? ticketNumber,
-          borough: selectedDistrict.name,
-        });
-        onSubmitSuccess?.(created);
-      } catch (err) {
-        Alert.alert(
-          tText('common.error', 'Erreur'),
-          getApiErrorMessage(err, 'Impossible de publier le signalement.'),
-        );
-      } finally {
-        setIsPublishing(false);
+    setIsPublishing(true);
+    try {
+      const localUris = photos.filter((uri) => !/^https?:\/\//i.test(uri));
+      const existingCloudinaryUrls = photos.filter((uri) =>
+        /^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//i.test(uri),
+      );
+      let uploadedUrls: string[] = [];
+      if (localUris.length > 0) {
+        uploadedUrls = await uploadIssuePhotos(localUris);
       }
-      return;
-    }
+      const issueImages = [...existingCloudinaryUrls, ...uploadedUrls];
 
-    setPublishedTicket({
-      ticketRef: ticketNumber,
-      borough: selectedDistrict.name,
-    });
-
-    if (onSubmitSuccess) {
-      onSubmitSuccess({
-        title,
-        description,
+      const created = await createIssue({
+        title: title.trim(),
+        description: description.trim() || title.trim(),
         category: normalizedCategory,
-        address,
+        address: address.trim(),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
-        district_id: selectedDistrict.id,
-        images: photos,
-        external_311_ref: mtl311Enabled ? ticketNumber : null,
+        districtId: selectedDistrict.id,
+        images: issueImages,
+        external311Ref: mtl311Enabled ? ticketNumber : null,
       });
+
+      void queryClient.invalidateQueries({ queryKey: ['issues'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+
+      setPublishedTicket({
+        ticketRef: created.external_311_ref ?? ticketNumber,
+        borough: selectedDistrict.name,
+      });
+      onSubmitSuccess?.(created);
+    } catch (err) {
+      Alert.alert(
+        tText('common.error', 'Erreur'),
+        getApiErrorMessage(err, 'Impossible de publier le signalement.'),
+      );
+    } finally {
+      setIsPublishing(false);
     }
   };
 

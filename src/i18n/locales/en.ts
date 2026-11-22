@@ -189,8 +189,7 @@ const en = {
     title: 'Profile',
     open: 'Open profile, @{{username}}',
     close: 'Close',
-    missingData:
-      'No activity data for @{{username}} yet: this account is not in the sample data (dummy_data).',
+    missingData: 'No activity data for @{{username}} yet.',
     resident: {
       activity: 'My activity',
       reports_one: 'Report filed',

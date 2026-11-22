@@ -16,10 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import dummyDistricts from '../../dummy_data/districts.json';
-import dummyComments from '../../dummy_data/issue_comments.json';
-import dummyPersons from '../../dummy_data/person.json';
-
 import { type District } from '@/components/map/map-utils';
 import { ProfileButton } from '@/components/profile-button';
 import { ThemedText } from '@/components/themed-text';
@@ -33,8 +29,6 @@ import {
   createIssueComment,
   fetchIssueComments,
   fetchMyVotes,
-  isLiveApiEnabled,
-  isServerObjectId,
   toggleIssueVote,
 } from '@/lib/api/issues';
 import { type Issue } from '@/models/Issue';
@@ -76,12 +70,11 @@ export interface IssueDetailScreenProps {
   testID?: string;
 }
 
-/** Looks up borough or district name. */
+/** Looks up borough or district name from fetched districts. */
 export function getDistrictName(districtId?: string, districts?: readonly District[]): string {
-  if (!districtId) return 'Montréal';
-  const source = districts ?? (dummyDistricts.districts as District[]);
-  const match = source.find((d) => d.id === districtId);
-  return match?.name_fr || match?.name_en || 'Le Plateau-Mont-Royal';
+  if (!districtId || !districts) return 'Montréal';
+  const match = districts.find((d) => d.id === districtId);
+  return match?.name_fr || match?.name_en || 'Montréal';
 }
 
 function mapApiCommentToItem(c: ApiIssueComment): IssueCommentItem {
@@ -132,49 +125,6 @@ function formatCommentDate(isoString: string): string {
   } catch {
     return 'Nov 18 • 08:15';
   }
-}
-
-/** Resolves initial comments for an issue from dummy data. */
-function getInitialComments(issue: Issue): IssueCommentItem[] {
-  const rawComments = dummyComments.issue_comments.filter((c) => c.issue_id === issue.id);
-
-  if (rawComments.length === 0 && issue.official_response) {
-    return [
-      {
-        id: `official-${issue.id}`,
-        issue_id: issue.id,
-        user_id: 'official-user',
-        body: issue.official_response.comment,
-        is_official_response: true,
-        created_at: issue.updated_at || issue.created_at,
-        username: issue.official_response.author,
-        displayName: issue.official_response.author,
-      },
-    ];
-  }
-
-  return rawComments.map((c, index) => {
-    const person = dummyPersons.persons.find((p) => p.id === c.user_id);
-    const username = person?.username || (c.is_official_response ? 'camille_mtl' : 'marc_velo');
-    const isVerification = index === 2 || c.body.toLowerCase().includes('confirmed');
-
-    return {
-      id: c.id,
-      issue_id: c.issue_id,
-      user_id: c.user_id,
-      body: c.body,
-      is_official_response: c.is_official_response,
-      created_at: c.created_at,
-      username,
-      displayName: person?.username ? `@${person.username}` : `@${username}`,
-      badge: c.is_official_response
-        ? undefined
-        : isVerification
-          ? 'Field Verification'
-          : 'Resident',
-      isFieldVerification: isVerification,
-    };
-  });
 }
 
 /** Builds timeline steps reflecting municipal intervention. */
@@ -271,28 +221,25 @@ export function IssueDetailScreen({
   const user = useCurrentUser();
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
-  const liveApi = isLiveApiEnabled();
-  const isServerIssue = liveApi && isServerObjectId(issue.id);
 
   const { data: apiDistricts } = useQuery<District[]>({
     queryKey: ['districts'],
     queryFn: fetchDistricts,
-    enabled: liveApi,
   });
 
   const { data: apiComments } = useQuery<ApiIssueComment[]>({
     queryKey: ['issues', issue.id, 'comments'],
     queryFn: () => fetchIssueComments(issue.id),
-    enabled: visible && isServerIssue,
+    enabled: visible,
   });
 
   const { data: myVotes } = useQuery({
     queryKey: ['votes', 'me'],
     queryFn: fetchMyVotes,
-    enabled: visible && liveApi && isAuthenticated,
+    enabled: visible && isAuthenticated,
   });
 
-  // Interactive state (derived from server data when backed by API; local overrides otherwise)
+  // Optimistic vote state synced with server responses
   const [localVotes, setLocalVotes] = useState<{
     issueId: string;
     isUpvoted: boolean;
@@ -300,9 +247,6 @@ export function IssueDetailScreen({
     isConfirmed: boolean;
     confirmCount: number;
   } | null>(null);
-  const [addedLocalComments, setAddedLocalComments] = useState<Record<string, IssueCommentItem[]>>(
-    {},
-  );
   const [newCommentText, setNewCommentText] = useState<string>('');
 
   const serverIsUpvoted = myVotes ? myVotes.upvotedIssueIds.includes(issue.id) : false;
@@ -347,18 +291,14 @@ export function IssueDetailScreen({
     },
   });
 
-  const comments = useMemo<IssueCommentItem[]>(() => {
-    if (isServerIssue) {
-      return (apiComments ?? []).map(mapApiCommentToItem);
-    }
-    return [...getInitialComments(issue), ...(addedLocalComments[issue.id] ?? [])];
-  }, [isServerIssue, apiComments, issue, addedLocalComments]);
+  const comments = useMemo<IssueCommentItem[]>(
+    () => (apiComments ?? []).map(mapApiCommentToItem),
+    [apiComments],
+  );
 
-  const authorHandle = issue.author?.username || 'marc_velo';
+  const authorHandle = issue.author?.username || 'citoyen';
   const matchedDistrict = apiDistricts?.find((d) => d.id === issue.district_id);
-  const districtName = liveApi
-    ? matchedDistrict?.name_fr || matchedDistrict?.name_en || 'Montréal'
-    : getDistrictName(issue.district_id);
+  const districtName = getDistrictName(issue.district_id, apiDistricts);
   const timelineSteps = getTimelineSteps(issue, districtName);
 
   const handleToggleUpvote = () => {
@@ -371,11 +311,7 @@ export function IssueDetailScreen({
       isConfirmed,
       confirmCount,
     });
-    if (isServerIssue) {
-      voteMutation.mutate('upvote');
-      return;
-    }
-    onUpvote?.(issue.id, nextCount);
+    voteMutation.mutate('upvote');
   };
 
   const handleToggleConfirm = () => {
@@ -388,45 +324,19 @@ export function IssueDetailScreen({
       isConfirmed: nextState,
       confirmCount: nextCount,
     });
-    if (isServerIssue) {
-      voteMutation.mutate('confirm_resolved');
-      return;
-    }
-    onConfirmResolution?.(issue.id, nextCount);
+    voteMutation.mutate('confirm_resolved');
   };
 
   const handleAddComment = () => {
     const trimmed = newCommentText.trim();
     if (!trimmed) return;
 
-    if (isServerIssue) {
-      const isDistrictManagerForIssue =
-        Boolean(user?.id) &&
-        ((matchedDistrict?.manager_id != null && matchedDistrict.manager_id === user?.id) ||
-          user?.role === 'admin');
-      setNewCommentText('');
-      commentMutation.mutate({ body: trimmed, isOfficial: isDistrictManagerForIssue });
-      return;
-    }
-
-    const newComment: IssueCommentItem = {
-      id: `comment-${Date.now()}`,
-      issue_id: issue.id,
-      user_id: user?.id ?? 'current-user',
-      body: trimmed,
-      is_official_response: false,
-      created_at: new Date().toISOString(),
-      username: authorHandle,
-      displayName: `@${authorHandle}`,
-      badge: 'Resident',
-      isFieldVerification: false,
-    };
-
-    setAddedLocalComments((prev) => ({
-      ...prev,
-      [issue.id]: [...(prev[issue.id] ?? []), newComment],
-    }));
+    const isDistrictManagerForIssue =
+      Boolean(user?.id) &&
+      ((matchedDistrict?.manager_id != null && matchedDistrict.manager_id === user?.id) ||
+        user?.role === 'admin');
     setNewCommentText('');
+    commentMutation.mutate({ body: trimmed, isOfficial: isDistrictManagerForIssue });
   };
 
   const handleShare = async () => {

@@ -1,15 +1,16 @@
+import { TEST_PROFILE_DATA } from '../../../test/fixtures';
+
 import type { Issue } from '@/models/Issue';
 import {
   buildAdminProfile,
   buildDistrictProfile,
   buildResidentProfile,
   computeStats,
-  dummyProfileData,
   type IssueComment,
 } from '@/lib/profile';
 
-describe('buildDistrictProfile (dummy data)', () => {
-  const profile = buildDistrictProfile('camille_mtl');
+describe('buildDistrictProfile', () => {
+  const profile = buildDistrictProfile('camille_mtl', TEST_PROFILE_DATA);
 
   it("finds Camille's district and derives her display name", () => {
     expect(profile?.manager.username).toBe('camille_mtl');
@@ -47,14 +48,14 @@ describe('buildDistrictProfile (dummy data)', () => {
   });
 
   it('returns null for someone who manages no district', () => {
-    expect(buildDistrictProfile('marc_velo')).toBeNull();
-    expect(buildDistrictProfile('nobody')).toBeNull();
+    expect(buildDistrictProfile('marc_velo', TEST_PROFILE_DATA)).toBeNull();
+    expect(buildDistrictProfile('nobody', TEST_PROFILE_DATA)).toBeNull();
   });
 });
 
 describe('computeStats', () => {
   const issue = (over: Partial<Issue>): Issue => ({
-    ...dummyProfileData.issues[0],
+    ...TEST_PROFILE_DATA.issues[0],
     ...over,
   });
   const reply = (issueId: string, createdAt: string, official = true): IssueComment => ({
@@ -94,9 +95,9 @@ describe('computeStats', () => {
   });
 });
 
-describe('buildResidentProfile (dummy data)', () => {
+describe('buildResidentProfile', () => {
   it("counts marc_velo's reports, votes and comments", () => {
-    const marc = buildResidentProfile('marc_velo');
+    const marc = buildResidentProfile('marc_velo', TEST_PROFILE_DATA);
     expect(marc?.person.display_name).toBe('Marc Gagnon');
     expect(marc?.homeDistrict?.name_fr).toBe('Le Plateau-Mont-Royal');
     expect(marc?.reports.map((i) => i.title)).toEqual(['Blocked bike lane on Rue Rachel Est']);
@@ -110,7 +111,7 @@ describe('buildResidentProfile (dummy data)', () => {
   });
 
   it("counts the team account Ahmet's report, upvote and comment", () => {
-    const ahmet = buildResidentProfile('Ahmet');
+    const ahmet = buildResidentProfile('Ahmet', TEST_PROFILE_DATA);
     expect(ahmet?.person.display_name).toBe('Ahmet');
     expect(ahmet?.homeDistrict?.name_fr).toBe('Rosemont–La Petite-Patrie');
     expect(ahmet?.reports.map((i) => i.title)).toEqual(['Streetlight out on Rue Masson']);
@@ -122,14 +123,14 @@ describe('buildResidentProfile (dummy data)', () => {
     });
   });
 
-  it('returns null for a username missing from the dummy data', () => {
-    expect(buildResidentProfile('someone_new')).toBeNull();
+  it('returns null for an unknown username', () => {
+    expect(buildResidentProfile('someone_new', TEST_PROFILE_DATA)).toBeNull();
   });
 });
 
-describe('buildAdminProfile (dummy data)', () => {
+describe('buildAdminProfile', () => {
   it('lists every district with its manager and open issues, plus city totals', () => {
-    const admin = buildAdminProfile('admin_mtl');
+    const admin = buildAdminProfile('admin_mtl', TEST_PROFILE_DATA);
     expect(
       admin?.districts.map((d) => [d.district.name_fr, d.managerUsername, d.openIssues]),
     ).toEqual([
