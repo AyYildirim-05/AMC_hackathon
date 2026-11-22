@@ -515,6 +515,12 @@ export function installMockBackendApi(options?: {
       return reply(issues.map(toServerIssue));
     }
 
+    const byDistrict = url.match(/^\/api\/issues\/district\/([^/]+)$/);
+    if (method === 'get' && byDistrict) {
+      const districtId = decodeURIComponent(byDistrict[1]);
+      return reply(issues.filter((i) => i.district_id === districtId).map(toServerIssue));
+    }
+
     if (method === 'post' && url === '/api/issues') {
       const created: Issue = {
         id: `64b7f0c2a1b2c3d4e5f6${String(issues.length + 1).padStart(4, '0')}`,
