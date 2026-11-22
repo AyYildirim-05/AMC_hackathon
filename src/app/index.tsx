@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet } from 'react-native';
 
-import { IssueCard } from '@/components/IssueCard';
-import { IssueDetailScreen } from '@/components/IssueDetailScreen';
-import { TabScreen } from '@/components/tab-screen';
+import { IssueCard } from '@/components/layout/IssueCard';
+import { IssueDetailScreen } from '@/components/layout/IssueDetailScreen';
+import { TabScreen } from '@/components/utils/tab-screen';
 import { Spacing } from '@/constants/theme';
 import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import type { Issue } from '@/models/Issue';

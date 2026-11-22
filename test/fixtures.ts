@@ -1,6 +1,6 @@
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
-import type { District } from '@/components/map/map-utils';
+import type { District } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
 import type { IssueComment, IssueVote, Person, ProfileData } from '@/lib/profile';
 import type { Issue } from '@/models/Issue';

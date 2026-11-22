@@ -1,4 +1,4 @@
-import { type District, normalizeDistrict } from '@/components/map/map-utils';
+import { type District, normalizeDistrict } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
 
 /** The fields the app reads from `GET /api/districts/:id` (server field names). */

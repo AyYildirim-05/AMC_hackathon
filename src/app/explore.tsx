@@ -5,17 +5,16 @@ import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ButtonVariantsShowcase } from '@/components/button-variants-showcase';
-import { CardVariantsShowcase } from '@/components/card-variants-showcase';
-import { ColorPaletteShowcase } from '@/components/color-palette-showcase';
-import { ExternalLink } from '@/components/external-link';
-import { LanguageSwitcher } from '@/components/language-switcher';
-import { TextVariantsShowcase } from '@/components/text-variants-showcase';
-import { ThemedButton } from '@/components/themed-button';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
+import { ButtonVariantsShowcase } from '@/components/explore/button-variants-showcase';
+import { CardVariantsShowcase } from '@/components/explore/card-variants-showcase';
+import { ColorPaletteShowcase } from '@/components/explore/color-palette-showcase';
+import { ExternalLink } from '@/components/utils/external-link';
+import { TextVariantsShowcase } from '@/components/explore/text-variants-showcase';
+import { ThemedButton } from '@/components/utils/themed-button';
+import { ThemedText } from '@/components/utils/themed-text';
+import { ThemedView } from '@/components/utils/themed-view';
+import { Collapsible } from '@/components/explore/collapsible';
+import { WebBadge } from '@/components/explore/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchCurrentUser } from '@/lib/auth/auth-api';
@@ -89,10 +88,6 @@ export default function TabTwoScreen() {
             <ThemedButton type="border" tone="danger" size="small" onPress={() => void signOut()}>
               {t('auth.signOutButton')}
             </ThemedButton>
-          </Collapsible>
-
-          <Collapsible title={t('explore.sections.language')}>
-            <LanguageSwitcher />
           </Collapsible>
 
           <Collapsible title={t('explore.sections.colors')}>

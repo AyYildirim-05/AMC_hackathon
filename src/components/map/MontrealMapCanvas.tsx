@@ -15,7 +15,7 @@ import {
   REV_CORRIDORS,
   shortStreetLabel,
   zoomRegion,
-} from './map-utils';
+} from '../utils/map-utils';
 
 export interface MontrealMapHandle {
   zoomIn: () => void;

@@ -18,7 +18,7 @@ import {
   REV_CORRIDORS,
   shortStreetLabel,
   zoomRegion,
-} from '@/components/map/map-utils';
+} from '@/components/utils/map-utils';
 import i18n from '@/i18n';
 
 const mockAnimateToRegion = jest.fn();
@@ -441,14 +441,17 @@ describe('CardScreen (Map page) — all interactive controls', () => {
     shareSpy.mockRestore();
   });
 
-  it('switches language using the header EN | FR toggle', async () => {
+  it('switches language from the profile page, not the header', async () => {
     await renderCardScreen();
+    expect(screen.queryByTestId('map-lang-en')).toBeNull();
+    expect(screen.queryByTestId('map-lang-fr')).toBeNull();
 
-    await fireEvent.press(screen.getByTestId('map-lang-en'));
+    await fireEvent.press(screen.getByTestId('map-profile-button'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Anglais' }));
     expect(screen.getByText('View record')).toBeOnTheScreen();
     expect(screen.getByText('All boroughs ▾')).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByTestId('map-lang-fr'));
+    await fireEvent.press(screen.getByRole('button', { name: 'French' }));
     expect(screen.getByText('Consulter le dossier')).toBeOnTheScreen();
   });
 });

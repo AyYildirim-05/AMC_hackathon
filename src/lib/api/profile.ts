@@ -1,4 +1,4 @@
-import { normalizeDistrict, normalizeIssue } from '@/components/map/map-utils';
+import { normalizeDistrict, normalizeIssue } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
 import type { District, IssueComment, IssueVote, Person, ProfileData } from '@/lib/profile';
 

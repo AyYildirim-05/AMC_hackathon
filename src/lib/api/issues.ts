@@ -1,4 +1,4 @@
-import { normalizeIssue } from '@/components/map/map-utils';
+import { normalizeIssue } from '@/components/utils/map-utils';
 import { apiClient } from '@/lib/api/client';
 import type { Issue, IssueCategory, IssueStatus } from '@/models/Issue';
 

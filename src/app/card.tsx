@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IssueCard } from '@/components/IssueCard';
+import { IssueCard } from '@/components/layout/IssueCard';
 import { IncidentPreviewSheet } from '@/components/map/IncidentPreviewSheet';
 import { MapIcon, type MapIconName } from '@/components/map/MapIcon';
 import { MontrealMapCanvas, type MontrealMapHandle } from '@/components/map/MontrealMapCanvas';
@@ -29,14 +29,14 @@ import {
   MONTREAL_DEFAULT_REGION,
   nextLayerMode,
   type StatusFilter,
-} from '@/components/map/map-utils';
-import { ProfileSheet } from '@/components/profile-sheet';
-import { ThemedText } from '@/components/themed-text';
+} from '@/components/utils/map-utils';
+import { ProfileSheet } from '@/components/utils/profile-sheet';
+import { ThemedText } from '@/components/utils/themed-text';
 import { computeInitials } from '@/components/utils/formatter';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useTheme } from '@/hooks/use-theme';
-import { isSupportedLanguage, setLanguage } from '@/i18n';
+import { isSupportedLanguage } from '@/i18n';
 import { fetchDistricts } from '@/lib/api/districts';
 import { fetchIssues, fetchMyVotes, toggleIssueVote } from '@/lib/api/issues';
 import { ISSUE_CATEGORIES, ISSUE_STATUSES, type Issue, type IssueCategory } from '@/models/Issue';
@@ -316,73 +316,6 @@ export default function CardScreen() {
           </View>
 
           <View style={styles.headerRight}>
-            {/* EN | FR Switcher Pill */}
-            <View style={[styles.langToggle, { backgroundColor: isDark ? '#25312B' : '#DFE8E2' }]}>
-              <Pressable
-                testID="map-lang-en"
-                accessibilityRole="button"
-                accessibilityState={{ selected: currentLang === 'en' }}
-                onPress={() => void setLanguage('en')}
-                style={[
-                  styles.langBtn,
-                  currentLang === 'en' && {
-                    backgroundColor: isDark ? '#39473F' : '#FFFFFF',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.langBtnText,
-                    {
-                      color:
-                        currentLang === 'en'
-                          ? isDark
-                            ? '#FFFFFF'
-                            : '#39473F'
-                          : isDark
-                            ? '#9ECEB0'
-                            : '#434844',
-                      fontWeight: currentLang === 'en' ? '700' : '500',
-                    },
-                  ]}
-                >
-                  EN
-                </Text>
-              </Pressable>
-              <Text style={styles.langDivider}>|</Text>
-              <Pressable
-                testID="map-lang-fr"
-                accessibilityRole="button"
-                accessibilityState={{ selected: currentLang === 'fr' }}
-                onPress={() => void setLanguage('fr')}
-                style={[
-                  styles.langBtn,
-                  currentLang === 'fr' && {
-                    backgroundColor: isDark ? '#39473F' : '#FFFFFF',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.langBtnText,
-                    {
-                      color:
-                        currentLang === 'fr'
-                          ? isDark
-                            ? '#FFFFFF'
-                            : '#39473F'
-                          : isDark
-                            ? '#9ECEB0'
-                            : '#434844',
-                      fontWeight: currentLang === 'fr' ? '700' : '500',
-                    },
-                  ]}
-                >
-                  FR
-                </Text>
-              </Pressable>
-            </View>
-
             {/* Citizen Profile Avatar */}
             <Pressable
               testID="map-profile-button"
@@ -915,27 +848,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  langToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 999,
-    padding: 2,
-  },
-  langBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    minHeight: 26,
-    justifyContent: 'center',
-  },
-  langBtnText: {
-    fontSize: 11.5,
-  },
-  langDivider: {
-    fontSize: 10,
-    color: '#737874',
-    paddingHorizontal: 1,
   },
   profileAvatar: {
     width: 32,
