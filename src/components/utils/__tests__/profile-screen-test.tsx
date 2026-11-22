@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react-native';
 
-import { TEST_PROFILE_DATA } from '../../../../test/fixtures';
+import { installMockBackendApi, TEST_PROFILE_DATA } from '../../../../test/fixtures';
 
 import '@/i18n';
 import { ProfileScreen } from '@/components/utils/profile-screen';
+import { createIssue } from '@/lib/api/issues';
 import type { AuthUser } from '@/lib/auth/auth-api';
 import type { ProfileData } from '@/lib/profile';
 
@@ -109,4 +110,43 @@ it("shows a team account's own report from the dummy data", async () => {
   expect(screen.getByText('Rosemont–La Petite-Patrie')).toBeOnTheScreen();
   expect(screen.getByText('Streetlight out on Rue Masson')).toBeOnTheScreen();
   expect(screen.queryByText(/No activity data/)).toBeNull();
+});
+
+it('always refetches fresh personal reports when remounted after a new issue is created', async () => {
+  const restore = installMockBackendApi({ currentUsername: 'marc_velo' });
+  try {
+    const resident = loggedIn('marc_velo', 'resident', 'marc.gagnon@example.ca');
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: 30_000 } },
+    });
+
+    const first = await render(
+      <QueryClientProvider client={client}>
+        <ProfileScreen user={resident} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('Blocked bike lane on Rue Rachel Est')).toBeOnTheScreen();
+    await first.unmount();
+
+    // A new issue is added to the backend while the profile drawer is closed.
+    await createIssue({
+      title: 'Brand new personal report',
+      description: 'Created while the profile panel was unmounted.',
+      category: 'roads_potholes',
+      address: '100 Rue Peel, Montréal, QC',
+      latitude: 45.495,
+      longitude: -73.562,
+      districtId: '11111111-1111-4111-8111-111111111102',
+    });
+
+    // Reopening the profile refetches immediately despite the global 30s staleTime.
+    await render(
+      <QueryClientProvider client={client}>
+        <ProfileScreen user={resident} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText('Brand new personal report')).toBeOnTheScreen();
+  } finally {
+    restore();
+  }
 });
