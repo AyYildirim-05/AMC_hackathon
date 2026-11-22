@@ -59,3 +59,21 @@ export async function reverseGeocodeLocation(
   }
   return { address: null, postalCode: null, place: null };
 }
+
+/**
+ * Coordinates for a typed address, e.g. a spot seen while driving. Addresses without a city are
+ * looked up in Montréal. `null` when nothing is found or geocoding is unavailable.
+ */
+export async function geocodeAddress(
+  query: string,
+): Promise<{ latitude: number; longitude: number } | null> {
+  const text = query.trim();
+  if (!text) return null;
+  const withCity = /montr[ée]al/i.test(text) ? text : `${text}, Montréal, QC`;
+  try {
+    const first = (await Location.geocodeAsync(withCity))[0];
+    return first ? { latitude: first.latitude, longitude: first.longitude } : null;
+  } catch {
+    return null;
+  }
+}

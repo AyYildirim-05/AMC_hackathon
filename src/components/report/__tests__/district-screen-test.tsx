@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render as rtlRender,
   screen,
@@ -37,7 +38,9 @@ jest.mock('@/providers/auth-provider', () => ({
 const mockRequestForegroundPermissions = jest.fn(async () => ({ status: 'denied' }));
 const mockGetCurrentPosition = jest.fn();
 const mockReverseGeocode = jest.fn();
+const mockGeocode = jest.fn(async (_address: string): Promise<object[]> => []);
 jest.mock('expo-location', () => ({
+  geocodeAsync: (address: string) => mockGeocode(address),
   Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: () => mockRequestForegroundPermissions(),
   getCurrentPositionAsync: (opts?: unknown) => mockGetCurrentPosition(opts),
@@ -93,6 +96,8 @@ describe('DistrictScreen', () => {
     mockRequestForegroundPermissions.mockResolvedValue({ status: 'denied' });
     mockGetCurrentPosition.mockReset();
     mockReverseGeocode.mockReset();
+    mockGeocode.mockReset();
+    mockGeocode.mockResolvedValue([]);
     mockRequestCameraPermissions.mockReset();
     mockRequestCameraPermissions.mockResolvedValue({ granted: true });
     mockLaunchCamera.mockReset();
@@ -519,7 +524,7 @@ describe('DistrictScreen', () => {
 
     await fireEvent.press(screen.getByTestId('map-adjust-pin-button'));
     expect(screen.getByTestId('map-pin-hint')).toBeOnTheScreen();
-    expect(screen.getByText("Touchez la carte pour placer l'épingle")).toBeOnTheScreen();
+    expect(screen.getByText("Déplacez la carte pour placer l'épingle")).toBeOnTheScreen();
     expect(screen.getByText('Terminé')).toBeOnTheScreen();
 
     await fireEvent(screen.getByTestId('report-location-map'), 'press', {
@@ -538,6 +543,114 @@ describe('DistrictScreen', () => {
 
     await fireEvent.press(screen.getByTestId('map-adjust-pin-button'));
     expect(screen.queryByTestId('map-pin-hint')).toBeNull();
+  });
+
+  it('places the pin far from the user by panning the map under the fixed pin', async () => {
+    mockReverseGeocode.mockResolvedValue([
+      {
+        streetNumber: '2600',
+        street: 'Rue Masson',
+        city: 'Montréal',
+        region: 'QC',
+        postalCode: 'H1Y 1W1',
+        district: 'Rosemont',
+      },
+    ]);
+    await render(<DistrictScreen />);
+
+    await fireEvent.press(screen.getByTestId('map-adjust-pin-button'));
+    // The form doesn't scroll while pinning, so drags move the map.
+    expect(screen.getByTestId('report-map-center-pin')).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId('report-location-map'), 'regionChangeComplete', {
+      latitude: 45.5463121,
+      longitude: -73.5774209,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-address-input').props.value).toBe(
+        '2600 Rue Masson, Montréal, QC H1Y 1W1',
+      ),
+    );
+    expect(await screen.findByText('Rosemont–La Petite-Patrie')).toBeOnTheScreen();
+  });
+
+  it('searches a typed address and moves the report point there', async () => {
+    mockReverseGeocode.mockResolvedValue([
+      {
+        streetNumber: '2600',
+        street: 'Rue Masson',
+        city: 'Montréal',
+        region: 'QC',
+        postalCode: 'H1Y 1W1',
+        district: 'Rosemont',
+      },
+    ]);
+    mockGeocode.mockResolvedValue([{ latitude: 45.5463121, longitude: -73.5774209 }]);
+    await render(<DistrictScreen />);
+
+    await fireEvent.changeText(screen.getByTestId('location-address-input'), '2600 rue Masson');
+    await fireEvent.press(screen.getByTestId('address-search-button'));
+
+    // Without a city, the address is looked up in Montréal.
+    expect(mockGeocode).toHaveBeenCalledWith('2600 rue Masson, Montréal, QC');
+    await waitFor(() =>
+      expect(screen.getByTestId('location-address-input').props.value).toBe(
+        '2600 Rue Masson, Montréal, QC H1Y 1W1',
+      ),
+    );
+    expect(screen.getByText(/45.546312, -73.577421/)).toBeOnTheScreen();
+    expect(await screen.findByText('Rosemont–La Petite-Patrie')).toBeOnTheScreen();
+  });
+
+  it('says so when a typed address is not found, and keeps the point', async () => {
+    await render(<DistrictScreen />);
+    const pointText = () => screen.getByText(/^-?\d+\.\d+, -?\d+\.\d+ •/).props.children;
+    const before = pointText();
+
+    await fireEvent.changeText(screen.getByTestId('location-address-input'), 'nowhere street');
+    await fireEvent(screen.getByTestId('location-address-input'), 'submitEditing');
+
+    expect(
+      await screen.findByText("Adresse introuvable. Essayez de placer l'épingle sur la carte."),
+    ).toBeOnTheScreen();
+    expect(pointText()).toBe(before);
+  });
+
+  it('does not let the GPS lookup at open move a pin the user already placed', async () => {
+    let resolvePosition: (value: object) => void = () => {};
+    mockRequestForegroundPermissions.mockResolvedValue({ status: 'granted' });
+    mockGetCurrentPosition.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePosition = resolve;
+      }),
+    );
+    mockReverseGeocode.mockResolvedValue([
+      {
+        streetNumber: '2600',
+        street: 'Rue Masson',
+        city: 'Montréal',
+        region: 'QC',
+        postalCode: 'H1Y 1W1',
+        district: 'Rosemont',
+      },
+    ]);
+    await render(<DistrictScreen />);
+
+    await fireEvent.press(screen.getByTestId('map-adjust-pin-button'));
+    await fireEvent(screen.getByTestId('report-location-map'), 'press', {
+      nativeEvent: { coordinate: { latitude: 45.5463121, longitude: -73.5774209 } },
+    });
+    await waitFor(() => expect(screen.getByText(/45.546312, -73.577421/)).toBeOnTheScreen());
+
+    // GPS answers late, with the user's own position downtown.
+    await act(async () => {
+      resolvePosition({ coords: { latitude: 45.515218, longitude: -73.560412 } });
+    });
+
+    expect(screen.getByText(/45.546312, -73.577421/)).toBeOnTheScreen();
+    expect(screen.queryByText(/45.515218/)).toBeNull();
   });
 
   it('auto-detects the borough via device GPS and OpenNorth API', async () => {
