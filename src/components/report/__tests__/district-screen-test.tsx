@@ -23,6 +23,16 @@ const mockUser: AuthUser = {
 jest.mock('@/providers/auth-provider', () => ({
   useAuth: () => ({ user: mockUser, isAuthenticated: true, signOut: async () => {} }),
 }));
+const mockRequestForegroundPermissions = jest.fn(async () => ({ status: 'denied' }));
+const mockGetCurrentPosition = jest.fn();
+const mockReverseGeocode = jest.fn();
+jest.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: () => mockRequestForegroundPermissions(),
+  getCurrentPositionAsync: (opts?: unknown) => mockGetCurrentPosition(opts),
+  reverseGeocodeAsync: (coords?: unknown) => mockReverseGeocode(coords),
+}));
+
 // The ripple animation isn't under test; a minimal stand-in avoids loading the native runtime.
 jest.mock('react-native-reanimated', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
@@ -56,6 +66,10 @@ describe('DistrictScreen', () => {
   let restoreApi: (() => void) | undefined;
 
   beforeEach(async () => {
+    mockRequestForegroundPermissions.mockReset();
+    mockRequestForegroundPermissions.mockResolvedValue({ status: 'denied' });
+    mockGetCurrentPosition.mockReset();
+    mockReverseGeocode.mockReset();
     restoreApi = installMockBackendApi({ currentUsername: mockUser.username });
     await setLanguage('fr');
   });
@@ -281,5 +295,37 @@ describe('DistrictScreen', () => {
     await fireEvent.press(screen.getByTestId('district-screen-profile-button'));
 
     expect(screen.getByRole('header', { name: 'Profil' })).toBeOnTheScreen();
+  });
+
+  it('auto-detects the borough via device GPS and OpenNorth API', async () => {
+    mockRequestForegroundPermissions.mockResolvedValue({ status: 'granted' });
+    mockGetCurrentPosition.mockResolvedValue({
+      coords: { latitude: 45.515218, longitude: -73.560412 },
+    });
+    mockReverseGeocode.mockResolvedValue([
+      {
+        streetNumber: '505',
+        street: 'Rue Sainte-Catherine Est',
+        city: 'Montréal',
+        region: 'QC',
+        postalCode: 'H2L 2C9',
+        district: 'Ville-Marie',
+      },
+    ]);
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
+    await rtlRender(
+      <QueryClientProvider client={client}>
+        <DistrictScreen />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText('Ville-Marie')).toBeOnTheScreen();
+    expect(screen.getByTestId('location-address-input').props.value).toBe(
+      '505 Rue Sainte-Catherine Est, Montréal, QC H2L 2C9',
+    );
+    expect(screen.getByText(/45.515218, -73.560412 • Ville-Marie/)).toBeOnTheScreen();
   });
 });

@@ -1,7 +1,7 @@
 import type { InternalAxiosRequestConfig } from 'axios';
 
 import { apiClient } from '@/lib/api/client';
-import { fetchDistricts } from '@/lib/api/districts';
+import { fetchDistricts, locateDistrictByCoordinates } from '@/lib/api/districts';
 import {
   createIssue,
   createIssueComment,
@@ -119,6 +119,37 @@ describe('backend API client connections', () => {
       manager_username: 'camille_mtl',
       is_claimed: true,
     });
+  });
+
+  it('locates a district from GPS coordinates via GET /api/districts/locate', async () => {
+    mockAdapter((config) => {
+      expect(config.url).toBe('/api/districts/locate?lat=45.5298&lng=-73.5751');
+      return {
+        data: {
+          district: {
+            id: '64b7f0c2a1b2c3d4e5f60702',
+            nameFr: 'Le Plateau-Mont-Royal',
+            nameEn: 'Le Plateau-Mont-Royal',
+            openNorthSlug: 'le-plateau-mont-royal',
+            districtType: 'borough',
+            postalCode: 'H2J 1S4',
+            managerId: '64b7f0c2a1b2c3d4e5f60704',
+            isClaimed: true,
+            createdAt: '2026-10-01T10:00:00.000Z',
+          },
+          openNorth: {
+            name: 'Plateau-Mont-Royal',
+            slug: 'plateau-mont-royal',
+            boundarySet: 'montreal-boroughs',
+          },
+        },
+      };
+    });
+
+    const result = await locateDistrictByCoordinates(45.5298, -73.5751);
+    expect(result.district.id).toBe('64b7f0c2a1b2c3d4e5f60702');
+    expect(result.district.name_fr).toBe('Le Plateau-Mont-Royal');
+    expect(result.openNorth.boundarySet).toBe('montreal-boroughs');
   });
 
   it('creates issues, updates status, manages comments, toggles votes, and loads profile', async () => {

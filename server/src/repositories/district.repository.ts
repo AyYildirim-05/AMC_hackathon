@@ -32,6 +32,30 @@ export const findDistrictById = (id: string) => DistrictModel.findById(id);
 export const findDistrictByName = (name: string) =>
   DistrictModel.findOne({ $or: [{ nameFr: name }, { nameEn: name }] }).collation(FRENCH_LOOSE);
 
+/**
+ * Matches an OpenNorth boundary slug or name against existing districts, handling minor French
+ * article differences (e.g. OpenNorth's `plateau-mont-royal` / `Plateau-Mont-Royal` vs seeded
+ * `le-plateau-mont-royal` / `Le Plateau-Mont-Royal`).
+ */
+export const findDistrictBySlugOrName = (slug: string, name: string) => {
+  const bareSlug = slug.replace(/^(le|la|les|l)-/, '');
+  const slugCandidates = Array.from(
+    new Set([slug, bareSlug, `le-${bareSlug}`, `la-${bareSlug}`, `les-${bareSlug}`]),
+  );
+  const bareName = name.replace(/^(le |la |les |l['’])/i, '').trim();
+  const nameCandidates = Array.from(
+    new Set([name, bareName, `Le ${bareName}`, `La ${bareName}`, `Les ${bareName}`]),
+  );
+
+  return DistrictModel.findOne({
+    $or: [
+      { openNorthSlug: { $in: slugCandidates } },
+      { nameFr: { $in: nameCandidates } },
+      { nameEn: { $in: nameCandidates } },
+    ],
+  }).collation(FRENCH_LOOSE);
+};
+
 export const createDistrict = (data: NewDistrict) => DistrictModel.create(data);
 
 /**
