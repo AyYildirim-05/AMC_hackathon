@@ -1,0 +1,113 @@
+import '@/i18n';
+import { fireEvent, render, screen } from '@testing-library/react-native';
+
+import dummyIssues from '../../../dummy_data/issues.json';
+import { IssueDetailScreen } from '@/components/IssueDetailScreen';
+import { type Issue } from '@/models/Issue';
+
+const mockBikeIssue = dummyIssues.issues[0] as Issue;
+
+describe('IssueDetailScreen', () => {
+  it('renders all sections and details matching screen.png example', async () => {
+    const handleClose = jest.fn();
+    await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={handleClose} />);
+
+    // 1. Navigation & Header
+    expect(screen.getByTestId('issue-detail-back-button')).toBeOnTheScreen();
+    expect(screen.getByTestId('issue-detail-share-button')).toBeOnTheScreen();
+
+    // 2. Badges & Metadata
+    expect(screen.getByText('Traffic & Safety')).toBeOnTheScreen();
+    expect(screen.getByText('Le Plateau-Mont-Royal • Verified')).toBeOnTheScreen();
+    expect(screen.getByText('# MTL-311-2026-88412')).toBeOnTheScreen();
+    expect(
+      screen.getAllByText('Blocked bike lane on Rue Rachel Est').length,
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('1250 Rue Rachel Est, Montréal, QC H2J 2J9')).toBeOnTheScreen();
+    expect(screen.getByText(/Reported by @marc_velo/)).toBeOnTheScreen();
+
+    // 3. Photo & Overlays
+    expect(screen.getByText('In Progress')).toBeOnTheScreen();
+    expect(screen.getByText('Citizen Photo')).toBeOnTheScreen();
+    expect(screen.getByText('Rachel Est × Parc La Fontaine')).toBeOnTheScreen();
+    expect(screen.getByText(/GPS Coordinates Verified/)).toBeOnTheScreen();
+    expect(screen.getByText('Full map ↗')).toBeOnTheScreen();
+
+    // 4. Community Action & Validation
+    expect(screen.getByText('Community Action & Validation')).toBeOnTheScreen();
+    expect(screen.getByText('Ground verification')).toBeOnTheScreen();
+    expect(screen.getByTestId('detail-upvote-button')).toBeOnTheScreen();
+    expect(screen.getByTestId('detail-confirm-button')).toBeOnTheScreen();
+    expect(screen.getByText('Upvote Issue (2)')).toBeOnTheScreen();
+    expect(screen.getByText('Confirm Resolved (1)')).toBeOnTheScreen();
+
+    // 5. Municipal Timeline (Suivi de l'intervention municipale)
+    expect(screen.getByText("Suivi de l'intervention municipale")).toBeOnTheScreen();
+    expect(screen.getByText('ARR-08-311')).toBeOnTheScreen();
+    expect(screen.getByText('Signalé par le citoyen')).toBeOnTheScreen();
+    expect(screen.getByText('Transmis aux inspecteurs du Plateau-Mont-Royal')).toBeOnTheScreen();
+    expect(screen.getByText('Équipe dépêchée sur les lieux (Actif)')).toBeOnTheScreen();
+    expect(screen.getByText('Résolution finale & réouverture de la voie')).toBeOnTheScreen();
+
+    // 6. Comments & Updates
+    expect(screen.getByText('Comments & Updates')).toBeOnTheScreen();
+    expect(screen.getByText('3 updates')).toBeOnTheScreen();
+    expect(screen.getByText('Official Borough Response')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'The bike lane on Rachel Street East near Parc La Fontaine is completely blocked by construction barriers with no detour signs.',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        '“Thank you for reporting this. Le Plateau-Mont-Royal inspection team has been notified and will verify contractor permit compliance today.”',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Confirmed—they moved the fencing back onto the sidewalk perimeter this afternoon so cyclists can pass safely.',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText('Official ticket dispatched to Public Works Inspection'),
+    ).toBeOnTheScreen();
+
+    // 7. Comment Input Bar
+    expect(screen.getByTestId('comment-input')).toBeOnTheScreen();
+    expect(screen.getByTestId('comment-send-button')).toBeOnTheScreen();
+  });
+
+  it('calls onClose when clicking back button', async () => {
+    const handleClose = jest.fn();
+    await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={handleClose} />);
+
+    await fireEvent.press(screen.getByTestId('issue-detail-back-button'));
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles upvote count on press', async () => {
+    await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);
+
+    const upvoteBtn = screen.getByTestId('detail-upvote-button');
+    expect(screen.getByText('Upvote Issue (2)')).toBeOnTheScreen();
+
+    await fireEvent.press(upvoteBtn);
+    expect(screen.getByText('Upvote Issue (3)')).toBeOnTheScreen();
+
+    await fireEvent.press(upvoteBtn);
+    expect(screen.getByText('Upvote Issue (2)')).toBeOnTheScreen();
+  });
+
+  it('allows adding a new comment', async () => {
+    await render(<IssueDetailScreen issue={mockBikeIssue} visible={true} onClose={jest.fn()} />);
+
+    const input = screen.getByTestId('comment-input');
+    const sendBtn = screen.getByTestId('comment-send-button');
+
+    await fireEvent.changeText(input, 'Inspected again this afternoon, clear now!');
+    await fireEvent.press(sendBtn);
+
+    expect(screen.getByText('Inspected again this afternoon, clear now!')).toBeOnTheScreen();
+    expect(screen.getByText('4 updates')).toBeOnTheScreen();
+  });
+});
