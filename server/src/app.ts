@@ -6,6 +6,7 @@ import { districtRouter } from './controllers/district.controller.js';
 import { issueRouter } from './controllers/issue.controller.js';
 import { profileRouter } from './controllers/profile.controller.js';
 import { errorHandler, notFound } from './middleware/error-handler.js';
+import { aiRouter } from './routes/ai.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 import { roadworksRouter } from './routes/roadworks.routes.js';
@@ -23,6 +24,8 @@ export function createApp() {
   app.set('trust proxy', trustProxy);
   app.use(helmet());
   app.use(cors({ origin: corsOrigins }));
+  // AI image description accepts up to 3 base64-encoded photos; other routes stay capped at 1mb.
+  app.use('/api/ai', express.json({ limit: '15mb' }), aiRouter);
   app.use(express.json({ limit: '1mb' }));
 
   app.use('/api/health', healthRouter);
