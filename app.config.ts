@@ -70,6 +70,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     cameraPermission: `${brand.name} uses your camera to photograph the issues you report.`,
     photosPermission: `${brand.name} uses your photo library to attach photos to the issues you report.`,
   });
+  // Android release builds are shrunk by R8 (on by default since SDK 58). R8 broke Room's
+  // reflective creation of WorkManager's database (WorkManager comes with react-native-maps), so
+  // the release APK crashed on launch: keep those constructors.
+  plugins = withPluginOptions(plugins, 'expo-build-properties', {
+    android: {
+      extraProguardRules: [
+        '-keep class * extends androidx.room.RoomDatabase { <init>(); }',
+        '-keep class androidx.work.impl.WorkDatabase_Impl { <init>(); }',
+      ].join('\n'),
+    },
+  });
   plugins = withPluginOptions(plugins, 'expo-location', {
     locationWhenInUsePermission: `${brand.name} uses your location to pinpoint civic issues and identify your borough.`,
   });

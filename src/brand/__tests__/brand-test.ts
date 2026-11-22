@@ -117,6 +117,19 @@ describe('app.config.ts', () => {
     expect(plugin('expo-image-picker')?.microphonePermission).toBe(false);
   });
 
+  it('keeps the classes R8 must not strip from Android release builds', () => {
+    const plugin = (
+      configFor().plugins as [string, { android?: { extraProguardRules?: string } }][]
+    ).find((entry) => Array.isArray(entry) && entry[0] === 'expo-build-properties')?.[1];
+    // Without these, WorkManager's database can't be created and the release APK crashes on launch.
+    expect(plugin?.android?.extraProguardRules).toContain(
+      '-keep class androidx.work.impl.WorkDatabase_Impl { <init>(); }',
+    );
+    expect(plugin?.android?.extraProguardRules).toContain(
+      '-keep class * extends androidx.room.RoomDatabase { <init>(); }',
+    );
+  });
+
   it('refuses an unknown brand instead of silently building MonTone', () => {
     expect(() => configFor('nope')).toThrow(/APP_BRAND "nope"/);
     expect(() => configFor('../secrets')).toThrow(/not a valid brand id/);
