@@ -342,3 +342,13 @@ export function regionForPoints(points: readonly LatLng[], minDelta = 0.01): Map
     longitudeDelta: Math.max((maxLng - minLng) * 1.4, minDelta),
   };
 }
+
+/**
+ * Extends `region` downward so it fills only the top `1 - fraction` of the map, keeping its top
+ * edge: for overlays (badges, buttons) that cover the bottom `fraction` of the map.
+ */
+export function reserveBottom(region: MapRegion, fraction: number): MapRegion {
+  const latitudeDelta = region.latitudeDelta / (1 - fraction);
+  const top = region.latitude + region.latitudeDelta / 2;
+  return { ...region, latitude: top - latitudeDelta / 2, latitudeDelta };
+}

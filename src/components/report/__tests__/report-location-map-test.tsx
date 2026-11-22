@@ -5,8 +5,9 @@ import { StyleSheet } from 'react-native';
 
 import { setLanguage } from '@/i18n';
 import { DistrictScreen } from '@/components/report/DistrictScreen';
-import { ReportLocationMap } from '@/components/report/ReportLocationMap';
+import { OVERLAY_FRACTION, ReportLocationMap } from '@/components/report/ReportLocationMap';
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
+import { regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 import type { AuthUser } from '@/lib/auth/auth-api';
 import type { Issue } from '@/models/Issue';
 
@@ -90,6 +91,16 @@ describe('ReportLocationMap', () => {
     expect(dotColor(/Issue a, To do/)).toBe(ISSUE_STATUS_COLORS.not_started);
     expect(dotColor(/Issue b, In progress/)).toBe(ISSUE_STATUS_COLORS.in_progress);
     expect(dotColor(/Issue c, Resolved/)).toBe(ISSUE_STATUS_COLORS.resolved);
+  });
+
+  it('frames the markers above the badge and button that cover the bottom of the map', async () => {
+    const point = { latitude: 45.53, longitude: -73.58 };
+    const issues = [issue('a', 'not_started', 45.54)];
+    await render(<ReportLocationMap point={point} issues={issues} />);
+
+    expect(screen.getByTestId('report-location-map').props.initialRegion).toEqual(
+      reserveBottom(regionForPoints([point, ...issues]), OVERLAY_FRACTION),
+    );
   });
 });
 

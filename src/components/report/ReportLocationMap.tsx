@@ -4,8 +4,14 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
-import { type LatLng, regionForPoints } from '@/components/utils/map-utils';
+import { type LatLng, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 import type { Issue } from '@/models/Issue';
+
+/**
+ * Share of the map's height covered by the report screen's overlays (coordinates badge and
+ * "Adjust pin" button): about 65 of 195 points. Markers are framed above it.
+ */
+export const OVERLAY_FRACTION = 0.35;
 
 export type ReportLocationMapProps = {
   /** Where the new issue will be reported (the device's location). */
@@ -18,7 +24,10 @@ export type ReportLocationMapProps = {
 export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
   const { t } = useTranslation();
   const mapRef = useRef<MapView>(null);
-  const region = useMemo(() => regionForPoints([point, ...issues]), [point, issues]);
+  const region = useMemo(
+    () => reserveBottom(regionForPoints([point, ...issues]), OVERLAY_FRACTION),
+    [point, issues],
+  );
 
   // Re-frame when the detected location or the district's issues change.
   useEffect(() => {

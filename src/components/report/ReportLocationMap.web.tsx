@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 
 import { ISSUE_STATUS_COLORS } from '@/components/utils/issue-status';
-import { deltaToLeafletZoom, regionForPoints } from '@/components/utils/map-utils';
+import { deltaToLeafletZoom, regionForPoints, reserveBottom } from '@/components/utils/map-utils';
 
-import type { ReportLocationMapProps } from './ReportLocationMap';
+import { OVERLAY_FRACTION, type ReportLocationMapProps } from './ReportLocationMap';
 
 const TILES = {
   url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -22,7 +22,10 @@ export function ReportLocationMap({ point, issues }: ReportLocationMapProps) {
   const layerRef = useRef<import('leaflet').LayerGroup | null>(null);
   const leafletRef = useRef<typeof import('leaflet') | null>(null);
   const [ready, setReady] = useState(false);
-  const region = useMemo(() => regionForPoints([point, ...issues]), [point, issues]);
+  const region = useMemo(
+    () => reserveBottom(regionForPoints([point, ...issues]), OVERLAY_FRACTION),
+    [point, issues],
+  );
 
   // Create the Leaflet map once (browser only).
   useEffect(() => {
