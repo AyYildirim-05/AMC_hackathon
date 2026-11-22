@@ -167,6 +167,15 @@ const en = {
     draftSavedToast: 'Draft saved successfully.',
     selectBorough: 'Select a borough',
     close: 'Close',
+    duplicate: {
+      prompt:
+        'Already reported {{distance}} away - add your upvote (+1) instead of creating a duplicate?',
+      upvote: 'Add upvote (+1)',
+      publishAnyway: 'Publish anyway',
+      cancel: 'Cancel',
+      upvoted: 'Your upvote was added to the existing report.',
+      alreadyUpvoted: 'You have already upvoted the existing report.',
+    },
   },
   districtFeed: {
     sync: 'OpenNorth Sync',

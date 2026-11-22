@@ -6,7 +6,7 @@ import { DistrictScreen } from '@/components/report/DistrictScreen';
 import { setLanguage } from '@/i18n';
 import type { AuthUser } from '@/lib/auth/auth-api';
 
-import { installMockBackendApi } from '../../../../test/fixtures';
+import { installMockBackendApi, TEST_ISSUES } from '../../../../test/fixtures';
 
 const mockNavigate = jest.fn();
 jest.mock('expo-router', () => ({
@@ -334,11 +334,14 @@ describe('DistrictScreen', () => {
   it('creates the issue, resets all fields to empty, and switches to the Issues tab', async () => {
     const handleSubmit = jest.fn();
     await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
+    await screen.findByTestId(`report-map-issue-${TEST_ISSUES[0].id}`);
 
     await fillRequiredFields();
     expect(screen.getByTestId('publish-report-button')).not.toBeDisabled();
 
     await fireEvent.press(screen.getByTestId('publish-report-button'));
+    // The default point is on top of an open issue, so the resident is asked first.
+    await fireEvent.press(await screen.findByTestId('duplicate-publish-anyway-button'));
 
     await waitFor(() => {
       expect(handleSubmit).toHaveBeenCalledTimes(1);
@@ -356,6 +359,94 @@ describe('DistrictScreen', () => {
 
     // Switches to the Issues tab ('/')
     expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  describe('when an open issue of the same category is within 50 m of the report point', () => {
+    const nearby = TEST_ISSUES[0]; // in progress, exactly at the default report point
+
+    it('offers an upvote instead, and does not upvote twice', async () => {
+      const handleSubmit = jest.fn();
+      await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
+      await screen.findByTestId(`report-map-issue-${nearby.id}`);
+      await fillRequiredFields();
+
+      await fireEvent.press(screen.getByTestId('publish-report-button'));
+      expect(
+        await screen.findByText(
+          'Déjà signalé à 0 m - ajouter votre vote (+1) plutôt que de créer un doublon ?',
+        ),
+      ).toBeOnTheScreen();
+      expect(screen.getByText(nearby.title)).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByTestId('duplicate-upvote-button'));
+      expect(
+        await screen.findByText('Votre vote a été ajouté au signalement existant.'),
+      ).toBeOnTheScreen();
+      expect(handleSubmit).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      // The vote endpoint toggles: a second "upvote" must not remove the first.
+      await fireEvent.press(screen.getByTestId('publish-report-button'));
+      await fireEvent.press(await screen.findByTestId('duplicate-upvote-button'));
+      expect(
+        await screen.findByText('Vous avez déjà voté pour le signalement existant.'),
+      ).toBeOnTheScreen();
+      expect(handleSubmit).not.toHaveBeenCalled();
+    });
+
+    it('cancel publishes nothing', async () => {
+      const handleSubmit = jest.fn();
+      await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
+      await screen.findByTestId(`report-map-issue-${nearby.id}`);
+      await fillRequiredFields();
+
+      await fireEvent.press(screen.getByTestId('publish-report-button'));
+      await fireEvent.press(await screen.findByTestId('duplicate-cancel-button'));
+
+      expect(screen.queryByTestId('duplicate-issue-prompt')).toBeNull();
+      expect(handleSubmit).not.toHaveBeenCalled();
+    });
+
+    it('ignores it when the report is in another category', async () => {
+      const handleSubmit = jest.fn();
+      await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
+      await screen.findByTestId(`report-map-issue-${nearby.id}`);
+      await fillRequiredFields();
+
+      await fireEvent.press(screen.getByTestId('category-card-roads_potholes'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('category-card-roads_potholes').props.accessibilityState.selected,
+        ).toBe(true),
+      );
+      await fireEvent.press(screen.getByTestId('publish-report-button'));
+
+      await waitFor(() => {
+        expect(handleSubmit).toHaveBeenCalledTimes(1);
+      });
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(screen.queryByTestId('duplicate-issue-prompt')).toBeNull();
+    });
+
+    it('does not prompt district managers', async () => {
+      mockUser.role = 'district_manager';
+      try {
+        const handleSubmit = jest.fn();
+        await render(<DistrictScreen onSubmitSuccess={handleSubmit} />);
+        await screen.findByTestId(`report-map-issue-${nearby.id}`);
+        await fillRequiredFields();
+
+        await fireEvent.press(screen.getByTestId('publish-report-button'));
+
+        await waitFor(() => {
+          expect(handleSubmit).toHaveBeenCalledTimes(1);
+        });
+        expect(mockNavigate).toHaveBeenCalledWith('/');
+        expect(screen.queryByTestId('duplicate-issue-prompt')).toBeNull();
+      } finally {
+        mockUser.role = 'resident';
+      }
+    });
   });
 
   it('supports English locale when switched', async () => {
